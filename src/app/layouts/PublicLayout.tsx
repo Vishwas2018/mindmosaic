@@ -1,10 +1,12 @@
 import { Outlet } from 'react-router-dom';
-import { Shell } from '../../shared/ui/Shell';
+import { AppShell } from '@/shared/ui/AppShell';
+import { Header } from '@/shared/ui/Header';
+import { Footer } from '@/shared/ui/Footer';
 
 export function PublicLayout() {
   return (
-    <Shell>
+    <AppShell header={<Header />} footer={<Footer />}>
       <Outlet />
-    </Shell>
+    </AppShell>
   );
 }
