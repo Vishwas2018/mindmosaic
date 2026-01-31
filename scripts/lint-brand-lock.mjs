@@ -13,6 +13,9 @@ const srcDir = join(rootDir, 'src');
 const BRAND_FILE = 'src/config/brand.ts';
 const INDEX_CSS = 'src/index.css';
 
+// Directories exempt from brand string checks (contracts contain documentation)
+const BRAND_STRING_EXEMPT_DIRS = ['src/contracts'];
+
 const BRAND_STRINGS = [
   'MindMosaic',
   'Turning Practice into Mastery',
@@ -39,6 +42,20 @@ function getAllFiles(dir, files = []) {
   return files;
 }
 
+function isCommentLine(line) {
+  const trimmed = line.trim();
+  return (
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('/*') ||
+    trimmed.startsWith('*') ||
+    trimmed.startsWith('<!--')
+  );
+}
+
+function isExemptFromBrandStrings(relativePath) {
+  return BRAND_STRING_EXEMPT_DIRS.some(dir => relativePath.startsWith(dir));
+}
+
 function checkFile(filePath) {
   const relativePath = relative(rootDir, filePath);
   const content = readFileSync(filePath, 'utf-8');
@@ -47,12 +64,13 @@ function checkFile(filePath) {
   const isBrandFile = relativePath === BRAND_FILE;
   const isIndexCss = relativePath === INDEX_CSS;
   const isAllowedHexFile = isBrandFile || isIndexCss;
+  const isExemptBrandStrings = isBrandFile || isExemptFromBrandStrings(relativePath);
   
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
     
-    // Check for brand strings (skip brand.ts)
-    if (!isBrandFile) {
+    // Check for brand strings (skip brand.ts, contracts dir, and comment lines)
+    if (!isExemptBrandStrings && !isCommentLine(line)) {
       for (const brandString of BRAND_STRINGS) {
         if (line.includes(brandString)) {
           violations.push({

@@ -4,6 +4,8 @@
 
 The exam engine is **not yet implemented**. This document describes the planned architecture.
 
+**Related Document:** See [EXAM_PACKAGE_CONTRACT.md](./EXAM_PACKAGE_CONTRACT.md) for the authoritative exam content schema.
+
 ## Purpose
 
 The exam engine manages:
@@ -12,6 +14,16 @@ The exam engine manages:
 - Answer submission and validation
 - Score calculation
 - Results presentation
+
+## Content Contract
+
+The exam engine consumes content defined by the **Exam Package Contract**:
+
+- Schema Location: `src/contracts/exam-package.schema.ts`
+- JSON Schema: `src/contracts/exam-package.json-schema.ts`
+- Examples: `src/contracts/examples/`
+
+All exam content must validate against this schema before use.
 
 ## Planned Architecture
 
