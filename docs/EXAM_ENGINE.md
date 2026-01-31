@@ -1,50 +1,100 @@
-# Exam Engine
+# MindMosaic – Exam Engine
 
-The Exam Engine governs how assessment papers are delivered, interacted with, and submitted by students.
+## Current Status
 
-It is intentionally decoupled from the Content Engine.
+The exam engine is **not yet implemented**. This document describes the planned architecture.
 
-## Core Principles
+## Purpose
 
-- Exams are **stateful sessions**
-- Content is **read-only**
-- Student responses are **incrementally persisted**
-- Exams are **resumable**
-- Submission is **explicit and final**
+The exam engine manages:
+- Practice test sessions
+- Timed assessments
+- Answer submission and validation
+- Score calculation
+- Results presentation
 
-## Key Concepts
+## Planned Architecture
 
-### Exam Attempt
-An attempt represents a student taking a specific version of a paper.
+### Session Types
 
-- One attempt per student per paper version
-- Attempts reference immutable paper versions
-- Attempts track progress, timing, and responses
+| Type | Description | Time Limit |
+|------|-------------|------------|
+| Practice | Untimed, with hints | None |
+| Quiz | Short assessment | 10-15 min |
+| Mock Exam | Full exam simulation | 40-60 min |
 
-### Timing Model
+### Session Lifecycle
 
-- Exams have a fixed duration
-- Timer starts on first interaction
-- Remaining time is persisted
-- Expiry is enforced server-side
+```
+Created → Started → In Progress → Submitted → Scored → Reviewed
+```
 
-### Navigation Model
+### Session Structure (Planned)
 
-- Questions are ordered
-- Students may move forward/backward
-- Optional question flagging supported
-- Question list navigation supported
+```typescript
+interface ExamSession {
+  id: string;
+  studentId: string;
+  type: 'practice' | 'quiz' | 'mock-exam';
+  status: 'created' | 'started' | 'submitted' | 'scored';
+  questions: SessionQuestion[];
+  startedAt?: Date;
+  submittedAt?: Date;
+  timeLimit?: number; // minutes
+  score?: SessionScore;
+}
 
-### Autosave Strategy
+interface SessionQuestion {
+  questionId: string;
+  order: number;
+  answer?: string;
+  answeredAt?: Date;
+  timeSpent?: number; // seconds
+}
 
-- Responses saved on change
-- Timer state saved periodically
-- Page refresh resumes attempt state
+interface SessionScore {
+  correct: number;
+  total: number;
+  percentage: number;
+  byTopic: Record<string, { correct: number; total: number }>;
+}
+```
 
-### Submission
+## Scoring Rules (Planned)
 
-- Submission is explicit
-- Confirmation required
-- Once submitted:
-  - Responses are locked
-  - Attempt becomes read-only
+### Multiple Choice
+- 1 point for correct answer
+- 0 points for incorrect or unanswered
+
+### Short Answer
+- Exact match or accepted alternatives
+- Case-insensitive comparison
+
+### Extended Response
+- Manual marking required
+- Rubric-based scoring
+
+## Results Presentation (Planned)
+
+Results will include:
+1. Overall score and percentage
+2. Breakdown by topic
+3. Time analysis
+4. Question-by-question review
+5. Explanation for each answer
+
+## Integration Points
+
+| Component | Integration |
+|-----------|-------------|
+| Content Engine | Sources questions |
+| Database | Persists sessions |
+| Progress Tracking | Updates mastery data |
+| Parent Dashboard | Shares results |
+
+## Implementation Notes
+
+This component will be implemented when:
+1. Content engine is operational
+2. Database schema is finalised
+3. Student dashboard is functional

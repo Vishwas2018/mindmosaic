@@ -1,8 +1,9 @@
+import { Page } from '@/shared/ui/Page';
+
 export function AdminHome() {
   return (
-    <div>
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Admin Dashboard</h2>
-      <p className="text-gray-700">Admin dashboard placeholder.</p>
-    </div>
+    <Page title="Admin Dashboard">
+      <p className="text-brand-textMuted">Admin dashboard placeholder.</p>
+    </Page>
   );
 }

@@ -1,23 +1,55 @@
-# MindMosaic — Project Overview
+# MindMosaic – Project Overview
 
-MindMosaic is a production-grade Australian education platform designed to help students build mastery through structured practice, assessment, and feedback.
+## Identity
 
-The platform supports NAPLAN- and ICAS-style assessments for Years 1–9, with distinct experiences for students, parents, and administrators.
+- **Name**: MindMosaic
+- **Tagline**: "Turning Practice into Mastery"
+- **Domain**: Australian education platform
+- **Target Users**: Students, Parents, Administrators
 
-## Core Principles
+## Purpose
 
-- **Immutability**: Published assessment papers never change. Corrections create new versions.
-- **Reusability**: Questions and media are reusable across multiple papers.
-- **Accessibility-first**: Structured content enables screen readers, keyboard navigation, and responsive layouts.
-- **Auditability**: All attempts, versions, and roles are explicit and traceable.
-- **Separation of concerns**: Layout, logic, data, and rendering are decoupled.
+MindMosaic is a production-grade education platform designed to help Australian students prepare for standardised tests and improve their academic performance through structured practice.
 
-## High-Level Architecture
+## Current State (Day 6)
 
-- Frontend: React + TypeScript + Tailwind
-- Routing: React Router with role-based layouts
-- Auth: Placeholder guards (Supabase integration planned)
-- Content Engine: Structured questions, media references, paper composition
-- Storage: Supabase (database + media storage)
+The project is in its **foundation phase**. The following layers have been established:
 
-This document describes the shape and intent of the system, not implementation details.
+| Layer | Status |
+|-------|--------|
+| Project scaffolding | ✅ Complete |
+| Routing structure | ✅ Complete |
+| Brand system | ✅ Complete |
+| UI primitives | ✅ Complete |
+| Layout system | ✅ Complete |
+| Auth/Role guard placeholders | ✅ Complete |
+| Documentation | ✅ Complete |
+
+## Technology Stack
+
+| Category | Technology |
+|----------|------------|
+| Framework | React 18 |
+| Language | TypeScript (strict mode) |
+| Build Tool | Vite |
+| Styling | TailwindCSS |
+| Routing | React Router v6.4+ (data router APIs) |
+| Backend | Not yet implemented |
+| Database | Not yet implemented |
+| Authentication | Placeholder only |
+
+## Architecture Principles
+
+1. **Single source of truth** for brand values
+2. **Explicit contracts** over implicit assumptions
+3. **Minimal abstraction** until patterns emerge
+4. **No speculative code** – implement when needed
+5. **TypeScript strict mode** for type safety
+
+## Non-Goals (Current Phase)
+
+- No backend implementation
+- No database integration
+- No real authentication
+- No exam or content logic
+- No state management libraries
