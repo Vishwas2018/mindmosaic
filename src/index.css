@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --brand-primary: #1d4ed8;
+  --brand-primary-light: #2563eb;
+  --brand-bg-soft: #eef5ff;
+  --brand-text: #0f172a;
+  --brand-text-muted: #475569;
+  --brand-border-subtle: #d8e2f3;
+  --brand-accent-amber: #f59e0b;
+  --brand-success: #16a34a;
+  --brand-danger: #dc2626;
+
+  --brand-font: IBM Plex Sans, system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif;
+
+  --letter-spacing-base: 0.01em;
+  --letter-spacing-label: 0.02em;
+  --letter-spacing-heading: -0.005em;
+}
+
+body {
+  font-family: var(--brand-font);
+  letter-spacing: var(--letter-spacing-base);
+  font-weight: 400;
+}
