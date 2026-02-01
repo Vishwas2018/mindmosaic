@@ -3,30 +3,38 @@
 /**
  * Exam Package Example Validator
  *
- * This script validates that all example exam packages conform to the schema.
+ * Validates example exam packages against the Zod contract.
+ *
+ * NOTE:
+ * - This script relies on `tsx` to execute TypeScript imports.
+ * - JSON Schema validation is handled separately in edge functions.
+ *
  * Run with: npm run validate:exams
  */
-
-import { createRequire } from "module";
-
-// We need to transpile TypeScript on the fly
-const require = createRequire(import.meta.url);
 
 async function main() {
   console.log("\n🔍 Validating Exam Package Examples...\n");
 
-  // Dynamic import after tsx compilation
-  const { validateExamPackage, validateMediaReferences, validateTotalMarks } =
-    await import("../src/contracts/exam-package.schema.ts");
-  const { year2NumeracyExam } = await import(
-    "../src/contracts/examples/year2-numeracy.ts"
-  );
-  const { year5MathsExam } = await import(
-    "../src/contracts/examples/year5-maths.ts"
-  );
-  const { year9ReadingExam } = await import(
-    "../src/contracts/examples/year9-reading.ts"
-  );
+  let validateExamPackage;
+  let validateMediaReferences;
+  let validateTotalMarks;
+
+  try {
+    ({ validateExamPackage, validateMediaReferences, validateTotalMarks } =
+      await import("../src/contracts/exam-package.schema.ts"));
+  } catch (err) {
+    console.error(
+      "❌ Failed to load exam package schema. Ensure this script is run via tsx.",
+    );
+    throw err;
+  }
+
+  const { year2NumeracyExam } =
+    await import("../src/contracts/examples/year2-numeracy.ts");
+  const { year5MathsExam } =
+    await import("../src/contracts/examples/year5-maths.ts");
+  const { year9ReadingExam } =
+    await import("../src/contracts/examples/year9-reading.ts");
 
   const examples = [
     { name: "Year 2 Numeracy", exam: year2NumeracyExam },
@@ -39,33 +47,40 @@ async function main() {
   for (const { name, exam } of examples) {
     console.log(`📄 ${name}:`);
 
-    // Schema validation
+    // 1. Schema validation
     const result = validateExamPackage(exam);
     if (!result.success) {
-      console.log(`   ❌ Schema validation failed`);
-      console.log(`   Errors:`, result.errors?.format());
+      console.log("   ❌ Schema validation failed");
+
+      for (const issue of result.errors.issues) {
+        console.log(
+          `      - ${issue.path.join(".") || "(root)"}: ${issue.message}`,
+        );
+      }
+
       allValid = false;
+      console.log("");
       continue;
     }
-    console.log(`   ✅ Schema validation passed`);
 
-    // Media reference validation
+    console.log("   ✅ Schema validation passed");
+
+    // 2. Media reference validation
     const mediaErrors = validateMediaReferences(exam);
     if (mediaErrors.length > 0) {
-      console.log(`   ❌ Media reference validation failed`);
+      console.log("   ❌ Media reference validation failed");
       mediaErrors.forEach((err) => console.log(`      - ${err}`));
       allValid = false;
     } else {
-      console.log(`   ✅ Media references valid`);
+      console.log("   ✅ Media references valid");
     }
 
-    // Total marks validation
-    const marksValid = validateTotalMarks(exam);
-    if (!marksValid) {
-      console.log(`   ❌ Total marks mismatch`);
+    // 3. Total marks validation
+    if (!validateTotalMarks(exam)) {
+      console.log("   ❌ Total marks mismatch");
       allValid = false;
     } else {
-      console.log(`   ✅ Total marks correct`);
+      console.log("   ✅ Total marks correct");
     }
 
     console.log("");
@@ -75,7 +90,7 @@ async function main() {
     console.log("✅ All exam package examples are valid!\n");
     process.exit(0);
   } else {
-    console.log("❌ Some validation errors found.\n");
+    console.log("❌ Validation errors detected.\n");
     process.exit(1);
   }
 }

@@ -5,6 +5,7 @@
  * - Fraction questions with diagrams
  * - Mixed response types (MCQ, numeric, short)
  * - Mathematical reasoning questions
+ * - Use of hints and tags for categorization
  */
 
 import type { ExamPackage } from "../exam-package.schema";
@@ -26,8 +27,8 @@ export const year5MathsExam: ExamPackage = {
     instructions: [
       "Answer all questions.",
       "Show your working where required.",
-      "You may use a calculator for questions marked with a calculator symbol.",
       "Check your answers if you have time at the end.",
+      "You may use a calculator for questions tagged with 'calculator'.",
     ],
   },
   questions: [
@@ -77,7 +78,8 @@ export const year5MathsExam: ExamPackage = {
       promptBlocks: [
         {
           type: "text",
-          content: "Which list shows fractions ordered from smallest to largest?",
+          content:
+            "Which list shows fractions ordered from smallest to largest?",
         },
       ],
       options: [
@@ -177,9 +179,8 @@ export const year5MathsExam: ExamPackage = {
       correctAnswer: {
         type: "numeric",
         exactValue: 0.75,
-        tolerance: 0.001,
       },
-      tags: ["fractions", "decimals", "conversion"],
+      tags: ["fractions", "decimals", "conversion", "calculator"],
     },
     {
       id: "660e8400-e29b-41d4-a716-446655440206",
