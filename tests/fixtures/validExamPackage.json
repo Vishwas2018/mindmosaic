@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "title": "Test Exam - Mathematics Basics",
+    "yearLevel": 3,
+    "subject": "mathematics",
+    "assessmentType": "naplan",
+    "durationMinutes": 30,
+    "totalMarks": 4,
+    "version": "1.0.0",
+    "schemaVersion": "1.0.0",
+    "status": "draft",
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z",
+    "instructions": [
+      "Read each question carefully.",
+      "Show your working where required."
+    ]
+  },
+  "questions": [
+    {
+      "id": "01111111-1111-1111-1111-111111111111",
+      "sequenceNumber": 1,
+      "difficulty": "easy",
+      "responseType": "mcq",
+      "marks": 1,
+      "promptBlocks": [
+        {
+          "type": "text",
+          "content": "What is 5 + 3?"
+        }
+      ],
+      "options": [
+        { "id": "A", "content": "6" },
+        { "id": "B", "content": "7" },
+        { "id": "C", "content": "8" },
+        { "id": "D", "content": "9" }
+      ],
+      "correctAnswer": {
+        "type": "mcq",
+        "correctOptionId": "C"
+      },
+      "tags": ["addition", "basic"]
+    },
+    {
+      "id": "02222222-2222-2222-2222-222222222222",
+      "sequenceNumber": 2,
+      "difficulty": "medium",
+      "responseType": "numeric",
+      "marks": 1,
+      "promptBlocks": [
+        {
+          "type": "text",
+          "content": "Calculate: 12 - 7"
+        },
+        {
+          "type": "instruction",
+          "content": "Enter your answer as a number."
+        }
+      ],
+      "correctAnswer": {
+        "type": "numeric",
+        "exactValue": 5
+      },
+      "tags": ["subtraction"]
+    },
+    {
+      "id": "03333333-3333-3333-3333-333333333333",
+      "sequenceNumber": 3,
+      "difficulty": "easy",
+      "responseType": "short",
+      "marks": 1,
+      "promptBlocks": [
+        {
+          "type": "text",
+          "content": "What shape has 4 equal sides?"
+        }
+      ],
+      "correctAnswer": {
+        "type": "short",
+        "acceptedAnswers": ["square", "Square", "SQUARE"],
+        "caseSensitive": false
+      },
+      "tags": ["geometry", "shapes"],
+      "hint": "Think of a box shape."
+    },
+    {
+      "id": "04444444-4444-4444-4444-444444444444",
+      "sequenceNumber": 4,
+      "difficulty": "hard",
+      "responseType": "extended",
+      "marks": 1,
+      "promptBlocks": [
+        {
+          "type": "heading",
+          "level": 2,
+          "content": "Problem Solving"
+        },
+        {
+          "type": "text",
+          "content": "Sarah has 15 apples. She gives 6 to her friend and buys 4 more. How many apples does Sarah have now? Explain your working."
+        }
+      ],
+      "correctAnswer": {
+        "type": "extended",
+        "rubric": [
+          {
+            "criterion": "Correct final answer (13)",
+            "maxMarks": 1
+          }
+        ],
+        "sampleResponse": "15 - 6 = 9, then 9 + 4 = 13. Sarah has 13 apples."
+      },
+      "tags": ["word-problem", "multi-step"]
+    }
+  ],
+  "mediaAssets": []
+}
