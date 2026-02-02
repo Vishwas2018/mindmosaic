@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Ingestion Pipeline is the **official and only** method for inserting exam content into the database. All exam packages must pass through this pipeline.
+The Ingestion Pipeline is the **official and only** method for inserting exam content into the database.
+
+Its purpose is to guarantee that all exam content entering the system is contract‑valid, schema‑aligned, and RLS‑safe.
 
 **Components:**
 
@@ -45,9 +47,16 @@ POST /functions/v1/ingest-exam-package
 | `Authorization` | Yes      | Bearer token with admin role |
 | `Content-Type`  | Yes      | `application/json`           |
 
+The Edge Function explicitly checks that the JWT contains:
+json
+{ "role": "admin" }
+before allowing ingestion.
+
 ### Request Body
 
 JSON exam package matching the Day 7 contract schema.
+All IDs (exam package, questions, options, media assets) must be provided by the contract.
+The ingestion pipeline does not generate ID
 
 ### Response (Success)
 
@@ -77,7 +86,9 @@ Status: `201 Created`
 }
 ```
 
-Or:
+Status: 400 Bad Request
+
+Response — Validation Error (Business Rules)
 
 ```json
 {
@@ -151,7 +162,12 @@ validateExamPackage(data: unknown): ValidationResult
 validateBusinessRules(data: ExamPackageInput): string[]
 
 // Full validation (schema + business rules)
-validateExamPackageFull(data: unknown): FullValidationResult
+validateExamPackageFull(data: unknown): validateExamPackageFull(data: unknown): {
+  valid: boolean
+  data?: ExamPackageInput
+  schemaErrors?: FormattedValidationError[]
+  businessErrors?: string[]
+}
 ```
 
 ---
@@ -174,6 +190,9 @@ validateExamPackageFull(data: unknown): FullValidationResult
 | `questions[].options[]`      | `exam_question_options` | Multiple rows           |
 | `questions[].correctAnswer`  | `exam_correct_answers`  | Discriminated columns   |
 | `mediaAssets[]`              | `exam_media_assets`     | Multiple rows           |
+
+JSONB fields (prompt_blocks, media_references, tags, instructions) are stored exactly as provided.
+The ingestion pipeline does not modify or sanitize their structure.
 
 ### Output Types
 
@@ -204,19 +223,23 @@ Foreign key dependencies require this order:
 ### RLS Requirements
 
 Insertions must be performed with an admin-role JWT. The Day 9 RLS policies allow:
+Day 9 RLS policies enforce:
 
 - Admins: Full CRUD on all content tables
 - Students/Parents: No INSERT/UPDATE/DELETE on content tables
+  RLS is enforced at the database level and is never bypassed.
 
 ### Transaction Notes
 
 The Supabase JS client does not support explicit transactions. The current implementation:
+Current behaviour:
 
-- Inserts in dependency order
-- Fails fast on any error
+- Inserts occur in dependency order
+- The pipeline fails fast on any error
+- Partial inserts are possible if a later step fails
 - Does not automatically rollback previous inserts on failure
 
-For true ACID compliance, use the RPC-based `insertExamPackageTransaction` function (requires database-side function).
+For true ACID compliance, use the RPC-based `insertExamPackageTransaction` function (which requires a database‑side transaction function.).
 
 ---
 
@@ -241,6 +264,7 @@ A minimal valid exam package with:
 
 - 4 questions (MCQ, numeric, short, extended)
 - All response types covered
+- Valid UUIDs
 - No media assets
 
 ### Running Tests
