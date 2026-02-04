@@ -619,8 +619,9 @@ async function insertData(
     const { error: e2 } = await supabase
       .from("exam_media_assets")
       .insert(data.mediaAssets);
-    if (e2)
+    if (e2) {
       return { success: false, error: `exam_media_assets: ${e2.message}` };
+    }
   }
 
   const { error: e3 } = await supabase
@@ -632,15 +633,20 @@ async function insertData(
     const { error: e4 } = await supabase
       .from("exam_question_options")
       .insert(data.questionOptions);
-    if (e4)
-      return { success: false, error: `exam_question_options: ${e4.message}` };
+    if (e4) {
+      return {
+        success: false,
+        error: `exam_question_options: ${e4.message}`,
+      };
+    }
   }
 
   const { error: e5 } = await supabase
     .from("exam_correct_answers")
     .insert(data.correctAnswers);
-  if (e5)
+  if (e5) {
     return { success: false, error: `exam_correct_answers: ${e5.message}` };
+  }
 
   return { success: true };
 }
@@ -714,14 +720,16 @@ serve(async (req: Request) => {
     // Step 3: Transform data
     const transformed = transformPackage(body as ExamPackageInput);
 
-    // Step 4: Create Supabase client with auth from request
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    // Step 4: Auth validation (validate caller, but do inserts with service role)
+    const authHeader =
+      req.headers.get("authorization") ?? req.headers.get("Authorization");
+
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
         JSON.stringify({
           success: false,
           error: "unauthorized",
-          message: "Missing Authorization header",
+          message: "Missing or invalid Authorization header",
         }),
         {
           status: 401,
@@ -730,12 +738,15 @@ serve(async (req: Request) => {
       );
     }
 
-    // @ts-ignore Deno env
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    // @ts-ignore Deno env
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const jwt = authHeader.replace("Bearer ", "");
+    //@ts-ignore
+    const supabaseUrl = globalThis.Deno?.env.get("SUPABASE_URL");
+    //@ts-ignore
+    const serviceRoleKey = globalThis.Deno?.env.get(
+      "SUPABASE_SERVICE_ROLE_KEY",
+    );
 
-    if (!supabaseUrl || !supabaseAnonKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return new Response(
         JSON.stringify({ success: false, error: "configuration_error" }),
         {
@@ -745,9 +756,44 @@ serve(async (req: Request) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: userResult, error: userError } =
+      await supabase.auth.getUser(jwt);
+
+    if (userError || !userResult?.user?.id) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "unauthorized",
+          message: "Invalid token",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userResult.user.id)
+      .single();
+
+    if (profileError || profile?.role !== "admin") {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "forbidden",
+          message: "Admin access required",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
 
     // Step 5: Insert data
     const insertResult = await insertData(supabase, transformed);
