@@ -30,9 +30,7 @@ describe("validateExamPackage", () => {
     const result = validateExamPackage(validExamPackage);
     expect(result.valid).toBe(true);
     if (result.valid) {
-      expect(result.data.metadata.id).toBe(
-        "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      );
+      expect(result.data.metadata.id).toBe("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
     }
   });
 
@@ -210,9 +208,7 @@ describe("validateBusinessRules", () => {
     if (schemaResult.valid) {
       const errors = validateBusinessRules(schemaResult.data);
       expect(errors.length).toBeGreaterThan(0);
-      expect(
-        errors.some((e) => e.includes("does not match responseType")),
-      ).toBe(true);
+      expect(errors.some(e => e.includes("does not match responseType"))).toBe(true);
     }
   });
 });
@@ -261,12 +257,8 @@ describe("transformExamPackage", () => {
     const transformed = transformExamPackage(schemaResult.data);
 
     // Verify exam package row
-    expect(transformed.examPackage.id).toBe(
-      "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    );
-    expect(transformed.examPackage.title).toBe(
-      "Test Exam - Mathematics Basics",
-    );
+    expect(transformed.examPackage.id).toBe("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+    expect(transformed.examPackage.title).toBe("Test Exam - Mathematics Basics");
     expect(transformed.examPackage.year_level).toBe(3);
     expect(transformed.examPackage.subject).toBe("mathematics");
     expect(transformed.examPackage.assessment_type).toBe("naplan");
@@ -277,17 +269,13 @@ describe("transformExamPackage", () => {
 
     // Verify questions
     expect(transformed.questions).toHaveLength(4);
-    expect(transformed.questions[0].exam_package_id).toBe(
-      "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    );
+    expect(transformed.questions[0].exam_package_id).toBe("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
     expect(transformed.questions[0].sequence_number).toBe(1);
     expect(transformed.questions[0].response_type).toBe("mcq");
 
     // Verify MCQ options (only for MCQ questions)
     expect(transformed.questionOptions).toHaveLength(4); // 1 MCQ question with 4 options
-    expect(transformed.questionOptions[0].question_id).toBe(
-      "01111111-1111-1111-1111-111111111111",
-    );
+    expect(transformed.questionOptions[0].question_id).toBe("01111111-1111-1111-1111-111111111111");
     expect(transformed.questionOptions[0].option_id).toBe("A");
 
     // Verify correct answers
@@ -297,11 +285,7 @@ describe("transformExamPackage", () => {
     expect(transformed.correctAnswers[1].answer_type).toBe("numeric");
     expect(transformed.correctAnswers[1].exact_value).toBe(5);
     expect(transformed.correctAnswers[2].answer_type).toBe("short");
-    expect(transformed.correctAnswers[2].accepted_answers).toEqual([
-      "square",
-      "Square",
-      "SQUARE",
-    ]);
+    expect(transformed.correctAnswers[2].accepted_answers).toEqual(["square", "Square", "SQUARE"]);
     expect(transformed.correctAnswers[3].answer_type).toBe("extended");
     expect(transformed.correctAnswers[3].rubric).toBeDefined();
   });
@@ -335,9 +319,7 @@ describe("transformExamPackage", () => {
 
     const transformed = transformExamPackage(schemaResult.data);
     expect(transformed.mediaAssets).toHaveLength(1);
-    expect(transformed.mediaAssets[0].exam_package_id).toBe(
-      "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    );
+    expect(transformed.mediaAssets[0].exam_package_id).toBe("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
     expect(transformed.mediaAssets[0].mime_type).toBe("image/png");
   });
 

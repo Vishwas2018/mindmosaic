@@ -9,11 +9,14 @@
     "lint": "eslint .",
     "lint:brand": "node scripts/lint-brand-lock.mjs",
     "validate:exams": "tsx scripts/validate-exam-examples.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.93.3",
     "ajv": "^8.17.1",
-    "ajv-formats": "^2.1.1",
+    "ajv-formats": "^3.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",

@@ -14,12 +14,5 @@ export type {
   ExamCorrectAnswerRow,
 } from "./transformExamPackage";
 
-export {
-  insertExamPackageData,
-  insertExamPackageTransaction,
-} from "./insertExamPackage";
-export type {
-  InsertResult,
-  InsertSuccess,
-  InsertError,
-} from "./insertExamPackage";
+export { insertExamPackageData, insertExamPackageTransaction } from "./insertExamPackage";
+export type { InsertResult, InsertSuccess, InsertError } from "./insertExamPackage";

@@ -35,13 +35,13 @@
  * Requires: Admin role JWT
  */
 
-// @ts-ignore Deno imports
+// @ts-expect-error Deno imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// @ts-ignore Deno imports
+// @ts-expect-error Deno imports
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
-// @ts-ignore Deno imports
+// @ts-expect-error Deno imports
 import Ajv from "https://esm.sh/ajv@8.12.0";
-// @ts-ignore Deno imports
+// @ts-expect-error Deno imports
 import addFormats from "https://esm.sh/ajv-formats@2.1.1";
 
 // =============================================================================
@@ -76,39 +76,15 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
     ExamStatus: { type: "string", enum: ["draft", "published"] },
     Subject: {
       type: "string",
-      enum: [
-        "numeracy",
-        "reading",
-        "writing",
-        "language-conventions",
-        "mathematics",
-        "english",
-        "science",
-      ],
+      enum: ["numeracy", "reading", "writing", "language-conventions", "mathematics", "english", "science"],
     },
     Difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
-    ResponseType: {
-      type: "string",
-      enum: ["mcq", "short", "extended", "numeric"],
-    },
+    ResponseType: { type: "string", enum: ["mcq", "short", "extended", "numeric"] },
     MediaType: { type: "string", enum: ["image", "diagram", "graph"] },
     MediaPlacement: { type: "string", enum: ["above", "inline", "below"] },
     ExamMetadata: {
       type: "object",
-      required: [
-        "id",
-        "title",
-        "yearLevel",
-        "subject",
-        "assessmentType",
-        "durationMinutes",
-        "totalMarks",
-        "version",
-        "schemaVersion",
-        "status",
-        "createdAt",
-        "updatedAt",
-      ],
+      required: ["id", "title", "yearLevel", "subject", "assessmentType", "durationMinutes", "totalMarks", "version", "schemaVersion", "status", "createdAt", "updatedAt"],
       additionalProperties: false,
       properties: {
         id: { type: "string", format: "uuid" },
@@ -123,11 +99,7 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
         status: { $ref: "#/$defs/ExamStatus" },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
-        instructions: {
-          type: "array",
-          items: { type: "string", minLength: 1, maxLength: 500 },
-          maxItems: 10,
-        },
+        instructions: { type: "array", items: { type: "string", minLength: 1, maxLength: 500 }, maxItems: 10 },
       },
     },
     MediaReference: {
@@ -150,10 +122,7 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
         id: { type: "string", format: "uuid" },
         type: { $ref: "#/$defs/MediaType" },
         filename: { type: "string", minLength: 1, maxLength: 200 },
-        mimeType: {
-          type: "string",
-          pattern: "^image/(png|jpeg|svg\\+xml|webp)$",
-        },
+        mimeType: { type: "string", pattern: "^image/(png|jpeg|svg\\+xml|webp)$" },
         width: { type: "integer", minimum: 1 },
         height: { type: "integer", minimum: 1 },
         sizeBytes: { type: "integer", minimum: 1 },
@@ -172,54 +141,31 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
       type: "object",
       required: ["type", "content"],
       additionalProperties: false,
-      properties: {
-        type: { const: "text" },
-        content: { type: "string", minLength: 1 },
-      },
+      properties: { type: { const: "text" }, content: { type: "string", minLength: 1 } },
     },
     HeadingBlock: {
       type: "object",
       required: ["type", "level", "content"],
       additionalProperties: false,
-      properties: {
-        type: { const: "heading" },
-        level: { type: "integer", enum: [1, 2, 3] },
-        content: { type: "string", minLength: 1, maxLength: 200 },
-      },
+      properties: { type: { const: "heading" }, level: { type: "integer", enum: [1, 2, 3] }, content: { type: "string", minLength: 1, maxLength: 200 } },
     },
     ListBlock: {
       type: "object",
       required: ["type", "ordered", "items"],
       additionalProperties: false,
-      properties: {
-        type: { const: "list" },
-        ordered: { type: "boolean" },
-        items: {
-          type: "array",
-          items: { type: "string", minLength: 1 },
-          minItems: 1,
-          maxItems: 20,
-        },
-      },
+      properties: { type: { const: "list" }, ordered: { type: "boolean" }, items: { type: "array", items: { type: "string", minLength: 1 }, minItems: 1, maxItems: 20 } },
     },
     QuoteBlock: {
       type: "object",
       required: ["type", "content"],
       additionalProperties: false,
-      properties: {
-        type: { const: "quote" },
-        content: { type: "string", minLength: 1 },
-        attribution: { type: "string", maxLength: 100 },
-      },
+      properties: { type: { const: "quote" }, content: { type: "string", minLength: 1 }, attribution: { type: "string", maxLength: 100 } },
     },
     InstructionBlock: {
       type: "object",
       required: ["type", "content"],
       additionalProperties: false,
-      properties: {
-        type: { const: "instruction" },
-        content: { type: "string", minLength: 1, maxLength: 500 },
-      },
+      properties: { type: { const: "instruction" }, content: { type: "string", minLength: 1, maxLength: 500 } },
     },
     McqOption: {
       type: "object",
@@ -243,10 +189,7 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
       type: "object",
       required: ["type", "correctOptionId"],
       additionalProperties: false,
-      properties: {
-        type: { const: "mcq" },
-        correctOptionId: { type: "string", pattern: "^[A-D]$" },
-      },
+      properties: { type: { const: "mcq" }, correctOptionId: { type: "string", pattern: "^[A-D]$" } },
     },
     ShortAnswer: {
       type: "object",
@@ -254,12 +197,7 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
       additionalProperties: false,
       properties: {
         type: { const: "short" },
-        acceptedAnswers: {
-          type: "array",
-          items: { type: "string", minLength: 1 },
-          minItems: 1,
-          maxItems: 10,
-        },
+        acceptedAnswers: { type: "array", items: { type: "string", minLength: 1 }, minItems: 1, maxItems: 10 },
         caseSensitive: { type: "boolean", default: false },
       },
     },
@@ -270,11 +208,7 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
       properties: {
         type: { const: "numeric" },
         exactValue: { type: "number" },
-        range: {
-          type: "object",
-          required: ["min", "max"],
-          properties: { min: { type: "number" }, max: { type: "number" } },
-        },
+        range: { type: "object", required: ["min", "max"], properties: { min: { type: "number" }, max: { type: "number" } } },
         tolerance: { type: "number", minimum: 0 },
         unit: { type: "string", maxLength: 20 },
       },
@@ -287,14 +221,7 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
         type: { const: "extended" },
         rubric: {
           type: "array",
-          items: {
-            type: "object",
-            required: ["criterion", "maxMarks"],
-            properties: {
-              criterion: { type: "string", minLength: 1 },
-              maxMarks: { type: "integer", minimum: 1, maximum: 10 },
-            },
-          },
+          items: { type: "object", required: ["criterion", "maxMarks"], properties: { criterion: { type: "string", minLength: 1 }, maxMarks: { type: "integer", minimum: 1, maximum: 10 } } },
           minItems: 1,
           maxItems: 10,
         },
@@ -303,14 +230,7 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
     },
     Question: {
       type: "object",
-      required: [
-        "id",
-        "sequenceNumber",
-        "difficulty",
-        "responseType",
-        "promptBlocks",
-        "correctAnswer",
-      ],
+      required: ["id", "sequenceNumber", "difficulty", "responseType", "promptBlocks", "correctAnswer"],
       additionalProperties: false,
       properties: {
         id: { type: "string", format: "uuid" },
@@ -318,30 +238,11 @@ const EXAM_PACKAGE_JSON_SCHEMA = {
         difficulty: { $ref: "#/$defs/Difficulty" },
         responseType: { $ref: "#/$defs/ResponseType" },
         marks: { type: "integer", minimum: 1, maximum: 10, default: 1 },
-        promptBlocks: {
-          type: "array",
-          items: { $ref: "#/$defs/PromptBlock" },
-          minItems: 1,
-          maxItems: 20,
-        },
-        mediaReferences: {
-          type: "array",
-          items: { $ref: "#/$defs/MediaReference" },
-          maxItems: 5,
-        },
-        options: {
-          type: "array",
-          items: { $ref: "#/$defs/McqOption" },
-          minItems: 4,
-          maxItems: 4,
-        },
+        promptBlocks: { type: "array", items: { $ref: "#/$defs/PromptBlock" }, minItems: 1, maxItems: 20 },
+        mediaReferences: { type: "array", items: { $ref: "#/$defs/MediaReference" }, maxItems: 5 },
+        options: { type: "array", items: { $ref: "#/$defs/McqOption" }, minItems: 4, maxItems: 4 },
         correctAnswer: { $ref: "#/$defs/CorrectAnswer" },
-        tags: {
-          type: "array",
-          items: { type: "string", minLength: 1, maxLength: 50 },
-          maxItems: 10,
-          default: [],
-        },
+        tags: { type: "array", items: { type: "string", minLength: 1, maxLength: 50 }, maxItems: 10, default: [] },
         hint: { type: "string", maxLength: 500 },
       },
     },
@@ -365,16 +266,10 @@ function createValidator() {
   return ajv;
 }
 
-function validateSchema(
-  ajv: Ajv,
-  data: unknown,
-): { valid: boolean; errors?: ValidationError[] } {
+function validateSchema(ajv: Ajv, data: unknown): { valid: boolean; errors?: ValidationError[] } {
   const validate = ajv.getSchema("exam-package");
   if (!validate) {
-    return {
-      valid: false,
-      errors: [{ path: "", message: "Schema not found", keyword: "internal" }],
-    };
+    return { valid: false, errors: [{ path: "", message: "Schema not found", keyword: "internal" }] };
   }
 
   const isValid = validate(data);
@@ -382,13 +277,11 @@ function validateSchema(
     return { valid: true };
   }
 
-  const errors = (validate.errors || []).map(
-    (e: { instancePath?: string; message?: string; keyword: string }) => ({
-      path: e.instancePath || "/",
-      message: e.message || "Validation failed",
-      keyword: e.keyword,
-    }),
-  );
+  const errors = (validate.errors || []).map((e: { instancePath?: string; message?: string; keyword: string }) => ({
+    path: e.instancePath || "/",
+    message: e.message || "Validation failed",
+    keyword: e.keyword,
+  }));
 
   return { valid: false, errors };
 }
@@ -397,33 +290,22 @@ function validateBusinessRules(data: ExamPackageInput): string[] {
   const errors: string[] = [];
 
   // Rule 1: Total marks
-  const calculatedMarks = data.questions.reduce(
-    (sum: number, q: QuestionInput) => sum + (q.marks ?? 1),
-    0,
-  );
+  const calculatedMarks = data.questions.reduce((sum: number, q: QuestionInput) => sum + (q.marks ?? 1), 0);
   if (calculatedMarks !== data.metadata.totalMarks) {
-    errors.push(
-      `Total marks mismatch: expected ${data.metadata.totalMarks}, got ${calculatedMarks}`,
-    );
+    errors.push(`Total marks mismatch: expected ${data.metadata.totalMarks}, got ${calculatedMarks}`);
   }
 
   // Rule 2: Media references
-  const assetIds = new Set(
-    (data.mediaAssets ?? []).map((a: MediaAssetInput) => a.id),
-  );
+  const assetIds = new Set((data.mediaAssets ?? []).map((a: MediaAssetInput) => a.id));
   for (const q of data.questions) {
     for (const ref of q.mediaReferences ?? []) {
       if (!assetIds.has(ref.mediaId)) {
-        errors.push(
-          `Question ${q.id}: mediaReference ${ref.mediaId} not found`,
-        );
+        errors.push(`Question ${q.id}: mediaReference ${ref.mediaId} not found`);
       }
     }
     for (const opt of q.options ?? []) {
       if (opt.mediaReference && !assetIds.has(opt.mediaReference.mediaId)) {
-        errors.push(
-          `Question ${q.id}, Option ${opt.id}: mediaReference ${opt.mediaReference.mediaId} not found`,
-        );
+        errors.push(`Question ${q.id}, Option ${opt.id}: mediaReference ${opt.mediaReference.mediaId} not found`);
       }
     }
   }
@@ -438,9 +320,7 @@ function validateBusinessRules(data: ExamPackageInput): string[] {
   // Rule 4: Answer type match
   for (const q of data.questions) {
     if (q.correctAnswer.type !== q.responseType) {
-      errors.push(
-        `Question ${q.id}: correctAnswer.type doesn't match responseType`,
-      );
+      errors.push(`Question ${q.id}: correctAnswer.type doesn't match responseType`);
     }
   }
 
@@ -479,11 +359,7 @@ interface QuestionInput {
   marks?: number;
   promptBlocks: unknown[];
   mediaReferences?: { mediaId: string }[];
-  options?: {
-    id: string;
-    content: string;
-    mediaReference?: { mediaId: string };
-  }[];
+  options?: { id: string; content: string; mediaReference?: { mediaId: string } }[];
   correctAnswer: { type: string; [key: string]: unknown };
   tags?: string[];
   hint?: string;
@@ -546,12 +422,7 @@ function transformPackage(input: ExamPackageInput) {
     hint: q.hint ?? null,
   }));
 
-  const questionOptions: {
-    question_id: string;
-    option_id: string;
-    content: string;
-    media_reference: unknown;
-  }[] = [];
+  const questionOptions: { question_id: string; option_id: string; content: string; media_reference: unknown }[] = [];
   for (const q of input.questions) {
     if (q.responseType === "mcq" && q.options) {
       for (const opt of q.options) {
@@ -572,33 +443,18 @@ function transformPackage(input: ExamPackageInput) {
       answer_type: answer.type,
       correct_option_id: answer.type === "mcq" ? answer.correctOptionId : null,
       accepted_answers: answer.type === "short" ? answer.acceptedAnswers : null,
-      case_sensitive:
-        answer.type === "short" ? (answer.caseSensitive ?? false) : null,
-      exact_value:
-        answer.type === "numeric" ? (answer.exactValue ?? null) : null,
-      range_min:
-        answer.type === "numeric" && answer.range
-          ? (answer.range as { min: number }).min
-          : null,
-      range_max:
-        answer.type === "numeric" && answer.range
-          ? (answer.range as { max: number }).max
-          : null,
+      case_sensitive: answer.type === "short" ? (answer.caseSensitive ?? false) : null,
+      exact_value: answer.type === "numeric" ? (answer.exactValue ?? null) : null,
+      range_min: answer.type === "numeric" && answer.range ? (answer.range as { min: number }).min : null,
+      range_max: answer.type === "numeric" && answer.range ? (answer.range as { max: number }).max : null,
       tolerance: answer.type === "numeric" ? (answer.tolerance ?? null) : null,
       unit: answer.type === "numeric" ? (answer.unit ?? null) : null,
       rubric: answer.type === "extended" ? answer.rubric : null,
-      sample_response:
-        answer.type === "extended" ? (answer.sampleResponse ?? null) : null,
+      sample_response: answer.type === "extended" ? (answer.sampleResponse ?? null) : null,
     };
   });
 
-  return {
-    examPackage,
-    mediaAssets,
-    questions,
-    questionOptions,
-    correctAnswers,
-  };
+  return { examPackage, mediaAssets, questions, questionOptions, correctAnswers };
 }
 
 // =============================================================================
@@ -607,46 +463,27 @@ function transformPackage(input: ExamPackageInput) {
 
 async function insertData(
   supabase: ReturnType<typeof createClient>,
-  data: ReturnType<typeof transformPackage>,
+  data: ReturnType<typeof transformPackage>
 ): Promise<{ success: boolean; error?: string }> {
   // Insert in dependency order
-  const { error: e1 } = await supabase
-    .from("exam_packages")
-    .insert(data.examPackage);
+  const { error: e1 } = await supabase.from("exam_packages").insert(data.examPackage);
   if (e1) return { success: false, error: `exam_packages: ${e1.message}` };
 
   if (data.mediaAssets.length > 0) {
-    const { error: e2 } = await supabase
-      .from("exam_media_assets")
-      .insert(data.mediaAssets);
-    if (e2) {
-      return { success: false, error: `exam_media_assets: ${e2.message}` };
-    }
+    const { error: e2 } = await supabase.from("exam_media_assets").insert(data.mediaAssets);
+    if (e2) return { success: false, error: `exam_media_assets: ${e2.message}` };
   }
 
-  const { error: e3 } = await supabase
-    .from("exam_questions")
-    .insert(data.questions);
+  const { error: e3 } = await supabase.from("exam_questions").insert(data.questions);
   if (e3) return { success: false, error: `exam_questions: ${e3.message}` };
 
   if (data.questionOptions.length > 0) {
-    const { error: e4 } = await supabase
-      .from("exam_question_options")
-      .insert(data.questionOptions);
-    if (e4) {
-      return {
-        success: false,
-        error: `exam_question_options: ${e4.message}`,
-      };
-    }
+    const { error: e4 } = await supabase.from("exam_question_options").insert(data.questionOptions);
+    if (e4) return { success: false, error: `exam_question_options: ${e4.message}` };
   }
 
-  const { error: e5 } = await supabase
-    .from("exam_correct_answers")
-    .insert(data.correctAnswers);
-  if (e5) {
-    return { success: false, error: `exam_correct_answers: ${e5.message}` };
-  }
+  const { error: e5 } = await supabase.from("exam_correct_answers").insert(data.correctAnswers);
+  if (e5) return { success: false, error: `exam_correct_answers: ${e5.message}` };
 
   return { success: true };
 }
@@ -657,8 +494,7 @@ async function insertData(
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req: Request) => {
@@ -671,10 +507,7 @@ serve(async (req: Request) => {
   if (req.method !== "POST") {
     return new Response(
       JSON.stringify({ success: false, error: "method_not_allowed" }),
-      {
-        status: 405,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
@@ -694,10 +527,7 @@ serve(async (req: Request) => {
           error: "validation_failed",
           schemaErrors: schemaResult.errors,
         }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -710,90 +540,37 @@ serve(async (req: Request) => {
           error: "validation_failed",
           businessErrors,
         }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Step 3: Transform data
     const transformed = transformPackage(body as ExamPackageInput);
 
-    // Step 4: Auth validation (validate caller, but do inserts with service role)
-    const authHeader =
-      req.headers.get("authorization") ?? req.headers.get("Authorization");
-
-    if (!authHeader?.startsWith("Bearer ")) {
+    // Step 4: Create Supabase client with auth from request
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: "unauthorized",
-          message: "Missing or invalid Authorization header",
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        JSON.stringify({ success: false, error: "unauthorized", message: "Missing Authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const jwt = authHeader.replace("Bearer ", "");
-    //@ts-ignore
-    const supabaseUrl = globalThis.Deno?.env.get("SUPABASE_URL");
-    //@ts-ignore
-    const serviceRoleKey = globalThis.Deno?.env.get(
-      "SUPABASE_SERVICE_ROLE_KEY",
-    );
+    // @ts-expect-error Deno env
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    // @ts-expect-error Deno env
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
 
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !supabaseAnonKey) {
       return new Response(
         JSON.stringify({ success: false, error: "configuration_error" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: userResult, error: userError } =
-      await supabase.auth.getUser(jwt);
-
-    if (userError || !userResult?.user?.id) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "unauthorized",
-          message: "Invalid token",
-        }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userResult.user.id)
-      .single();
-
-    if (profileError || profile?.role !== "admin") {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "forbidden",
-          message: "Admin access required",
-        }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     // Step 5: Insert data
     const insertResult = await insertData(supabase, transformed);
@@ -805,10 +582,7 @@ serve(async (req: Request) => {
           error: "insert_failed",
           message: insertResult.error,
         }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -818,19 +592,13 @@ serve(async (req: Request) => {
         success: true,
         examPackageId: transformed.examPackage.id,
       }),
-      {
-        status: 201,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      { status: 201, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
       JSON.stringify({ success: false, error: "internal_error", message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

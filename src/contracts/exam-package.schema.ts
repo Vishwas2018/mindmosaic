@@ -128,7 +128,7 @@ export const McqOptionSchema = z.object({
 export type McqOption = z.infer<typeof McqOptionSchema>;
 
 // =============================================================================
-// Correct Answer Schemas (Discriminated Union)
+// Correct Answer Schemas (by response type)
 // =============================================================================
 
 const McqAnswerSchema = z.object({
@@ -142,40 +142,27 @@ const ShortAnswerSchema = z.object({
   caseSensitive: z.boolean().default(false),
 });
 
-const NumericAnswerSchema = z
-  .object({
-    type: z.literal("numeric"),
-    exactValue: z.number().optional(),
-    range: z
-      .object({
-        min: z.number(),
-        max: z.number(),
-      })
-      .optional(),
-    tolerance: z.number().min(0).optional(),
-    unit: z.string().max(20).optional(),
-  })
-  .refine(
-    (v) =>
-      (v.exactValue !== undefined && v.range === undefined) ||
-      (v.exactValue === undefined && v.range !== undefined),
-    {
-      message:
-        "Numeric answers must define either exactValue or range (not both)",
-    },
-  );
+const NumericAnswerSchema = z.object({
+  type: z.literal("numeric"),
+  exactValue: z.number().optional(),
+  range: z
+    .object({
+      min: z.number(),
+      max: z.number(),
+    })
+    .optional(),
+  tolerance: z.number().min(0).optional(),
+  unit: z.string().max(20).optional(),
+});
 
 const ExtendedAnswerSchema = z.object({
   type: z.literal("extended"),
-  rubric: z
-    .array(
-      z.object({
-        criterion: z.string().min(1),
-        maxMarks: z.number().int().min(1).max(10),
-      }),
-    )
-    .min(1)
-    .max(10),
+  rubric: z.array(
+    z.object({
+      criterion: z.string().min(1),
+      maxMarks: z.number().int().min(1).max(10),
+    })
+  ).min(1).max(10),
   sampleResponse: z.string().optional(),
 });
 
@@ -191,46 +178,19 @@ export type CorrectAnswer = z.infer<typeof CorrectAnswerSchema>;
 // Question Schema
 // =============================================================================
 
-export const QuestionSchema = z
-  .object({
-    id: z.string().uuid(),
-    sequenceNumber: z.number().int().min(1),
-    difficulty: Difficulty,
-    responseType: ResponseType,
-    marks: z.number().int().min(1).max(10).default(1),
-    promptBlocks: z.array(PromptBlockSchema).min(1).max(20),
-    mediaReferences: z.array(MediaReferenceSchema).max(5).optional(),
-    options: z.array(McqOptionSchema).length(4).optional(),
-    correctAnswer: CorrectAnswerSchema,
-    tags: z.array(z.string().min(1).max(50)).max(10).default([]),
-    hint: z.string().max(500).optional(),
-  })
-  .superRefine((q, ctx) => {
-    if (q.responseType !== q.correctAnswer.type) {
-      ctx.addIssue({
-        path: ["correctAnswer"],
-        message: "responseType must match correctAnswer.type",
-        code: z.ZodIssueCode.custom,
-      });
-    }
-
-    if (q.responseType === "mcq" && !q.options) {
-      ctx.addIssue({
-        path: ["options"],
-        message: "MCQ questions must define exactly 4 options",
-        code: z.ZodIssueCode.custom,
-      });
-    }
-
-    if (q.responseType !== "mcq" && q.options) {
-      ctx.addIssue({
-        path: ["options"],
-        message: "Only MCQ questions may define options",
-        code: z.ZodIssueCode.custom,
-      });
-    }
-  });
-
+export const QuestionSchema = z.object({
+  id: z.string().uuid(),
+  sequenceNumber: z.number().int().min(1),
+  difficulty: Difficulty,
+  responseType: ResponseType,
+  marks: z.number().int().min(1).max(10).default(1),
+  promptBlocks: z.array(PromptBlockSchema).min(1).max(20),
+  mediaReferences: z.array(MediaReferenceSchema).max(5).optional(),
+  options: z.array(McqOptionSchema).length(4).optional(),
+  correctAnswer: CorrectAnswerSchema,
+  tags: z.array(z.string().min(1).max(50)).max(10).default([]),
+  hint: z.string().max(500).optional(),
+});
 export type Question = z.infer<typeof QuestionSchema>;
 
 // =============================================================================
@@ -255,7 +215,7 @@ export const ExamMetadataSchema = z.object({
 export type ExamMetadata = z.infer<typeof ExamMetadataSchema>;
 
 // =============================================================================
-// Media Asset Schema (Package-Level Manifest)
+// Media Asset Schema (for package-level media manifest)
 // =============================================================================
 
 export const MediaAssetSchema = z.object({
@@ -284,43 +244,59 @@ export type ExamPackage = z.infer<typeof ExamPackageSchema>;
 // Validation Helpers
 // =============================================================================
 
+/**
+ * Validates an exam package and returns typed result
+ */
 export function validateExamPackage(data: unknown): {
   success: boolean;
   data?: ExamPackage;
   errors?: z.ZodError;
 } {
   const result = ExamPackageSchema.safeParse(data);
-  return result.success
-    ? { success: true, data: result.data }
-    : { success: false, errors: result.error };
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, errors: result.error };
 }
 
+/**
+ * Validates that all media references in questions have corresponding assets
+ */
 export function validateMediaReferences(examPackage: ExamPackage): string[] {
   const errors: string[] = [];
   const assetIds = new Set(examPackage.mediaAssets.map((a) => a.id));
 
   for (const question of examPackage.questions) {
-    question.mediaReferences?.forEach((ref) => {
-      if (!assetIds.has(ref.mediaId)) {
-        errors.push(
-          `Question ${question.id}: Media reference ${ref.mediaId} not found`,
-        );
+    if (question.mediaReferences) {
+      for (const ref of question.mediaReferences) {
+        if (!assetIds.has(ref.mediaId)) {
+          errors.push(
+            `Question ${question.id}: Media reference ${ref.mediaId} not found in assets`
+          );
+        }
       }
-    });
-
-    question.options?.forEach((opt) => {
-      if (opt.mediaReference && !assetIds.has(opt.mediaReference.mediaId)) {
-        errors.push(
-          `Question ${question.id}, Option ${opt.id}: Media reference ${opt.mediaReference.mediaId} not found`,
-        );
+    }
+    if (question.options) {
+      for (const option of question.options) {
+        if (option.mediaReference && !assetIds.has(option.mediaReference.mediaId)) {
+          errors.push(
+            `Question ${question.id}, Option ${option.id}: Media reference ${option.mediaReference.mediaId} not found in assets`
+          );
+        }
       }
-    });
+    }
   }
 
   return errors;
 }
 
+/**
+ * Validates that total marks in questions matches metadata
+ */
 export function validateTotalMarks(examPackage: ExamPackage): boolean {
-  const total = examPackage.questions.reduce((sum, q) => sum + q.marks, 0);
-  return total === examPackage.metadata.totalMarks;
+  const calculatedTotal = examPackage.questions.reduce(
+    (sum, q) => sum + (q.marks ?? 1),
+    0
+  );
+  return calculatedTotal === examPackage.metadata.totalMarks;
 }

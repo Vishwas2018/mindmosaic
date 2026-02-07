@@ -65,11 +65,11 @@ The Auth/User Model phase must configure Supabase to include the `role` claim in
 
 **Students and parents have NO direct database access to `exam_correct_answers`.**
 
-| Role    | Access to `exam_correct_answers` |
-| ------- | -------------------------------- |
-| student | ❌ NO ACCESS                     |
-| parent  | ❌ NO ACCESS                     |
-| admin   | ✅ Full CRUD                     |
+| Role | Access to `exam_correct_answers` |
+|------|----------------------------------|
+| student | ❌ NO ACCESS |
+| parent | ❌ NO ACCESS |
+| admin | ✅ Full CRUD |
 
 ### Rationale
 
@@ -80,7 +80,6 @@ The Auth/User Model phase must configure Supabase to include the `role` claim in
 ### How Students See Answers After Submission
 
 In a future phase, an edge function will:
-
 1. Verify the student has submitted the attempt
 2. Query `exam_correct_answers` using a service role key
 3. Return answers to the student
@@ -93,15 +92,15 @@ This is **not** implemented in Day 9.
 
 All 7 Day 8 tables have RLS enabled:
 
-| Table                   | RLS Enabled |
-| ----------------------- | ----------- |
-| `exam_packages`         | ✅          |
-| `exam_media_assets`     | ✅          |
-| `exam_questions`        | ✅          |
-| `exam_question_options` | ✅          |
-| `exam_correct_answers`  | ✅          |
-| `exam_attempts`         | ✅          |
-| `exam_responses`        | ✅          |
+| Table | RLS Enabled |
+|-------|-------------|
+| `exam_packages` | ✅ |
+| `exam_media_assets` | ✅ |
+| `exam_questions` | ✅ |
+| `exam_question_options` | ✅ |
+| `exam_correct_answers` | ✅ |
+| `exam_attempts` | ✅ |
+| `exam_responses` | ✅ |
 
 ---
 
@@ -109,20 +108,20 @@ All 7 Day 8 tables have RLS enabled:
 
 ### Content Tables
 
-| Table                   | Student          | Parent           | Admin |
-| ----------------------- | ---------------- | ---------------- | ----- |
-| `exam_packages`         | SELECT published | SELECT published | ALL   |
-| `exam_media_assets`     | SELECT published | SELECT published | ALL   |
-| `exam_questions`        | SELECT published | SELECT published | ALL   |
-| `exam_question_options` | SELECT published | SELECT published | ALL   |
-| `exam_correct_answers`  | ❌               | ❌               | ALL   |
+| Table | Student | Parent | Admin |
+|-------|---------|--------|-------|
+| `exam_packages` | SELECT published | SELECT published | ALL |
+| `exam_media_assets` | SELECT published | SELECT published | ALL |
+| `exam_questions` | SELECT published | SELECT published | ALL |
+| `exam_question_options` | SELECT published | SELECT published | ALL |
+| `exam_correct_answers` | ❌ | ❌ | ALL |
 
 ### Runtime Tables
 
-| Table            | Student                  | Parent        | Admin  |
-| ---------------- | ------------------------ | ------------- | ------ |
-| `exam_attempts`  | SELECT/INSERT/UPDATE own | ❌ (deferred) | SELECT |
-| `exam_responses` | SELECT/INSERT/UPDATE own | ❌            | SELECT |
+| Table | Student | Parent | Admin |
+|-------|---------|--------|-------|
+| `exam_attempts` | SELECT/INSERT/UPDATE own | ❌ (deferred) | SELECT |
+| `exam_responses` | SELECT/INSERT/UPDATE own | ❌ | SELECT |
 
 **Note**: Parent access to `exam_attempts` is deferred to the Auth/User Model phase when `parent_student` linking is implemented.
 
@@ -132,75 +131,75 @@ All 7 Day 8 tables have RLS enabled:
 
 ### `exam_packages`
 
-| Policy                           | Operation | Condition                                      |
-| -------------------------------- | --------- | ---------------------------------------------- |
-| `exam_packages_select_published` | SELECT    | `status = 'published'` AND (student OR parent) |
-| `exam_packages_select_admin`     | SELECT    | admin                                          |
-| `exam_packages_insert_admin`     | INSERT    | admin                                          |
-| `exam_packages_update_admin`     | UPDATE    | admin                                          |
-| `exam_packages_delete_admin`     | DELETE    | admin                                          |
+| Policy | Operation | Condition |
+|--------|-----------|-----------|
+| `exam_packages_select_published` | SELECT | `status = 'published'` AND (student OR parent) |
+| `exam_packages_select_admin` | SELECT | admin |
+| `exam_packages_insert_admin` | INSERT | admin |
+| `exam_packages_update_admin` | UPDATE | admin |
+| `exam_packages_delete_admin` | DELETE | admin |
 
 ### `exam_media_assets`
 
-| Policy                               | Operation | Condition                                        |
-| ------------------------------------ | --------- | ------------------------------------------------ |
-| `exam_media_assets_select_published` | SELECT    | (student OR parent) AND parent package published |
-| `exam_media_assets_select_admin`     | SELECT    | admin                                            |
-| `exam_media_assets_insert_admin`     | INSERT    | admin                                            |
-| `exam_media_assets_update_admin`     | UPDATE    | admin                                            |
-| `exam_media_assets_delete_admin`     | DELETE    | admin                                            |
+| Policy | Operation | Condition |
+|--------|-----------|-----------|
+| `exam_media_assets_select_published` | SELECT | (student OR parent) AND parent package published |
+| `exam_media_assets_select_admin` | SELECT | admin |
+| `exam_media_assets_insert_admin` | INSERT | admin |
+| `exam_media_assets_update_admin` | UPDATE | admin |
+| `exam_media_assets_delete_admin` | DELETE | admin |
 
 ### `exam_questions`
 
-| Policy                            | Operation | Condition                                        |
-| --------------------------------- | --------- | ------------------------------------------------ |
-| `exam_questions_select_published` | SELECT    | (student OR parent) AND parent package published |
-| `exam_questions_select_admin`     | SELECT    | admin                                            |
-| `exam_questions_insert_admin`     | INSERT    | admin                                            |
-| `exam_questions_update_admin`     | UPDATE    | admin                                            |
-| `exam_questions_delete_admin`     | DELETE    | admin                                            |
+| Policy | Operation | Condition |
+|--------|-----------|-----------|
+| `exam_questions_select_published` | SELECT | (student OR parent) AND parent package published |
+| `exam_questions_select_admin` | SELECT | admin |
+| `exam_questions_insert_admin` | INSERT | admin |
+| `exam_questions_update_admin` | UPDATE | admin |
+| `exam_questions_delete_admin` | DELETE | admin |
 
 ### `exam_question_options`
 
-| Policy                                   | Operation | Condition                                        |
-| ---------------------------------------- | --------- | ------------------------------------------------ |
-| `exam_question_options_select_published` | SELECT    | (student OR parent) AND parent package published |
-| `exam_question_options_select_admin`     | SELECT    | admin                                            |
-| `exam_question_options_insert_admin`     | INSERT    | admin                                            |
-| `exam_question_options_update_admin`     | UPDATE    | admin                                            |
-| `exam_question_options_delete_admin`     | DELETE    | admin                                            |
+| Policy | Operation | Condition |
+|--------|-----------|-----------|
+| `exam_question_options_select_published` | SELECT | (student OR parent) AND parent package published |
+| `exam_question_options_select_admin` | SELECT | admin |
+| `exam_question_options_insert_admin` | INSERT | admin |
+| `exam_question_options_update_admin` | UPDATE | admin |
+| `exam_question_options_delete_admin` | DELETE | admin |
 
 ### `exam_correct_answers`
 
-| Policy                              | Operation | Condition |
-| ----------------------------------- | --------- | --------- |
-| `exam_correct_answers_select_admin` | SELECT    | admin     |
-| `exam_correct_answers_insert_admin` | INSERT    | admin     |
-| `exam_correct_answers_update_admin` | UPDATE    | admin     |
-| `exam_correct_answers_delete_admin` | DELETE    | admin     |
+| Policy | Operation | Condition |
+|--------|-----------|-----------|
+| `exam_correct_answers_select_admin` | SELECT | admin |
+| `exam_correct_answers_insert_admin` | INSERT | admin |
+| `exam_correct_answers_update_admin` | UPDATE | admin |
+| `exam_correct_answers_delete_admin` | DELETE | admin |
 
 **No student or parent policies** — strict assessment integrity.
 
 ### `exam_attempts`
 
-| Policy                       | Operation | Condition                             |
-| ---------------------------- | --------- | ------------------------------------- |
-| `exam_attempts_select_own`   | SELECT    | student AND `student_id = auth.uid()` |
-| `exam_attempts_select_admin` | SELECT    | admin                                 |
-| `exam_attempts_insert_own`   | INSERT    | student AND `student_id = auth.uid()` |
-| `exam_attempts_update_own`   | UPDATE    | student AND `student_id = auth.uid()` |
+| Policy | Operation | Condition |
+|--------|-----------|-----------|
+| `exam_attempts_select_own` | SELECT | student AND `student_id = auth.uid()` |
+| `exam_attempts_select_admin` | SELECT | admin |
+| `exam_attempts_insert_own` | INSERT | student AND `student_id = auth.uid()` |
+| `exam_attempts_update_own` | UPDATE | student AND `student_id = auth.uid()` |
 
 **No DELETE policy** — attempts are permanent records.  
 **No parent policy** — deferred to Auth/User Model phase.
 
 ### `exam_responses`
 
-| Policy                        | Operation | Condition                       |
-| ----------------------------- | --------- | ------------------------------- |
-| `exam_responses_select_own`   | SELECT    | student AND owns parent attempt |
-| `exam_responses_select_admin` | SELECT    | admin                           |
-| `exam_responses_insert_own`   | INSERT    | student AND owns parent attempt |
-| `exam_responses_update_own`   | UPDATE    | student AND owns parent attempt |
+| Policy | Operation | Condition |
+|--------|-----------|-----------|
+| `exam_responses_select_own` | SELECT | student AND owns parent attempt |
+| `exam_responses_select_admin` | SELECT | admin |
+| `exam_responses_insert_own` | INSERT | student AND owns parent attempt |
+| `exam_responses_update_own` | UPDATE | student AND owns parent attempt |
 
 **No DELETE policy** — responses are permanent records.  
 **No parent policy** — parents cannot view responses.
@@ -209,12 +208,12 @@ All 7 Day 8 tables have RLS enabled:
 
 ## Helper Functions
 
-| Function          | Returns | Purpose                         |
-| ----------------- | ------- | ------------------------------- |
-| `get_user_role()` | TEXT    | Returns `auth.jwt() ->> 'role'` |
-| `is_admin()`      | BOOLEAN | True if role = 'admin'          |
-| `is_student()`    | BOOLEAN | True if role = 'student'        |
-| `is_parent()`     | BOOLEAN | True if role = 'parent'         |
+| Function | Returns | Purpose |
+|----------|---------|---------|
+| `get_user_role()` | TEXT | Returns `auth.jwt() ->> 'role'` |
+| `is_admin()` | BOOLEAN | True if role = 'admin' |
+| `is_student()` | BOOLEAN | True if role = 'student' |
+| `is_parent()` | BOOLEAN | True if role = 'parent' |
 
 All functions are `STABLE` and use no table lookups.
 

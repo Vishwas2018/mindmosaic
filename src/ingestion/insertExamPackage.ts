@@ -43,7 +43,7 @@ export type InsertResult = InsertSuccess | InsertError;
  */
 async function insertExamPackage(
   supabase: SupabaseClient,
-  data: TransformedExamPackage,
+  data: TransformedExamPackage
 ): Promise<void> {
   const { error } = await supabase
     .from("exam_packages")
@@ -59,7 +59,7 @@ async function insertExamPackage(
  */
 async function insertMediaAssets(
   supabase: SupabaseClient,
-  data: TransformedExamPackage,
+  data: TransformedExamPackage
 ): Promise<void> {
   if (data.mediaAssets.length === 0) {
     return;
@@ -79,7 +79,7 @@ async function insertMediaAssets(
  */
 async function insertQuestions(
   supabase: SupabaseClient,
-  data: TransformedExamPackage,
+  data: TransformedExamPackage
 ): Promise<void> {
   const { error } = await supabase
     .from("exam_questions")
@@ -95,7 +95,7 @@ async function insertQuestions(
  */
 async function insertQuestionOptions(
   supabase: SupabaseClient,
-  data: TransformedExamPackage,
+  data: TransformedExamPackage
 ): Promise<void> {
   if (data.questionOptions.length === 0) {
     return;
@@ -115,7 +115,7 @@ async function insertQuestionOptions(
  */
 async function insertCorrectAnswers(
   supabase: SupabaseClient,
-  data: TransformedExamPackage,
+  data: TransformedExamPackage
 ): Promise<void> {
   const { error } = await supabase
     .from("exam_correct_answers")
@@ -149,7 +149,7 @@ async function insertCorrectAnswers(
  */
 export async function insertExamPackageData(
   supabase: SupabaseClient,
-  data: TransformedExamPackage,
+  data: TransformedExamPackage
 ): Promise<InsertResult> {
   try {
     // Insert in foreign key dependency order
@@ -193,7 +193,7 @@ export async function insertExamPackageData(
  */
 export async function insertExamPackageTransaction(
   supabase: SupabaseClient,
-  data: TransformedExamPackage,
+  data: TransformedExamPackage
 ): Promise<InsertResult> {
   const { data: result, error } = await supabase.rpc("ingest_exam_package", {
     p_package: data.examPackage,

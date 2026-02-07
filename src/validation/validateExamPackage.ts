@@ -130,22 +130,26 @@ export interface MediaAssetInput {
  * Create and configure the Ajv validator instance.
  * Uses draft-07 schema and adds format validation.
  */
-function createValidator(): InstanceType<typeof Ajv> {
+function createValidator(): Ajv {
   const ajv = new Ajv({
     allErrors: true,
     verbose: true,
     strict: false,
-  } as any);
+  });
 
+  // Add format validators (uuid, date-time, etc.)
   addFormats(ajv);
+
+  // Compile the schema
   ajv.addSchema(EXAM_PACKAGE_JSON_SCHEMA, "exam-package");
 
   return ajv;
 }
 
-let validatorInstance: InstanceType<typeof Ajv> | null = null;
+// Singleton validator instance
+let validatorInstance: Ajv | null = null;
 
-function getValidator(): InstanceType<typeof Ajv> {
+function getValidator(): Ajv {
   if (!validatorInstance) {
     validatorInstance = createValidator();
   }
@@ -159,9 +163,7 @@ function getValidator(): InstanceType<typeof Ajv> {
 /**
  * Format Ajv errors into a developer-friendly structure.
  */
-function formatErrors(
-  errors: ErrorObject[] | null | undefined,
-): FormattedValidationError[] {
+function formatErrors(errors: ErrorObject[] | null | undefined): FormattedValidationError[] {
   if (!errors || errors.length === 0) {
     return [
       {
@@ -174,7 +176,7 @@ function formatErrors(
   }
 
   return errors.map((error) => ({
-    path: (error as any).instancePath ?? (error as any).dataPath ?? "/",
+    path: error.instancePath || "/",
     message: error.message || "Validation failed",
     keyword: error.keyword,
     params: error.params as Record<string, unknown>,
@@ -237,12 +239,12 @@ export function validateBusinessRules(data: ExamPackageInput): string[] {
   // Rule 1: Total marks must equal sum of question marks
   const calculatedMarks = data.questions.reduce(
     (sum, q) => sum + (q.marks ?? 1),
-    0,
+    0
   );
   if (calculatedMarks !== data.metadata.totalMarks) {
     errors.push(
       `Total marks mismatch: metadata.totalMarks is ${data.metadata.totalMarks}, ` +
-        `but sum of question marks is ${calculatedMarks}`,
+        `but sum of question marks is ${calculatedMarks}`
     );
   }
 
@@ -255,7 +257,7 @@ export function validateBusinessRules(data: ExamPackageInput): string[] {
       for (const ref of question.mediaReferences) {
         if (!assetIds.has(ref.mediaId)) {
           errors.push(
-            `Question ${question.id}: mediaReference ${ref.mediaId} not found in mediaAssets`,
+            `Question ${question.id}: mediaReference ${ref.mediaId} not found in mediaAssets`
           );
         }
       }
@@ -264,13 +266,10 @@ export function validateBusinessRules(data: ExamPackageInput): string[] {
     // Check option-level media references (MCQ only)
     if (question.options) {
       for (const option of question.options) {
-        if (
-          option.mediaReference &&
-          !assetIds.has(option.mediaReference.mediaId)
-        ) {
+        if (option.mediaReference && !assetIds.has(option.mediaReference.mediaId)) {
           errors.push(
             `Question ${question.id}, Option ${option.id}: ` +
-              `mediaReference ${option.mediaReference.mediaId} not found in mediaAssets`,
+              `mediaReference ${option.mediaReference.mediaId} not found in mediaAssets`
           );
         }
       }
@@ -283,7 +282,7 @@ export function validateBusinessRules(data: ExamPackageInput): string[] {
       if (!question.options || question.options.length !== 4) {
         errors.push(
           `Question ${question.id}: MCQ questions must have exactly 4 options, ` +
-            `found ${question.options?.length ?? 0}`,
+            `found ${question.options?.length ?? 0}`
         );
       }
     }
@@ -294,20 +293,18 @@ export function validateBusinessRules(data: ExamPackageInput): string[] {
     if (question.correctAnswer.type !== question.responseType) {
       errors.push(
         `Question ${question.id}: correctAnswer.type (${question.correctAnswer.type}) ` +
-          `does not match responseType (${question.responseType})`,
+          `does not match responseType (${question.responseType})`
       );
     }
   }
 
   // Rule 5: Sequence numbers must be unique and sequential
-  const seqNumbers = data.questions
-    .map((q) => q.sequenceNumber)
-    .sort((a, b) => a - b);
+  const seqNumbers = data.questions.map((q) => q.sequenceNumber).sort((a, b) => a - b);
   for (let i = 0; i < seqNumbers.length; i++) {
     if (seqNumbers[i] !== i + 1) {
       errors.push(
         `Sequence numbers must be sequential starting from 1. ` +
-          `Found gap or duplicate at position ${i + 1}`,
+          `Found gap or duplicate at position ${i + 1}`
       );
       break;
     }

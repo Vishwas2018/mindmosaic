@@ -2,23 +2,24 @@
  * MindMosaic Exam Package JSON Schema
  * Version: 1.0.0
  *
- * JSON Schema equivalent of exam-package.schema.ts
+ * This is the JSON Schema equivalent of the Zod schema.
  * Used for server-side validation in edge functions.
  *
- * Schema: 2020-12
+ * IMPORTANT: Keep this in sync with exam-package.schema.ts
  */
 
 export const EXAM_PACKAGE_JSON_SCHEMA = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $schema: "http://json-schema.org/draft-07/schema#",
   $id: "https://mindmosaic.com/schemas/exam-package/1.0.0",
   title: "ExamPackage",
   description: "MindMosaic Exam Package Contract v1.0.0",
   type: "object",
   required: ["metadata", "questions"],
   additionalProperties: false,
-
   properties: {
-    metadata: { $ref: "#/$defs/ExamMetadata" },
+    metadata: {
+      $ref: "#/$defs/ExamMetadata",
+    },
     questions: {
       type: "array",
       items: { $ref: "#/$defs/Question" },
@@ -32,20 +33,18 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
       default: [],
     },
   },
-
   $defs: {
     // =========================================================================
     // Enums
     // =========================================================================
-    AssessmentType: { type: "string", enum: ["naplan", "icas"] },
-    ExamStatus: { type: "string", enum: ["draft", "published"] },
-    Difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
-    ResponseType: {
+    AssessmentType: {
       type: "string",
-      enum: ["mcq", "short", "numeric", "extended"],
+      enum: ["naplan", "icas"],
     },
-    MediaType: { type: "string", enum: ["image", "diagram", "graph"] },
-    MediaPlacement: { type: "string", enum: ["above", "inline", "below"] },
+    ExamStatus: {
+      type: "string",
+      enum: ["draft", "published"],
+    },
     Subject: {
       type: "string",
       enum: [
@@ -57,6 +56,22 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
         "english",
         "science",
       ],
+    },
+    Difficulty: {
+      type: "string",
+      enum: ["easy", "medium", "hard"],
+    },
+    ResponseType: {
+      type: "string",
+      enum: ["mcq", "short", "extended", "numeric"],
+    },
+    MediaType: {
+      type: "string",
+      enum: ["image", "diagram", "graph"],
+    },
+    MediaPlacement: {
+      type: "string",
+      enum: ["above", "inline", "below"],
     },
 
     // =========================================================================
@@ -80,66 +95,139 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
       ],
       additionalProperties: false,
       properties: {
-        id: { type: "string", format: "uuid" },
-        title: { type: "string", minLength: 1, maxLength: 200 },
-        yearLevel: { type: "integer", minimum: 1, maximum: 9 },
-        subject: { $ref: "#/$defs/Subject" },
-        assessmentType: { $ref: "#/$defs/AssessmentType" },
-        durationMinutes: { type: "integer", minimum: 5, maximum: 180 },
-        totalMarks: { type: "integer", minimum: 1 },
-        version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
-        schemaVersion: { const: "1.0.0" },
-        status: { $ref: "#/$defs/ExamStatus" },
-        createdAt: { type: "string", format: "date-time" },
-        updatedAt: { type: "string", format: "date-time" },
+        id: {
+          type: "string",
+          format: "uuid",
+        },
+        title: {
+          type: "string",
+          minLength: 1,
+          maxLength: 200,
+        },
+        yearLevel: {
+          type: "integer",
+          minimum: 1,
+          maximum: 9,
+        },
+        subject: {
+          $ref: "#/$defs/Subject",
+        },
+        assessmentType: {
+          $ref: "#/$defs/AssessmentType",
+        },
+        durationMinutes: {
+          type: "integer",
+          minimum: 5,
+          maximum: 180,
+        },
+        totalMarks: {
+          type: "integer",
+          minimum: 1,
+        },
+        version: {
+          type: "string",
+          pattern: "^\\d+\\.\\d+\\.\\d+$",
+        },
+        schemaVersion: {
+          type: "string",
+          const: "1.0.0",
+        },
+        status: {
+          $ref: "#/$defs/ExamStatus",
+        },
+        createdAt: {
+          type: "string",
+          format: "date-time",
+        },
+        updatedAt: {
+          type: "string",
+          format: "date-time",
+        },
         instructions: {
           type: "array",
-          items: { type: "string", minLength: 1, maxLength: 500 },
+          items: {
+            type: "string",
+            minLength: 1,
+            maxLength: 500,
+          },
           maxItems: 10,
         },
       },
     },
 
     // =========================================================================
-    // Media
+    // Media Reference
     // =========================================================================
     MediaReference: {
       type: "object",
       required: ["mediaId", "type", "placement", "altText"],
       additionalProperties: false,
       properties: {
-        mediaId: { type: "string", format: "uuid" },
-        type: { $ref: "#/$defs/MediaType" },
-        placement: { $ref: "#/$defs/MediaPlacement" },
-        altText: { type: "string", minLength: 1, maxLength: 500 },
-        caption: { type: "string", maxLength: 200 },
+        mediaId: {
+          type: "string",
+          format: "uuid",
+        },
+        type: {
+          $ref: "#/$defs/MediaType",
+        },
+        placement: {
+          $ref: "#/$defs/MediaPlacement",
+        },
+        altText: {
+          type: "string",
+          minLength: 1,
+          maxLength: 500,
+        },
+        caption: {
+          type: "string",
+          maxLength: 200,
+        },
       },
     },
 
+    // =========================================================================
+    // Media Asset
+    // =========================================================================
     MediaAsset: {
       type: "object",
       required: ["id", "type", "filename", "mimeType"],
       additionalProperties: false,
       properties: {
-        id: { type: "string", format: "uuid" },
-        type: { $ref: "#/$defs/MediaType" },
-        filename: { type: "string", minLength: 1, maxLength: 200 },
+        id: {
+          type: "string",
+          format: "uuid",
+        },
+        type: {
+          $ref: "#/$defs/MediaType",
+        },
+        filename: {
+          type: "string",
+          minLength: 1,
+          maxLength: 200,
+        },
         mimeType: {
           type: "string",
           pattern: "^image/(png|jpeg|svg\\+xml|webp)$",
         },
-        width: { type: "integer", minimum: 1 },
-        height: { type: "integer", minimum: 1 },
-        sizeBytes: { type: "integer", minimum: 1 },
+        width: {
+          type: "integer",
+          minimum: 1,
+        },
+        height: {
+          type: "integer",
+          minimum: 1,
+        },
+        sizeBytes: {
+          type: "integer",
+          minimum: 1,
+        },
       },
     },
 
     // =========================================================================
-    // Prompt Blocks (Discriminated)
+    // Prompt Blocks
     // =========================================================================
     PromptBlock: {
-      type: "object",
-      required: ["type"],
       oneOf: [
         { $ref: "#/$defs/TextBlock" },
         { $ref: "#/$defs/HeadingBlock" },
@@ -148,7 +236,6 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
         { $ref: "#/$defs/InstructionBlock" },
       ],
     },
-
     TextBlock: {
       type: "object",
       required: ["type", "content"],
@@ -158,18 +245,16 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
         content: { type: "string", minLength: 1 },
       },
     },
-
     HeadingBlock: {
       type: "object",
       required: ["type", "level", "content"],
       additionalProperties: false,
       properties: {
         type: { const: "heading" },
-        level: { enum: [1, 2, 3] },
+        level: { type: "integer", enum: [1, 2, 3] },
         content: { type: "string", minLength: 1, maxLength: 200 },
       },
     },
-
     ListBlock: {
       type: "object",
       required: ["type", "ordered", "items"],
@@ -185,7 +270,6 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
         },
       },
     },
-
     QuoteBlock: {
       type: "object",
       required: ["type", "content"],
@@ -196,7 +280,6 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
         attribution: { type: "string", maxLength: 100 },
       },
     },
-
     InstructionBlock: {
       type: "object",
       required: ["type", "content"],
@@ -215,25 +298,44 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
       required: ["id", "content"],
       additionalProperties: false,
       properties: {
-        id: { type: "string", pattern: "^[A-D]$" },
-        content: { type: "string", minLength: 1, maxLength: 500 },
-        mediaReference: { $ref: "#/$defs/MediaReference" },
+        id: {
+          type: "string",
+          pattern: "^[A-D]$",
+        },
+        content: {
+          type: "string",
+          minLength: 1,
+          maxLength: 500,
+        },
+        mediaReference: {
+          $ref: "#/$defs/MediaReference",
+        },
       },
     },
 
     // =========================================================================
-    // Correct Answers
+    // Correct Answer (discriminated by type)
     // =========================================================================
+    CorrectAnswer: {
+      oneOf: [
+        { $ref: "#/$defs/McqAnswer" },
+        { $ref: "#/$defs/ShortAnswer" },
+        { $ref: "#/$defs/NumericAnswer" },
+        { $ref: "#/$defs/ExtendedAnswer" },
+      ],
+    },
     McqAnswer: {
       type: "object",
       required: ["type", "correctOptionId"],
       additionalProperties: false,
       properties: {
         type: { const: "mcq" },
-        correctOptionId: { type: "string", pattern: "^[A-D]$" },
+        correctOptionId: {
+          type: "string",
+          pattern: "^[A-D]$",
+        },
       },
     },
-
     ShortAnswer: {
       type: "object",
       required: ["type", "acceptedAnswers"],
@@ -246,10 +348,12 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
           minItems: 1,
           maxItems: 10,
         },
-        caseSensitive: { type: "boolean", default: false },
+        caseSensitive: {
+          type: "boolean",
+          default: false,
+        },
       },
     },
-
     NumericAnswer: {
       type: "object",
       required: ["type"],
@@ -260,21 +364,21 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
         range: {
           type: "object",
           required: ["min", "max"],
-          additionalProperties: false,
           properties: {
             min: { type: "number" },
             max: { type: "number" },
           },
         },
-        tolerance: { type: "number", minimum: 0 },
-        unit: { type: "string", maxLength: 20 },
+        tolerance: {
+          type: "number",
+          minimum: 0,
+        },
+        unit: {
+          type: "string",
+          maxLength: 20,
+        },
       },
-      oneOf: [
-        { required: ["exactValue"], not: { required: ["range"] } },
-        { required: ["range"], not: { required: ["exactValue"] } },
-      ],
     },
-
     ExtendedAnswer: {
       type: "object",
       required: ["type", "rubric"],
@@ -286,7 +390,6 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
           items: {
             type: "object",
             required: ["criterion", "maxMarks"],
-            additionalProperties: false,
             properties: {
               criterion: { type: "string", minLength: 1 },
               maxMarks: { type: "integer", minimum: 1, maximum: 10 },
@@ -300,7 +403,7 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
     },
 
     // =========================================================================
-    // Question (Fully Bound)
+    // Question
     // =========================================================================
     Question: {
       type: "object",
@@ -313,13 +416,27 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
         "correctAnswer",
       ],
       additionalProperties: false,
-
       properties: {
-        id: { type: "string", format: "uuid" },
-        sequenceNumber: { type: "integer", minimum: 1 },
-        difficulty: { $ref: "#/$defs/Difficulty" },
-        responseType: { $ref: "#/$defs/ResponseType" },
-        marks: { type: "integer", minimum: 1, maximum: 10, default: 1 },
+        id: {
+          type: "string",
+          format: "uuid",
+        },
+        sequenceNumber: {
+          type: "integer",
+          minimum: 1,
+        },
+        difficulty: {
+          $ref: "#/$defs/Difficulty",
+        },
+        responseType: {
+          $ref: "#/$defs/ResponseType",
+        },
+        marks: {
+          type: "integer",
+          minimum: 1,
+          maximum: 10,
+          default: 1,
+        },
         promptBlocks: {
           type: "array",
           items: { $ref: "#/$defs/PromptBlock" },
@@ -337,68 +454,20 @@ export const EXAM_PACKAGE_JSON_SCHEMA = {
           minItems: 4,
           maxItems: 4,
         },
-        correctAnswer: {},
+        correctAnswer: {
+          $ref: "#/$defs/CorrectAnswer",
+        },
         tags: {
           type: "array",
           items: { type: "string", minLength: 1, maxLength: 50 },
           maxItems: 10,
           default: [],
         },
-        hint: { type: "string", maxLength: 500 },
+        hint: {
+          type: "string",
+          maxLength: 500,
+        },
       },
-
-      allOf: [
-        {
-          if: {
-            required: ["responseType"],
-            properties: { responseType: { const: "mcq" } },
-          },
-          then: {
-            required: ["options"],
-            properties: {
-              correctAnswer: {
-                allOf: [{ $ref: "#/$defs/McqAnswer" }],
-              },
-            },
-          },
-          else: {
-            not: { required: ["options"] },
-          },
-        },
-        {
-          if: {
-            required: ["responseType"],
-            properties: { responseType: { const: "short" } },
-          },
-          then: {
-            properties: {
-              correctAnswer: { allOf: [{ $ref: "#/$defs/ShortAnswer" }] },
-            },
-          },
-        },
-        {
-          if: {
-            required: ["responseType"],
-            properties: { responseType: { const: "numeric" } },
-          },
-          then: {
-            properties: {
-              correctAnswer: { allOf: [{ $ref: "#/$defs/NumericAnswer" }] },
-            },
-          },
-        },
-        {
-          if: {
-            required: ["responseType"],
-            properties: { responseType: { const: "extended" } },
-          },
-          then: {
-            properties: {
-              correctAnswer: { allOf: [{ $ref: "#/$defs/ExtendedAnswer" }] },
-            },
-          },
-        },
-      ],
     },
   },
 } as const;

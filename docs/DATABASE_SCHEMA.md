@@ -1,11 +1,10 @@
-# MindMosaic – Database Schema (Legacy Planning Notes)
+# MindMosaic – Database Schema (Legacy Plan)
 
 ## Status
 
 **IMPORTANT**: This document contains early planning notes and is partially superseded.
 
 For the authoritative exam content schema, see:
-
 - **[DATABASE_SCHEMA_V2.md](./DATABASE_SCHEMA_V2.md)** — Contract-derived exam schema (Day 8)
 - **[EXAM_PACKAGE_CONTRACT.md](./EXAM_PACKAGE_CONTRACT.md)** — Source contract
 
@@ -52,9 +51,6 @@ CREATE TABLE public.parent_student (
 ```
 
 ### Content Tables
-
-> NOTE: These content tables predate the Exam Package Contract and must not be used.
-> Authoritative content persistence is defined in DATABASE_SCHEMA_V2.md.
 
 ```sql
 CREATE TABLE public.subjects (
@@ -135,7 +131,6 @@ CREATE TABLE public.topic_mastery (
 ## Row Level Security (Planned)
 
 All tables will have RLS policies:
-
 - Students: Own data only
 - Parents: Own data + linked children
 - Admins: All data
@@ -143,7 +138,6 @@ All tables will have RLS policies:
 ## Implementation Notes
 
 Database implementation will begin when:
-
 1. Authentication flow is defined
 2. Core user journeys are mapped
 3. Content structure is finalised

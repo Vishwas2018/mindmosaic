@@ -143,7 +143,9 @@ function transformMetadata(input: ExamPackageInput): ExamPackageRow {
 /**
  * Transform media assets to database rows.
  */
-function transformMediaAssets(input: ExamPackageInput): ExamMediaAssetRow[] {
+function transformMediaAssets(
+  input: ExamPackageInput
+): ExamMediaAssetRow[] {
   const packageId = input.metadata.id;
   const assets = input.mediaAssets ?? [];
 
@@ -184,7 +186,7 @@ function transformQuestions(input: ExamPackageInput): ExamQuestionRow[] {
  * Only MCQ questions have options.
  */
 function transformQuestionOptions(
-  input: ExamPackageInput,
+  input: ExamPackageInput
 ): ExamQuestionOptionRow[] {
   const rows: ExamQuestionOptionRow[] = [];
 
@@ -209,7 +211,7 @@ function transformQuestionOptions(
  */
 function transformCorrectAnswer(
   questionId: string,
-  answer: CorrectAnswerInput,
+  answer: CorrectAnswerInput
 ): ExamCorrectAnswerRow {
   const row: ExamCorrectAnswerRow = {
     question_id: questionId,
@@ -261,10 +263,10 @@ function transformCorrectAnswer(
  * Transform all correct answers to database rows.
  */
 function transformCorrectAnswers(
-  input: ExamPackageInput,
+  input: ExamPackageInput
 ): ExamCorrectAnswerRow[] {
   return input.questions.map((question: QuestionInput) =>
-    transformCorrectAnswer(question.id, question.correctAnswer),
+    transformCorrectAnswer(question.id, question.correctAnswer)
   );
 }
 
@@ -279,7 +281,7 @@ function transformCorrectAnswers(
  * @returns TransformedExamPackage - All rows needed for insertion
  */
 export function transformExamPackage(
-  input: ExamPackageInput,
+  input: ExamPackageInput
 ): TransformedExamPackage {
   return {
     examPackage: transformMetadata(input),

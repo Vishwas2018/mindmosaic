@@ -22,30 +22,27 @@ The exam package contract serves as:
 Content is stored as **structured blocks**, not HTML or Markdown.
 
 **Why?**
-
 - Consistent rendering across platforms (web, mobile, print)
 - Easier content migration and transformation
 - Better accessibility support
 - Prevents XSS and injection vulnerabilities
 
 **Example:**
-
 ```typescript
 // ❌ Bad: HTML in content
-{
-  content: "<p>What is <strong>2 + 2</strong>?</p>";
-}
+{ content: "<p>What is <strong>2 + 2</strong>?</p>" }
 
 // ✅ Good: Structured blocks
 {
-  promptBlocks: [{ type: "text", content: "What is 2 + 2?" }];
+  promptBlocks: [
+    { type: "text", content: "What is 2 + 2?" }
+  ]
 }
 ```
 
 ### Explicit Over Implicit
 
 Every field has explicit constraints:
-
 - String lengths are bounded
 - Enums are exhaustive
 - Optional fields are marked
@@ -54,7 +51,6 @@ Every field has explicit constraints:
 ### Versionable
 
 The schema includes:
-
 - `schemaVersion` in metadata (must match current version)
 - Semantic versioning for exam content (`version`)
 - Breaking changes require schema version bump
@@ -72,76 +68,70 @@ ExamPackage
 
 ### Metadata
 
-| Field           | Type     | Description                      |
-| --------------- | -------- | -------------------------------- |
-| id              | UUID     | Unique identifier                |
-| title           | string   | Exam title (1-200 chars)         |
-| yearLevel       | number   | Australian year level (1-9)      |
-| subject         | enum     | Subject area                     |
-| assessmentType  | enum     | `naplan` or `icas`               |
-| durationMinutes | number   | Time limit (5-180)               |
-| totalMarks      | number   | Sum of all question marks        |
-| version         | string   | Semantic version (e.g., "1.0.0") |
-| schemaVersion   | string   | Must be "1.0.0"                  |
-| status          | enum     | `draft` or `published`           |
-| createdAt       | datetime | ISO 8601 timestamp               |
-| updatedAt       | datetime | ISO 8601 timestamp               |
-| instructions    | string[] | Optional exam instructions       |
+| Field | Type | Description |
+|-------|------|-------------|
+| id | UUID | Unique identifier |
+| title | string | Exam title (1-200 chars) |
+| yearLevel | number | Australian year level (1-9) |
+| subject | enum | Subject area |
+| assessmentType | enum | `naplan` or `icas` |
+| durationMinutes | number | Time limit (5-180) |
+| totalMarks | number | Sum of all question marks |
+| version | string | Semantic version (e.g., "1.0.0") |
+| schemaVersion | string | Must be "1.0.0" |
+| status | enum | `draft` or `published` |
+| createdAt | datetime | ISO 8601 timestamp |
+| updatedAt | datetime | ISO 8601 timestamp |
+| instructions | string[] | Optional exam instructions |
 
 ### Questions
 
-| Field           | Type             | Description                           |
-| --------------- | ---------------- | ------------------------------------- |
-| id              | UUID             | Unique identifier                     |
-| sequenceNumber  | number           | Display order (1-based)               |
-| difficulty      | enum             | `easy`, `medium`, `hard`              |
-| responseType    | enum             | `mcq`, `short`, `extended`, `numeric` |
-| marks           | number           | Points for question (1-10)            |
-| promptBlocks    | PromptBlock[]    | Question content                      |
-| mediaReferences | MediaReference[] | Optional media                        |
-| options         | McqOption[]      | Required for MCQ (exactly 4)          |
-| correctAnswer   | CorrectAnswer    | Answer schema                         |
-| tags            | string[]         | Categorisation tags                   |
-| hint            | string           | Optional hint text                    |
-
-The `responseType` field must match the `type` field of `correctAnswer`.
+| Field | Type | Description |
+|-------|------|-------------|
+| id | UUID | Unique identifier |
+| sequenceNumber | number | Display order (1-based) |
+| difficulty | enum | `easy`, `medium`, `hard` |
+| responseType | enum | `mcq`, `short`, `extended`, `numeric` |
+| marks | number | Points for question (1-10) |
+| promptBlocks | PromptBlock[] | Question content |
+| mediaReferences | MediaReference[] | Optional media |
+| options | McqOption[] | Required for MCQ (exactly 4) |
+| correctAnswer | CorrectAnswer | Answer schema |
+| tags | string[] | Categorisation tags |
+| hint | string | Optional hint text |
 
 ### Prompt Blocks
 
 Structured content blocks:
 
-| Type        | Fields               | Usage                    |
-| ----------- | -------------------- | ------------------------ |
-| text        | content              | Main question text       |
-| heading     | level, content       | Section headings         |
-| list        | ordered, items       | Bullet or numbered lists |
-| quote       | content, attribution | Quoted passages          |
-| instruction | content              | Student instructions     |
+| Type | Fields | Usage |
+|------|--------|-------|
+| text | content | Main question text |
+| heading | level, content | Section headings |
+| list | ordered, items | Bullet or numbered lists |
+| quote | content, attribution | Quoted passages |
+| instruction | content | Student instructions |
 
 ### Media References
 
-| Field     | Type   | Description                   |
-| --------- | ------ | ----------------------------- |
-| mediaId   | UUID   | References MediaAsset.id      |
-| type      | enum   | `image`, `diagram`, `graph`   |
-| placement | enum   | `above`, `inline`, `below`    |
-| altText   | string | Accessibility text (required) |
-| caption   | string | Optional visible caption      |
-
-All media used by questions must be declared once in `mediaAssets` and referenced by ID.
+| Field | Type | Description |
+|-------|------|-------------|
+| mediaId | UUID | References MediaAsset.id |
+| type | enum | `image`, `diagram`, `graph` |
+| placement | enum | `above`, `inline`, `below` |
+| altText | string | Accessibility text (required) |
+| caption | string | Optional visible caption |
 
 ### Correct Answers
 
 Discriminated by response type:
 
 **MCQ:**
-
 ```typescript
 { type: "mcq", correctOptionId: "B" }
 ```
 
 **Short Answer:**
-
 ```typescript
 {
   type: "short",
@@ -151,7 +141,6 @@ Discriminated by response type:
 ```
 
 **Numeric:**
-
 ```typescript
 {
   type: "numeric",
@@ -159,11 +148,9 @@ Discriminated by response type:
   tolerance: 0.1,
   unit: "cm"
 }
-Numeric answers must define **either** `exactValue` **or** `range` (not both).
 ```
 
 **Extended Response:**
-
 ```typescript
 {
   type: "extended",
@@ -175,21 +162,15 @@ Numeric answers must define **either** `exactValue` **or** `range` (not both).
 }
 ```
 
-**Rubric Consistency Rule**
-For extended response questions, the sum of all `rubric[].maxMarks` values must equal the question’s `marks` value.
-
 ## Validation Rules
 
 ### Schema Validation
 
 Both frontend (Zod) and backend (JSON Schema) perform:
-
 - Type checking
 - Constraint validation
 - Required field verification
 - Enum value validation
-
-Backend validation uses JSON Schema (draft 2020-12) for edge compatibility.
 
 ### Business Rules
 
@@ -243,9 +224,9 @@ Request → JSON Schema Validation → Process
 
 ### Schema Versions
 
-| Version | Status  | Changes         |
-| ------- | ------- | --------------- |
-| 1.0.0   | Current | Initial release |
+| Version | Status | Changes |
+|---------|--------|---------|
+| 1.0.0 | Current | Initial release |
 
 ### Upgrading Schema
 
@@ -259,19 +240,18 @@ When the schema changes:
 ### Content Versions
 
 Exam content uses semantic versioning:
-
 - **Major**: Structural changes affecting scoring
 - **Minor**: New questions or content updates
 - **Patch**: Typo fixes, clarifications
 
 ## Files
 
-| File                                        | Purpose               |
-| ------------------------------------------- | --------------------- |
-| `src/contracts/exam-package.schema.ts`      | Zod schema (frontend) |
+| File | Purpose |
+|------|---------|
+| `src/contracts/exam-package.schema.ts` | Zod schema (frontend) |
 | `src/contracts/exam-package.json-schema.ts` | JSON Schema (backend) |
-| `src/contracts/examples/*.ts`               | Example packages      |
-| `scripts/validate-exam-examples.mjs`        | Validation script     |
+| `src/contracts/examples/*.ts` | Example packages |
+| `scripts/validate-exam-examples.mjs` | Validation script |
 
 ## Examples
 
@@ -282,7 +262,6 @@ Three validated example packages are provided:
 3. **Year 9 Reading** – Long-form comprehension
 
 Run validation:
-
 ```bash
 npm run validate:exams
 ```
