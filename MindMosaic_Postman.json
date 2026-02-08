@@ -1,0 +1,227 @@
+{
+  "info": {
+    "name": "MindMosaic Runtime & Scoring Tests",
+    "_postman_id": "mindmosaic-collection-001",
+    "description": "Postman test suite for Supabase Edge Functions (start-attempt, save-response, submit-attempt, score-attempt) and RLS validation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Auth - Sign In Student",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{SUPABASE_URL}}/auth/v1/token?grant_type=password",
+          "host": ["{{SUPABASE_URL}}"],
+          "path": ["auth", "v1", "token"],
+          "query": [{ "key": "grant_type", "value": "password" }]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"{{STUDENT_EMAIL}}\", \"password\": \"{{STUDENT_PASSWORD}}\"}"
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let json = pm.response.json();",
+              "pm.environment.set(\"STUDENT_JWT\", json.access_token);",
+              "pm.test(\"Student login successful\", function () {",
+              "  pm.expect(json.access_token).to.exist;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "02 - Auth - Sign In Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{SUPABASE_URL}}/auth/v1/token?grant_type=password",
+          "host": ["{{SUPABASE_URL}}"],
+          "path": ["auth", "v1", "token"],
+          "query": [{ "key": "grant_type", "value": "password" }]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\"email\": \"{{ADMIN_EMAIL}}\", \"password\": \"{{ADMIN_PASSWORD}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let json = pm.response.json();",
+              "pm.environment.set(\"ADMIN_JWT\", json.access_token);",
+              "pm.test(\"Admin login successful\", function () {",
+              "  pm.expect(json.access_token).to.exist;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "03 - Start Attempt",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+          { "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{SUPABASE_URL}}/functions/v1/start-attempt",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"exam_package_id\": \"{{EXAM_PACKAGE_ID}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let json = pm.response.json();",
+              "pm.environment.set(\"ATTEMPT_ID\", json.attempt_id);",
+              "pm.test(\"Attempt started\", function () {",
+              "  pm.expect(json.attempt_id).to.exist;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "04 - Save Response",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+          { "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{SUPABASE_URL}}/functions/v1/save-response",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"attempt_id\": \"{{ATTEMPT_ID}}\", \"question_id\": \"{{QUESTION_ID}}\", \"response_data\": {\"selectedOptionId\": \"A\"}}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Response saved\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "05 - Submit Attempt",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+          { "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{SUPABASE_URL}}/functions/v1/submit-attempt",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"attempt_id\": \"{{ATTEMPT_ID}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Attempt submitted\", function () {",
+              "  pm.expect(pm.response.code).to.equal(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "06 - Score Attempt",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+          { "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{SUPABASE_URL}}/functions/v1/score-attempt",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"attempt_id\": \"{{ATTEMPT_ID}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "let json = pm.response.json();",
+              "pm.environment.set(\"RESULT_ID\", json.attempt_id);",
+              "pm.test(\"Scoring completed\", function () {",
+              "  pm.expect(json.total_score).to.be.a('number');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "07 - RLS Test - Student Cannot Access Another Attempt",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{STUDENT_JWT}}" },
+          { "key": "apikey", "value": "{{SUPABASE_ANON_KEY}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": "{{SUPABASE_URL}}/functions/v1/score-attempt",
+        "body": {
+          "mode": "raw",
+          "raw": "{\"attempt_id\": \"{{FOREIGN_ATTEMPT_ID}}\"}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"RLS blocks unauthorized access\", function () {",
+              "  pm.expect(pm.response.code).to.be.oneOf([403,404]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

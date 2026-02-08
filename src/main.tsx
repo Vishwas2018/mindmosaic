@@ -1,11 +1,22 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { RouterProvider } from 'react-router-dom';
-import { router } from './app/router';
-import './index.css';
+/**
+ * MindMosaic — Application Entry Point
+ *
+ * Day 15: Added AuthProvider for real Supabase auth
+ */
 
-createRoot(document.getElementById('root')!).render(
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { RouterProvider } from "react-router-dom";
+
+import { AuthProvider } from "./context/AuthContext";
+import { router } from "./app/router";
+
+import "./index.css";
+
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <RouterProvider router={router} />
-  </StrictMode>,
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  </StrictMode>
 );

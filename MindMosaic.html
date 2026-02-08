@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>MindMosaic — Turning Practice into Mastery (Blue Theme UI Mock)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================================
+       MindMosaic (Blue Theme) — aligned to src/config/brand.ts
+       primaryBlue: #1D4ED8
+       primaryBlueLight: #2563EB
+       backgroundSoft: #EEF5FF
+       textPrimary: #0F172A
+       textMuted: #475569
+       borderSubtle: #D8E2F3
+       accentAmber: #F59E0B
+       successGreen: #16A34A
+       dangerRed: #DC2626
+       font: Inter
+       ========================================================= */
+    :root{
+      --primary: #1D4ED8;
+      --primary-2: #2563EB;
+      --bg: #EEF5FF;
+      --surface: #FFFFFF;
+      --text: #0F172A;
+      --muted: #475569;
+      --border: #D8E2F3;
+      --amber: #F59E0B;
+      --success: #16A34A;
+      --danger: #DC2626;
+      --shadow: rgba(15, 23, 42, 0.10);
+      --shadow-strong: rgba(15, 23, 42, 0.14);
+      --focus: rgba(37, 99, 235, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 240px;
+    }
+
+    .logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 12px 22px var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .logo::after{
+      content:"";
+      position:absolute;
+      inset:-20%;
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.35), transparent 55%);
+      transform: rotate(15deg);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.08rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .tagline {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 0.92rem;
+      padding: 8px 10px;
+      border-radius: 10px;
+    }
+    nav a:hover { background: rgba(37,99,235,0.08); color: var(--text); }
+
+    .container {
+      max-width: 1120px;
+      margin: 26px auto 44px;
+      padding: 0 18px;
+    }
+
+    .section-title {
+      margin: 34px 0 10px;
+      font-size: 1.2rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .note {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      max-width: 900px;
+    }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: white;
+      padding: 40px 26px;
+      border-radius: 18px;
+      box-shadow: 0 16px 34px var(--shadow-strong);
+      overflow: hidden;
+      position: relative;
+    }
+    .hero::after{
+      content:"";
+      position:absolute;
+      right:-140px;
+      top:-160px;
+      width: 360px;
+      height: 360px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+    }
+    .hero h2{
+      margin: 0 0 8px;
+      font-size: 2rem;
+      line-height: 1.18;
+      letter-spacing: -0.03em;
+      font-weight: 900;
+      max-width: 760px;
+    }
+    .hero p{
+      margin: 0 0 18px;
+      max-width: 720px;
+      opacity: 0.92;
+      font-weight: 500;
+    }
+    .hero .microcopy{
+      margin-top: 12px;
+      font-size: 0.9rem;
+      opacity: 0.88;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.18);
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+
+    /* Buttons */
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-weight: 900;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.12s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .btn:active{ transform: translateY(1px); }
+
+    .btn-primary{
+      background: var(--amber);
+      color: #111827;
+      box-shadow: 0 12px 22px rgba(245, 158, 11, 0.22);
+    }
+    .btn-primary:hover{ background: #f7a91a; }
+
+    .btn-outline{
+      background: transparent;
+      color: white;
+      border-color: rgba(255,255,255,0.55);
+    }
+    .btn-outline:hover{ background: rgba(255,255,255,0.12); }
+
+    .btn-neutral{
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-neutral:hover{ box-shadow: 0 14px 24px var(--shadow); }
+
+    .btn-danger{
+      background: #FEF2F2;
+      border-color: #FECACA;
+      color: var(--danger);
+      font-weight: 950;
+    }
+
+    .btn:focus, .opt:focus, .textarea:focus, a:focus{
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    /* Cards */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .card{
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 14px 24px var(--shadow);
+    }
+    .card h3{
+      margin: 10px 0 6px;
+      font-size: 1.05rem;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(37,99,235,0.08);
+      border: 1px solid rgba(37,99,235,0.18);
+      color: var(--primary);
+      font-size: 0.85rem;
+      font-weight: 900;
+    }
+    .muted{ color: var(--muted); }
+
+    /* Progress + Timer */
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .timer{
+      background: #0B1220;
+      color: white;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-weight: 950;
+      font-size: 0.95rem;
+    }
+    .badge{
+      font-size: 0.82rem;
+      font-weight: 900;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #F8FAFC;
+      color: var(--muted);
+    }
+
+    .progress-wrap{ margin-top: 12px; }
+    .progress-bar{
+      height: 10px;
+      border-radius: 999px;
+      background: #E5E7EB;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .progress{
+      height: 100%;
+      width: 58%;
+      background: linear-gradient(90deg, var(--primary), var(--primary-2));
+    }
+
+    /* Screens */
+    .screen{
+      margin-top: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 16px 34px var(--shadow);
+      overflow: hidden;
+    }
+    .screen-topbar{
+      background: #F8FAFF;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .screen-title{
+      font-weight: 950;
+      letter-spacing: -0.02em;
+    }
+    .screen-body{ padding: 16px; }
+
+    /* Question UI */
+    .q-meta{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .question{
+      font-size: 1.05rem;
+      font-weight: 950;
+      margin: 8px 0 12px;
+      letter-spacing: -0.01em;
+    }
+
+    .diagram{
+      border: 1px dashed rgba(37,99,235,0.55);
+      background: rgba(37,99,235,0.07);
+      border-radius: 14px;
+      padding: 12px;
+      margin: 10px 0 12px;
+      color: var(--primary);
+      font-weight: 900;
+      font-size: 0.95rem;
+    }
+
+    .options{
+      display:grid;
+      gap: 10px;
+      margin: 10px 0 14px;
+    }
+    .opt{
+      display:flex;
+      align-items:flex-start;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: #FFFFFF;
+      cursor: pointer;
+      transition: box-shadow 0.12s ease, transform 0.08s ease, border-color 0.12s ease;
+    }
+    .opt:hover{
+      box-shadow: 0 14px 22px var(--shadow);
+      transform: translateY(-1px);
+      border-color: rgba(37,99,235,0.35);
+    }
+    .radio{
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      border: 2px solid rgba(37,99,235,0.65);
+      margin-top: 2px;
+      flex: 0 0 auto;
+      background: rgba(37,99,235,0.08);
+    }
+
+    /* Writing */
+    .textarea{
+      width: 100%;
+      min-height: 180px;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .split{
+      display:grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .panel{
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(37,99,235,0.06);
+    }
+    .panel h4{
+      margin: 0 0 8px;
+      font-size: 0.98rem;
+      letter-spacing: -0.01em;
+      font-weight: 950;
+    }
+
+    /* Year 1–2 big UI */
+    .y12 .question{ font-size: 1.25rem; }
+    .y12 .opt{ padding: 16px; }
+    .y12 .opt .radio{ width: 22px; height: 22px; border-width: 3px; }
+    .y12 .btn{ padding: 14px 20px; border-radius: 14px; font-size: 1rem; }
+    .y12 .screen-body{ padding: 18px; }
+    .y12 .diagram{ font-size: 1.05rem; padding: 16px; }
+
+    footer{
+      margin-top: 42px;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 860px){
+      .split{ grid-template-columns: 1fr; }
+      .brand{ min-width: unset; }
+    }
+
+    /* =========================================================
+       Letter-spacing update only (no content changes)
+       ========================================================= */
+    body{ letter-spacing: 0.01em; }
+
+    .brand h1,
+    .section-title,
+    .hero h2,
+    .card h3,
+    .screen-title,
+    .question,
+    .panel h4{
+      letter-spacing: 0.005em;
+    }
+  </style>
+</head>
+
+<body>
+
+<header role="banner">
+  <div class="brand">
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>MindMosaic</h1>
+      <p class="tagline">Turning Practice into Mastery</p>
+    </div>
+  </div>
+
+  <nav aria-label="Main navigation">
+    <a href="#home">Home</a>
+    <a href="#y12">Year 1–2 Mode</a>
+    <a href="#question">Question UI</a>
+    <a href="#writing">Writing</a>
+  </nav>
+</header>
+
+<main class="container">
+
+  <!-- 1) HOME / STYLE OVERVIEW -->
+  <section id="home">
+    <div class="hero" role="region" aria-labelledby="hero-title">
+      <h2 id="hero-title">Turning practice into mastery — one piece at a time</h2>
+      <p>
+        MindMosaic helps Australian students build confidence through NAPLAN and ICAS-style mock assessments.
+        Every question adds a “piece” to a learner’s skill mosaic — tracked, explained, and improved over time.
+      </p>
+
+      <div class="row" style="justify-content:flex-start; gap:10px;">
+        <a class="btn btn-primary" href="#question">Start a Practice Test</a>
+        <a class="btn btn-outline" href="#writing">Try Writing Module</a>
+      </div>
+
+      <div class="microcopy" aria-label="Highlights">
+        <span class="chip">WCAG 2.1 AA focus</span>
+        <span class="chip">Autosave + Resume</span>
+        <span class="chip">Parent dashboards</span>
+        <span class="chip">Admin authoring</span>
+      </div>
+    </div>
+
+    <h3 class="section-title">Blue Theme — Cards, Buttons, Progress</h3>
+    <p class="note">This sample demonstrates the intended font, spacing, button hierarchy, progress components, and overall tone for MindMosaic.</p>
+
+    <div class="grid">
+      <div class="card">
+        <span class="pill">ICAS · Maths</span>
+        <h3>Year 5 – Practice Set (2019)</h3>
+        <p class="muted">40 minutes · 35 questions</p>
+
+        <div class="progress-wrap">
+          <div class="row">
+            <small class="muted"><strong>Progress:</strong> Question 21 of 35</small>
+            <span class="badge">Saved ✓</span>
+          </div>
+          <div class="progress-bar" role="progressbar" aria-valuenow="58" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px" class="row">
+          <button class="btn btn-primary">Resume</button>
+          <button class="btn btn-neutral">View Details</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="pill">NAPLAN · Reading</span>
+        <h3>Year 3 – Practice Set</h3>
+        <p class="muted">45 minutes · 30 questions</p>
+        <div class="row" style="margin-top:14px">
+          <button class="btn btn-primary">Start</button>
+          <button class="btn btn-neutral">Sample</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="pill">NAPLAN · Writing</span>
+        <h3>Persuasive Writing</h3>
+        <p class="muted">Rubric-based feedback · Autosave drafts</p>
+        <div class="row" style="margin-top:14px">
+          <button class="btn btn-primary">Begin Writing</button>
+          <button class="btn btn-neutral">View Rubric</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2) YEAR 1–2 SIMPLIFIED SCREEN -->
+  <section id="y12">
+    <h3 class="section-title">Year 1–2 Simplified Screen</h3>
+    <p class="note">
+      Larger buttons, fewer distractions, simple language, optional read-aloud. Avoid heavy words like “mastery” in the junior UI copy.
+    </p>
+
+    <div class="screen y12" role="region" aria-label="Year 1–2 simplified exam screen">
+      <div class="screen-topbar">
+        <div class="screen-title">MindMosaic · Year 2 Numeracy</div>
+        <div class="row">
+          <button class="btn btn-neutral" aria-label="Read question aloud">🔊 Read</button>
+          <div class="timer" aria-live="polite">⏱ 18:42</div>
+        </div>
+      </div>
+
+      <div class="screen-body">
+        <div class="q-meta">
+          <span class="badge">Question 3 of 10</span>
+          <span class="badge">Easy</span>
+        </div>
+
+        <div class="diagram" aria-label="Image placeholder">
+          🖼️ Picture / Diagram goes here (e.g., 6 apples shown)
+        </div>
+
+        <div class="question">How many apples are there?</div>
+
+        <div class="options" role="radiogroup" aria-label="Answer choices">
+          <div class="opt" tabindex="0" role="radio" aria-checked="false">
+            <div class="radio" aria-hidden="true"></div>
+            <div><strong>A.</strong> 4</div>
+          </div>
+          <div class="opt" tabindex="0" role="radio" aria-checked="true">
+            <div class="radio" aria-hidden="true"></div>
+            <div><strong>B.</strong> 6</div>
+          </div>
+          <div class="opt" tabindex="0" role="radio" aria-checked="false">
+            <div class="radio" aria-hidden="true"></div>
+            <div><strong>C.</strong> 8</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn btn-neutral" disabled aria-disabled="true">← Back</button>
+          <button class="btn btn-primary">Next →</button>
+        </div>
+
+        <div style="margin-top:10px" class="muted">
+          Tip: Keep going — you’re doing great. Answers save automatically.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3) QUESTION PAGE UI MOCK -->
+  <section id="question">
+    <h3 class="section-title">Question Page UI Mock (Years 3–9)</h3>
+    <p class="note">Timer + progress always visible, question flagging, question list, and diagram support.</p>
+
+    <div class="screen" role="region" aria-label="Standard question page mock">
+      <div class="screen-topbar">
+        <div class="screen-title">MindMosaic · ICAS Maths (2019) · Year 5</div>
+        <div class="row">
+          <button class="btn btn-neutral" aria-label="Flag this question">🚩 Flag</button>
+          <div class="timer" aria-live="polite">⏱ 24:18 remaining</div>
+        </div>
+      </div>
+
+      <div class="screen-body">
+        <div class="q-meta">
+          <span class="badge">Question 12 of 35</span>
+          <span class="badge">Topic: Fractions</span>
+          <span class="badge">Saved ✓</span>
+        </div>
+
+        <div class="progress-wrap" aria-label="Progress">
+          <div class="row">
+            <small class="muted"><strong>Answered:</strong> 11 / 35</small>
+            <small class="muted"><strong>Flagged:</strong> 2</small>
+          </div>
+          <div class="progress-bar" role="progressbar" aria-valuenow="31" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress" style="width:31%"></div>
+          </div>
+        </div>
+
+        <div class="diagram">
+          🖼️ Diagram placeholder: A rectangle is split into 8 equal parts; 3 parts are shaded.
+        </div>
+
+        <div class="question">What fraction of the rectangle is shaded?</div>
+
+        <div class="options" role="radiogroup" aria-label="Answer choices">
+          <div class="opt" tabindex="0" role="radio" aria-checked="false">
+            <div class="radio" aria-hidden="true"></div>
+            <div><strong>A.</strong> 3/5</div>
+          </div>
+          <div class="opt" tabindex="0" role="radio" aria-checked="true">
+            <div class="radio" aria-hidden="true"></div>
+            <div><strong>B.</strong> 3/8</div>
+          </div>
+          <div class="opt" tabindex="0" role="radio" aria-checked="false">
+            <div class="radio" aria-hidden="true"></div>
+            <div><strong>C.</strong> 5/8</div>
+          </div>
+          <div class="opt" tabindex="0" role="radio" aria-checked="false">
+            <div class="radio" aria-hidden="true"></div>
+            <div><strong>D.</strong> 8/3</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="btn btn-neutral">← Previous</button>
+          <div class="row">
+            <button class="btn btn-neutral">Question List</button>
+            <button class="btn btn-neutral">Flagged</button>
+          </div>
+          <button class="btn btn-primary">Next →</button>
+        </div>
+
+        <div style="margin-top:14px" class="row">
+          <button class="btn btn-danger" aria-haspopup="dialog">Finish & Submit</button>
+          <small class="muted">You will confirm before submitting.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4) WRITING MODULE SCREEN -->
+  <section id="writing">
+    <h3 class="section-title">Writing Module Screen (NAPLAN Writing Style)</h3>
+    <p class="note">Planning space, autosave, word count, optional timer, rubric panel (manual marking Phase 1).</p>
+
+    <div class="screen" role="region" aria-label="Writing module mock">
+      <div class="screen-topbar">
+        <div class="screen-title">MindMosaic · Writing Practice · Persuasive</div>
+        <div class="row">
+          <span class="badge">Autosave ✓</span>
+          <div class="timer" aria-live="polite">⏱ 32:10 remaining</div>
+        </div>
+      </div>
+
+      <div class="screen-body">
+        <div class="q-meta">
+          <span class="badge">Prompt</span>
+          <span class="badge">Year 5</span>
+          <span class="badge">Rubric Feedback</span>
+        </div>
+
+        <div class="card" style="box-shadow:none; margin: 0; border-radius: 14px;">
+          <strong>Writing prompt:</strong>
+          <div class="muted" style="margin-top:6px;">
+            “Schools should have a longer lunch break.” Do you agree or disagree? Write to persuade your reader.
+          </div>
+        </div>
+
+        <div class="split">
+          <div>
+            <div class="row" style="margin: 12px 0;">
+              <strong>Write your response</strong>
+              <span class="badge">Word count: 126</span>
+            </div>
+
+            <textarea class="textarea" aria-label="Writing response">
+I believe schools should have a longer lunch break because it helps students learn better. First, students need time to eat properly. If lunch is rushed, many children don’t finish their food and feel tired in class. Second, a longer break allows students to play and return to lessons calmer and more focused...
+            </textarea>
+
+            <div class="row" style="margin-top:12px;">
+              <button class="btn btn-neutral">Save Draft</button>
+              <button class="btn btn-primary">Submit for Marking</button>
+            </div>
+
+            <small class="muted">
+              Submitting will lock your writing for marking. You can still view it after.
+            </small>
+          </div>
+
+          <div class="panel" aria-label="Rubric panel">
+            <h4>Rubric (Phase 1: Manual Marking)</h4>
+            <div class="muted" style="margin-bottom:10px;">
+              Marking criteria overview. This panel becomes interactive for teachers/admins.
+            </div>
+
+            <div class="card" style="box-shadow:none; border-radius: 12px; margin:0; padding:12px;">
+              <strong>Structure</strong>
+              <div class="muted">Introduction, paragraphs, conclusion</div>
+            </div>
+
+            <div class="card" style="box-shadow:none; border-radius: 12px; margin:10px 0 0; padding:12px;">
+              <strong>Vocabulary</strong>
+              <div class="muted">Word choice and persuasive language</div>
+            </div>
+
+            <div class="card" style="box-shadow:none; border-radius: 12px; margin:10px 0 0; padding:12px;">
+              <strong>Punctuation & Grammar</strong>
+              <div class="muted">Sentence accuracy and readability</div>
+            </div>
+
+            <div class="card" style="box-shadow:none; border-radius: 12px; margin:10px 0 0; padding:12px;">
+              <strong>Spelling</strong>
+              <div class="muted">Correct spelling and consistency</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <footer role="contentinfo">
+    © 2026 MindMosaic · Blue theme mock · Turning Practice into Mastery
+  </footer>
+
+</main>
+
+</body>
+</html>

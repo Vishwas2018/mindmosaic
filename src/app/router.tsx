@@ -1,121 +1,180 @@
-import { createBrowserRouter } from 'react-router-dom';
+/**
+ * MindMosaic — Router Configuration
+ *
+ * Day 15: Added student exam runtime routes
+ *
+ * Routes:
+ * - /student/exams           → Exam discovery list
+ * - /student/exams/:packageId → Exam detail / start
+ * - /student/attempts/:attemptId → Exam taking (attempt-centric)
+ * - /student/attempts/:attemptId/review → Review submitted attempt
+ */
 
-import { PublicLayout } from './layouts/PublicLayout';
-import { AuthLayout } from './layouts/AuthLayout';
-import { StudentLayout } from './layouts/StudentLayout';
-import { ParentLayout } from './layouts/ParentLayout';
-import { AdminLayout } from './layouts/AdminLayout';
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import { Home } from './pages/Home';
-import { NotFound } from './pages/NotFound';
-import { Pricing } from './pages/Pricing';
-import { Login } from './pages/Login';
-import { Signup } from './pages/Signup';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { AuthHome } from './pages/auth/AuthHome';
-import { StudentHome } from './pages/student/StudentHome';
-import { ParentHome } from './pages/parent/ParentHome';
-import { AdminHome } from './pages/admin/AdminHome';
+// Layouts (existing)
+import { PublicLayout } from "./layouts/PublicLayout";
+import { AuthLayout } from "./layouts/AuthLayout";
+import { StudentLayout } from "./layouts/StudentLayout";
+import { ParentLayout } from "./layouts/ParentLayout";
+import { AdminLayout } from "./layouts/AdminLayout";
+
+// Guards (updated for Day 15)
+import { AuthGuard } from "../guards/AuthGuard";
+import { RoleGuard } from "../guards/RoleGuard";
+
+// Auth pages (existing placeholders)
+import { LoginPage } from "./pages/auth/Login";
+import { SignupPage } from "./pages/auth/Signup";
+
+// Student pages (Day 15)
+import {
+  ExamListPage,
+  ExamDetailPage,
+  ExamAttemptPage,
+  ExamReviewPage,
+} from "./pages/student";
+
+// Placeholder dashboards (existing)
+import { StudentDashboard } from "./pages/student/Dashboard";
+import { ParentDashboard } from "./pages/parent/Dashboard";
+import { AdminDashboard } from "./pages/admin/Dashboard";
+
+// =============================================================================
+// Router Definition
+// =============================================================================
 
 export const router = createBrowserRouter([
+  // -------------------------------------------------------------------------
+  // Public Routes
+  // -------------------------------------------------------------------------
   {
-    path: '/',
+    path: "/",
     element: <PublicLayout />,
     children: [
       {
         index: true,
-        element: <Home />,
+        element: <Navigate to="/login" replace />,
       },
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // Auth Routes (unauthenticated only)
+  // -------------------------------------------------------------------------
   {
-    path: '/pricing',
-    element: <PublicLayout />,
-    children: [
-      {
-        index: true,
-        element: <Pricing />,
-      },
-    ],
-  },
-  {
-    path: '/login',
-    element: <PublicLayout />,
-    children: [
-      {
-        index: true,
-        element: <Login />,
-      },
-    ],
-  },
-  {
-    path: '/signup',
-    element: <PublicLayout />,
-    children: [
-      {
-        index: true,
-        element: <Signup />,
-      },
-    ],
-  },
-  {
-    path: '/forgot-password',
-    element: <PublicLayout />,
-    children: [
-      {
-        index: true,
-        element: <ForgotPassword />,
-      },
-    ],
-  },
-  {
-    path: '/auth',
+    path: "/",
     element: <AuthLayout />,
     children: [
       {
-        index: true,
-        element: <AuthHome />,
+        path: "login",
+        element: <LoginPage />,
+      },
+      {
+        path: "signup",
+        element: <SignupPage />,
       },
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // Student Routes (authenticated + student role)
+  // -------------------------------------------------------------------------
   {
-    path: '/student',
-    element: <StudentLayout />,
+    path: "/student",
+    element: (
+      <AuthGuard>
+        <RoleGuard allowed={["student"]}>
+          <StudentLayout />
+        </RoleGuard>
+      </AuthGuard>
+    ),
     children: [
+      // Dashboard
       {
         index: true,
-        element: <StudentHome />,
+        element: <StudentDashboard />,
+      },
+
+      // Exam Discovery (package-centric)
+      {
+        path: "exams",
+        element: <ExamListPage />,
+      },
+      {
+        path: "exams/:packageId",
+        element: <ExamDetailPage />,
+      },
+
+      // Exam Runtime (attempt-centric)
+      {
+        path: "attempts/:attemptId",
+        element: <ExamAttemptPage />,
+      },
+      {
+        path: "attempts/:attemptId/review",
+        element: <ExamReviewPage />,
       },
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // Parent Routes (authenticated + parent role)
+  // -------------------------------------------------------------------------
   {
-    path: '/parent',
-    element: <ParentLayout />,
+    path: "/parent",
+    element: (
+      <AuthGuard>
+        <RoleGuard allowed={["parent"]}>
+          <ParentLayout />
+        </RoleGuard>
+      </AuthGuard>
+    ),
     children: [
       {
         index: true,
-        element: <ParentHome />,
+        element: <ParentDashboard />,
       },
+      // TODO: Parent-specific routes for viewing student progress
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // Admin Routes (authenticated + admin role)
+  // -------------------------------------------------------------------------
   {
-    path: '/admin',
-    element: <AdminLayout />,
+    path: "/admin",
+    element: (
+      <AuthGuard>
+        <RoleGuard allowed={["admin"]}>
+          <AdminLayout />
+        </RoleGuard>
+      </AuthGuard>
+    ),
     children: [
       {
         index: true,
-        element: <AdminHome />,
+        element: <AdminDashboard />,
       },
+      // TODO: Admin routes for exam management, user management
     ],
   },
+
+  // -------------------------------------------------------------------------
+  // Catch-all (404)
+  // -------------------------------------------------------------------------
   {
-    path: '*',
-    element: <PublicLayout />,
-    children: [
-      {
-        path: '*',
-        element: <NotFound />,
-      },
-    ],
+    path: "*",
+    element: (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-text-primary mb-2">404</h1>
+          <p className="text-text-muted mb-4">Page not found</p>
+          <a href="/" className="text-primary-blue hover:underline">
+            Go home
+          </a>
+        </div>
+      </div>
+    ),
   },
 ]);

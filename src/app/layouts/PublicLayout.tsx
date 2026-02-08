@@ -1,12 +1,15 @@
-import { Outlet } from 'react-router-dom';
-import { AppShell } from '@/shared/ui/AppShell';
-import { Header } from '@/shared/ui/Header';
-import { Footer } from '@/shared/ui/Footer';
+/**
+ * MindMosaic — Public Layout
+ *
+ * Layout for public (unauthenticated) pages
+ */
+
+import { Outlet } from "react-router-dom";
 
 export function PublicLayout() {
   return (
-    <AppShell header={<Header />} footer={<Footer />}>
+    <div className="min-h-screen bg-background-soft">
       <Outlet />
-    </AppShell>
+    </div>
   );
 }
