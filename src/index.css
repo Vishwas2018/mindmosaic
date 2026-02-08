@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
+/* =============================================================================
+   MindMosaic Theme - Tailwind v4 Custom Theme
+   
+   This @theme block defines custom design tokens that generate utility classes.
+   Example: --color-primary-blue generates bg-primary-blue, text-primary-blue, etc.
+   ============================================================================= */
+
+@theme {
+  /* Primary Brand Colors */
+  --color-primary-blue: #1D4ED8;
+  --color-primary-blue-light: #2563EB;
+  
+  /* Background Colors */
+  --color-background-soft: #EEF5FF;
+  
+  /* Text Colors */
+  --color-text-primary: #0F172A;
+  --color-text-muted: #475569;
+  
+  /* Border Colors */
+  --color-border-subtle: #D8E2F3;
+  
+  /* Status Colors */
+  --color-accent-amber: #F59E0B;
+  --color-success-green: #16A34A;
+  --color-danger-red: #DC2626;
+}
+
+/* =============================================================================
+   Base Styles
+   ============================================================================= */
+
 :root {
-  --brand-primary: #1d4ed8;
-  --brand-primary-light: #2563eb;
-  --brand-bg-soft: #eef5ff;
-  --brand-text: #0f172a;
-  --brand-text-muted: #475569;
-  --brand-border-subtle: #d8e2f3;
-  --brand-accent-amber: #f59e0b;
-  --brand-success: #16a34a;
-  --brand-danger: #dc2626;
-
-  --brand-font: IBM Plex Sans, system-ui, -apple-system, BlinkMacSystemFont,
-    sans-serif;
-
-  --letter-spacing-base: 0.01em;
-  --letter-spacing-label: 0.02em;
-  --letter-spacing-heading: -0.005em;
+  --brand-font: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 body {
   font-family: var(--brand-font);
-  letter-spacing: var(--letter-spacing-base);
+  letter-spacing: 0.01em;
   font-weight: 400;
+}
+
+/* =============================================================================
+   Animation Keyframes (used by Tailwind animate-* classes)
+   ============================================================================= */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

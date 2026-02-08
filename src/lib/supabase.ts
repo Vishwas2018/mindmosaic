@@ -1,10 +1,9 @@
 /**
- * MindMosaic — Supabase Client (FIXED)
+ * MindMosaic — Supabase Client
  *
  * Single, shared Supabase client for frontend.
- * Enhanced with better error handling and validation.
  *
- * Environment variables required:
+ * Environment variables:
  *   VITE_SUPABASE_URL
  *   VITE_SUPABASE_ANON_KEY
  */
@@ -15,43 +14,21 @@ import type { Database } from "./database.types";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Enhanced logging for debugging
-console.log("=== Supabase Client Initialization ===");
-console.log("URL:", supabaseUrl);
-console.log("Anon key length:", supabaseAnonKey?.length);
-console.log("Anon key prefix:", supabaseAnonKey?.substring(0, 20) + "...");
-console.log("Environment mode:", import.meta.env.MODE);
-
-// Validate environment variables
-if (!supabaseUrl) {
-  throw new Error("VITE_SUPABASE_URL is not set. Check your .env.local file.");
-}
-
-if (!supabaseAnonKey) {
+// Validate environment variables at startup
+if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    "VITE_SUPABASE_ANON_KEY is not set. Check your .env.local file.",
+    "Missing Supabase environment variables. Check your .env file:\n" +
+    "VITE_SUPABASE_URL=https://your-project.supabase.co\n" +
+    "VITE_SUPABASE_ANON_KEY=your-anon-key"
   );
 }
 
-// Validate URL format
 if (!supabaseUrl.startsWith("https://")) {
-  throw new Error(
-    `Invalid VITE_SUPABASE_URL format: ${supabaseUrl}. Must start with https://`,
-  );
+  throw new Error("VITE_SUPABASE_URL must start with https://");
 }
 
-// Validate anon key format (should be a JWT)
 if (!supabaseAnonKey.startsWith("eyJ")) {
-  throw new Error(
-    "Invalid VITE_SUPABASE_ANON_KEY format. Should be a JWT token starting with 'eyJ'",
-  );
-}
-
-// Expected length for Supabase anon keys (approximate)
-if (supabaseAnonKey.length < 150 || supabaseAnonKey.length > 250) {
-  console.warn(
-    `Warning: Anon key length (${supabaseAnonKey.length}) is unusual. Expected ~200 characters.`,
-  );
+  throw new Error("VITE_SUPABASE_ANON_KEY must be a valid JWT");
 }
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
@@ -61,40 +38,21 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: window.localStorage,
   },
-  global: {
-    headers: {
-      "x-client-info": "mindmosaic-web-app",
-    },
-  },
 });
 
-console.log("✓ Supabase client created successfully");
-
 /**
- * Edge Function caller helper
- * Uses the current session's access token for authorization
+ * Call a Supabase Edge Function with authentication
  */
 export async function callEdgeFunction<T>(
   functionName: string,
-  body: Record<string, unknown>,
+  body: Record<string, unknown>
 ): Promise<{ data: T | null; error: string | null; status: number }> {
   try {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    if (sessionError) {
-      console.error("[callEdgeFunction] Session error:", sessionError);
-      return { data: null, error: sessionError.message, status: 401 };
-    }
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
-      console.warn("[callEdgeFunction] No active session");
       return { data: null, error: "Not authenticated", status: 401 };
     }
-
-    console.log(`[callEdgeFunction] Calling ${functionName}...`);
 
     const response = await fetch(
       `${supabaseUrl}/functions/v1/${functionName}`,
@@ -105,35 +63,22 @@ export async function callEdgeFunction<T>(
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(body),
-      },
+      }
     );
 
     const data = await response.json();
 
     if (!response.ok) {
-      console.error(`[callEdgeFunction] ${functionName} failed:`, {
-        status: response.status,
-        error: data.error || data.message,
-      });
-
       return {
         data: null,
-        error:
-          data.error ||
-          data.message ||
-          `Request failed with status ${response.status}`,
+        error: data.error || data.message || `Request failed (${response.status})`,
         status: response.status,
       };
     }
 
-    console.log(`[callEdgeFunction] ${functionName} succeeded`);
     return { data: data as T, error: null, status: response.status };
-  } catch (err: any) {
-    console.error(`[callEdgeFunction] ${functionName} exception:`, err);
-    return {
-      data: null,
-      error: err.message || "Unknown error",
-      status: 500,
-    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Network error";
+    return { data: null, error: message, status: 500 };
   }
 }

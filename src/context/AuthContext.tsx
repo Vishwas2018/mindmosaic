@@ -2,12 +2,11 @@
  * MindMosaic — Auth Context (FIXED)
  *
  * Real Supabase Auth session management.
- * Provides user session, role, and auth state to the entire app.
- *
- * FIXES:
- * - Added timeout protection for hung auth calls
- * - Better error handling
- * - More defensive coding
+ * 
+ * Fixes:
+ * - Non-blocking initialization with safety timeout
+ * - Graceful error handling
+ * - Always exits loading state
  */
 
 import {
@@ -38,11 +37,11 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   signIn: (
     email: string,
-    password: string,
+    password: string
   ) => Promise<{ error: AuthError | null }>;
   signUp: (
     email: string,
-    password: string,
+    password: string
   ) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -70,7 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch user profile from profiles table
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string): Promise<UserRole | null> => {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -79,139 +78,108 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .single();
 
       if (error) {
-        console.error("Failed to fetch profile:", error.message);
+        // Profile might not exist yet for new users
+        console.warn("[AuthContext] Profile not found:", error.message);
         setProfile(null);
         setRole(null);
-        return;
+        return null;
       }
 
       setProfile(data);
       setRole(data.role);
+      return data.role;
     } catch (err) {
-      console.error("Profile fetch error:", err);
+      console.error("[AuthContext] Profile fetch error:", err);
       setProfile(null);
       setRole(null);
+      return null;
     }
   }, []);
 
-  // Initialize auth state with timeout protection
+  // Initialize auth state
   useEffect(() => {
     let mounted = true;
+    let initialized = false;
 
-    const initAuth = async () => {
-      console.log("[AuthContext] Starting auth initialization...");
-
-      try {
-        // Add a timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(
-            () => reject(new Error("Auth initialization timeout")),
-            10000,
-          );
-        });
-
-        const authPromise = supabase.auth.getSession();
-
-        const { data } = (await Promise.race([
-          authPromise,
-          timeoutPromise,
-        ])) as Awaited<typeof authPromise>;
-
-        if (!mounted) return;
-
-        console.log("[AuthContext] Session fetched:", !!data.session);
-        setSession(data.session);
-        setUser(data.session?.user ?? null);
-
-        if (data.session?.user) {
-          console.log(
-            "[AuthContext] Fetching profile for user:",
-            data.session.user.id,
-          );
-          await fetchProfile(data.session.user.id);
-        }
-      } catch (error: any) {
-        console.error("[AuthContext] Auth init failed:", error.message);
-        if (!mounted) return;
-
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setRole(null);
-      } finally {
-        if (mounted) {
-          console.log("[AuthContext] Auth initialization complete");
-          setIsLoading(false);
-        }
+    const completeInit = () => {
+      if (mounted && !initialized) {
+        initialized = true;
+        setIsLoading(false);
       }
     };
 
+    const initAuth = async () => {
+      try {
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (error) {
+          console.error("[AuthContext] Session error:", error.message);
+          completeInit();
+          return;
+        }
+
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+
+        if (currentSession?.user) {
+          await fetchProfile(currentSession.user.id);
+        }
+
+        completeInit();
+      } catch (error) {
+        console.error("[AuthContext] Init error:", error);
+        completeInit();
+      }
+    };
+
+    // Start initialization
     initAuth();
 
-    // Set up auth state change listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[AuthContext] Auth state changed:", event);
+    // Safety: ensure loading ends within 3 seconds
+    const safetyTimeout = setTimeout(completeInit, 3000);
 
-      if (!mounted) return;
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        if (!mounted) return;
 
-      setSession(session);
-      setUser(session?.user ?? null);
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
 
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-        setRole(null);
+        if (newSession?.user) {
+          await fetchProfile(newSession.user.id);
+        } else {
+          setProfile(null);
+          setRole(null);
+        }
+
+        completeInit();
       }
-
-      setIsLoading(false);
-    });
+    );
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
 
-  // Sign in with email and password
+  // Sign in
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log("[AuthContext] Attempting sign in for:", email);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error("[AuthContext] Sign in error:", error.message);
-    } else {
-      console.log("[AuthContext] Sign in successful");
-    }
-
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   }, []);
 
-  // Sign up with email and password
+  // Sign up
   const signUp = useCallback(async (email: string, password: string) => {
-    console.log("[AuthContext] Attempting sign up for:", email);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error("[AuthContext] Sign up error:", error.message);
-    } else {
-      console.log("[AuthContext] Sign up successful");
-    }
-
+    const { error } = await supabase.auth.signUp({ email, password });
     return { error };
   }, []);
 
   // Sign out
   const signOut = useCallback(async () => {
-    console.log("[AuthContext] Signing out");
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
@@ -219,10 +187,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setRole(null);
   }, []);
 
-  // Refresh profile (useful after profile updates)
+  // Refresh profile
   const refreshProfile = useCallback(async () => {
     if (user) {
-      console.log("[AuthContext] Refreshing profile for:", user.id);
       await fetchProfile(user.id);
     }
   }, [user, fetchProfile]);
@@ -244,7 +211,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 }
 
 // =============================================================================
-// Hook
+// Hooks
 // =============================================================================
 
 export function useAuth(): AuthContextValue {
@@ -257,23 +224,7 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
-// =============================================================================
-// Utility Hooks
-// =============================================================================
-
-/**
- * Hook to check if current user has a specific role
- */
 export function useHasRole(allowedRoles: UserRole[]): boolean {
   const { role } = useAuth();
   return role !== null && allowedRoles.includes(role);
-}
-
-/**
- * Hook to get current user's year level (for student UX adaptation)
- * Returns null if not available or not a student
- */
-export function useStudentYearLevel(): number | null {
-  const { profile } = useAuth();
-  return profile?.role === "student" ? null : null;
 }
