@@ -3,12 +3,15 @@
  *
  * Day 15: Added student exam runtime routes
  * Day 16: Cleaned up duplicate review route
+ * Day 17: Added admin marking routes
  *
  * Routes:
- * - /student/exams           → Exam discovery list
- * - /student/exams/:packageId → Exam detail / start
+ * - /student/exams              → Exam discovery list
+ * - /student/exams/:packageId   → Exam detail / start
  * - /student/attempts/:attemptId → Exam taking (attempt-centric)
  * - /student/attempts/:attemptId/review → Review submitted attempt
+ * - /admin/marking              → Teacher marking queue
+ * - /admin/marking/:attemptId   → Mark / review a single attempt
  */
 
 import { createBrowserRouter, Navigate } from "react-router-dom";
@@ -20,11 +23,11 @@ import { StudentLayout } from "./layouts/StudentLayout";
 import { ParentLayout } from "./layouts/ParentLayout";
 import { AdminLayout } from "./layouts/AdminLayout";
 
-// Guards (updated for Day 15)
+// Guards
 import { AuthGuard } from "../guards/AuthGuard";
 import { RoleGuard } from "../guards/RoleGuard";
 
-// Auth pages (existing placeholders)
+// Auth pages
 import { LoginPage } from "./pages/auth/Login";
 import { SignupPage } from "./pages/auth/Signup";
 
@@ -36,10 +39,13 @@ import {
   ExamReviewPage,
 } from "./pages/student";
 
-// Placeholder dashboards (existing)
+// Dashboards
 import { StudentDashboard } from "./pages/student/Dashboard";
 import { ParentDashboard } from "./pages/parent/Dashboard";
 import { AdminDashboard } from "./pages/admin/Dashboard";
+
+// Admin marking pages (Day 17)
+import { MarkingQueuePage, AttemptMarkingPage } from "./pages/admin/marking";
 
 // =============================================================================
 // Router Definition
@@ -91,13 +97,10 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: [
-      // Dashboard
       {
         index: true,
         element: <StudentDashboard />,
       },
-
-      // Exam Discovery (package-centric)
       {
         path: "exams",
         element: <ExamListPage />,
@@ -106,14 +109,10 @@ export const router = createBrowserRouter([
         path: "exams/:packageId",
         element: <ExamDetailPage />,
       },
-
-      // Exam Runtime (attempt-centric)
       {
         path: "attempts/:attemptId",
         element: <ExamAttemptPage />,
       },
-
-      // Exam Review (Day 16) — read-only post-submission view
       {
         path: "attempts/:attemptId/review",
         element: <ExamReviewPage />,
@@ -138,7 +137,6 @@ export const router = createBrowserRouter([
         index: true,
         element: <ParentDashboard />,
       },
-      // TODO: Parent-specific routes for viewing student progress
     ],
   },
 
@@ -159,7 +157,15 @@ export const router = createBrowserRouter([
         index: true,
         element: <AdminDashboard />,
       },
-      // TODO: Admin routes for exam management, user management
+      // Day 17: Marking routes
+      {
+        path: "marking",
+        element: <MarkingQueuePage />,
+      },
+      {
+        path: "marking/:attemptId",
+        element: <AttemptMarkingPage />,
+      },
     ],
   },
 
