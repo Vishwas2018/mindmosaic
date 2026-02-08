@@ -2,6 +2,7 @@
  * MindMosaic — Router Configuration
  *
  * Day 15: Added student exam runtime routes
+ * Day 16: Cleaned up duplicate review route
  *
  * Routes:
  * - /student/exams           → Exam discovery list
@@ -111,6 +112,8 @@ export const router = createBrowserRouter([
         path: "attempts/:attemptId",
         element: <ExamAttemptPage />,
       },
+
+      // Exam Review (Day 16) — read-only post-submission view
       {
         path: "attempts/:attemptId/review",
         element: <ExamReviewPage />,
