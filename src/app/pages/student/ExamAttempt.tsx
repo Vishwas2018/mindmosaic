@@ -74,7 +74,7 @@ export function ExamAttemptPage() {
         setResponse(currentQuestion.id, data);
       }
     },
-    [currentQuestion, setResponse]
+    [currentQuestion, setResponse],
   );
 
   // Handle submit button click

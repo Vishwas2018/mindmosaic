@@ -16,7 +16,7 @@
 import type {
   MarkingQuestionData,
   ManualMark,
-} from "../hooks/useAttemptMarking";
+} from "../../marking/hooks/useAttemptMarking";
 
 interface MarkingQuestionCardProps {
   data: MarkingQuestionData;

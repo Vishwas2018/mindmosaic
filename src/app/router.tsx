@@ -1,22 +1,15 @@
 /**
  * MindMosaic — Router Configuration
  *
- * Day 15: Added student exam runtime routes
+ * Day 15: Student exam runtime routes
  * Day 16: Cleaned up duplicate review route
- * Day 17: Added admin marking routes
- *
- * Routes:
- * - /student/exams              → Exam discovery list
- * - /student/exams/:packageId   → Exam detail / start
- * - /student/attempts/:attemptId → Exam taking (attempt-centric)
- * - /student/attempts/:attemptId/review → Review submitted attempt
- * - /admin/marking              → Teacher marking queue
- * - /admin/marking/:attemptId   → Mark / review a single attempt
+ * Day 17: Admin marking routes
+ * Day 18: Admin reporting routes (exam list + attempt details)
  */
 
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
-// Layouts (existing)
+// Layouts
 import { PublicLayout } from "./layouts/PublicLayout";
 import { AuthLayout } from "./layouts/AuthLayout";
 import { StudentLayout } from "./layouts/StudentLayout";
@@ -44,8 +37,11 @@ import { StudentDashboard } from "./pages/student/Dashboard";
 import { ParentDashboard } from "./pages/parent/Dashboard";
 import { AdminDashboard } from "./pages/admin/Dashboard";
 
-// Admin marking pages (Day 17)
+// Admin marking (Day 17)
 import { MarkingQueuePage, AttemptMarkingPage } from "./pages/admin/marking";
+
+// Admin reporting (Day 18)
+import { AdminExamListPage, ExamAttemptsPage } from "./pages/admin/reporting";
 
 // =============================================================================
 // Router Definition
@@ -67,7 +63,7 @@ export const router = createBrowserRouter([
   },
 
   // -------------------------------------------------------------------------
-  // Auth Routes (unauthenticated only)
+  // Auth Routes
   // -------------------------------------------------------------------------
   {
     path: "/",
@@ -85,7 +81,7 @@ export const router = createBrowserRouter([
   },
 
   // -------------------------------------------------------------------------
-  // Student Routes (authenticated + student role)
+  // Student Routes
   // -------------------------------------------------------------------------
   {
     path: "/student",
@@ -121,7 +117,7 @@ export const router = createBrowserRouter([
   },
 
   // -------------------------------------------------------------------------
-  // Parent Routes (authenticated + parent role)
+  // Parent Routes
   // -------------------------------------------------------------------------
   {
     path: "/parent",
@@ -141,7 +137,7 @@ export const router = createBrowserRouter([
   },
 
   // -------------------------------------------------------------------------
-  // Admin Routes (authenticated + admin role)
+  // Admin Routes
   // -------------------------------------------------------------------------
   {
     path: "/admin",
@@ -157,7 +153,7 @@ export const router = createBrowserRouter([
         index: true,
         element: <AdminDashboard />,
       },
-      // Day 17: Marking routes
+      // Day 17: Marking
       {
         path: "marking",
         element: <MarkingQueuePage />,
@@ -166,11 +162,20 @@ export const router = createBrowserRouter([
         path: "marking/:attemptId",
         element: <AttemptMarkingPage />,
       },
+      // Day 18: Reporting
+      {
+        path: "exams",
+        element: <AdminExamListPage />,
+      },
+      {
+        path: "exams/:id/attempts",
+        element: <ExamAttemptsPage />,
+      },
     ],
   },
 
   // -------------------------------------------------------------------------
-  // Catch-all (404)
+  // 404
   // -------------------------------------------------------------------------
   {
     path: "*",
