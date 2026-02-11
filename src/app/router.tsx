@@ -2,9 +2,10 @@
  * MindMosaic — Router Configuration
  *
  * Day 15: Student exam runtime routes
- * Day 16: Cleaned up duplicate review route
+ * Day 16: Student review routes
  * Day 17: Admin marking routes
- * Day 18: Admin reporting routes (exam list + attempt details)
+ * Day 18: Admin reporting routes
+ * Day 19: Question bank & exam authoring routes
  */
 
 import { createBrowserRouter, Navigate } from "react-router-dom";
@@ -24,7 +25,7 @@ import { RoleGuard } from "../guards/RoleGuard";
 import { LoginPage } from "./pages/auth/Login";
 import { SignupPage } from "./pages/auth/Signup";
 
-// Student pages (Day 15)
+// Student pages
 import {
   ExamListPage,
   ExamDetailPage,
@@ -42,6 +43,11 @@ import { MarkingQueuePage, AttemptMarkingPage } from "./pages/admin/marking";
 
 // Admin reporting (Day 18)
 import { AdminExamListPage, ExamAttemptsPage } from "./pages/admin/reporting";
+
+// Admin authoring (Day 19)
+import { QuestionListPage } from "./pages/admin/questions/QuestionList";
+import { QuestionEditorPage } from "./pages/admin/questions/QuestionEditor";
+import { ExamGeneratePage } from "./pages/admin/exams/ExamGenerate";
 
 // =============================================================================
 // Router Definition
@@ -69,14 +75,8 @@ export const router = createBrowserRouter([
     path: "/",
     element: <AuthLayout />,
     children: [
-      {
-        path: "login",
-        element: <LoginPage />,
-      },
-      {
-        path: "signup",
-        element: <SignupPage />,
-      },
+      { path: "login", element: <LoginPage /> },
+      { path: "signup", element: <SignupPage /> },
     ],
   },
 
@@ -93,26 +93,11 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: [
-      {
-        index: true,
-        element: <StudentDashboard />,
-      },
-      {
-        path: "exams",
-        element: <ExamListPage />,
-      },
-      {
-        path: "exams/:packageId",
-        element: <ExamDetailPage />,
-      },
-      {
-        path: "attempts/:attemptId",
-        element: <ExamAttemptPage />,
-      },
-      {
-        path: "attempts/:attemptId/review",
-        element: <ExamReviewPage />,
-      },
+      { index: true, element: <StudentDashboard /> },
+      { path: "exams", element: <ExamListPage /> },
+      { path: "exams/:packageId", element: <ExamDetailPage /> },
+      { path: "attempts/:attemptId", element: <ExamAttemptPage /> },
+      { path: "attempts/:attemptId/review", element: <ExamReviewPage /> },
     ],
   },
 
@@ -128,12 +113,7 @@ export const router = createBrowserRouter([
         </RoleGuard>
       </AuthGuard>
     ),
-    children: [
-      {
-        index: true,
-        element: <ParentDashboard />,
-      },
-    ],
+    children: [{ index: true, element: <ParentDashboard /> }],
   },
 
   // -------------------------------------------------------------------------
@@ -149,28 +129,23 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: [
-      {
-        index: true,
-        element: <AdminDashboard />,
-      },
+      { index: true, element: <AdminDashboard /> },
+
       // Day 17: Marking
-      {
-        path: "marking",
-        element: <MarkingQueuePage />,
-      },
-      {
-        path: "marking/:attemptId",
-        element: <AttemptMarkingPage />,
-      },
+      { path: "marking", element: <MarkingQueuePage /> },
+      { path: "marking/:attemptId", element: <AttemptMarkingPage /> },
+
       // Day 18: Reporting
-      {
-        path: "exams",
-        element: <AdminExamListPage />,
-      },
-      {
-        path: "exams/:id/attempts",
-        element: <ExamAttemptsPage />,
-      },
+      { path: "exams", element: <AdminExamListPage /> },
+      { path: "exams/:id/attempts", element: <ExamAttemptsPage /> },
+
+      // Day 19: Question Bank
+      { path: "questions", element: <QuestionListPage /> },
+      { path: "questions/create", element: <QuestionEditorPage /> },
+      { path: "questions/edit/:id", element: <QuestionEditorPage /> },
+
+      // Day 19: Exam Authoring
+      { path: "exams/generate", element: <ExamGeneratePage /> },
     ],
   },
 

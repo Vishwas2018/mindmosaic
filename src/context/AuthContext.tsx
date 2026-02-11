@@ -251,7 +251,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 // =============================================================================
 // Hooks
 // =============================================================================
-
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
 
@@ -262,6 +262,7 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useHasRole(allowedRoles: UserRole[]): boolean {
   const { role } = useAuth();
   return role !== null && allowedRoles.includes(role);
