@@ -5,7 +5,7 @@
  * Lists all published exams available to the student.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
 import type { ExamPackage, ExamAttempt } from "../../../lib/database.types";
@@ -23,10 +23,11 @@ const SUBJECT_INFO: Record<string, { label: string; icon: string }> = {
 };
 
 // Assessment type badges
-const ASSESSMENT_BADGES: Record<string, { label: string; className: string }> = {
-  naplan: { label: "NAPLAN", className: "bg-blue-100 text-blue-800" },
-  icas: { label: "ICAS", className: "bg-purple-100 text-purple-800" },
-};
+const ASSESSMENT_BADGES: Record<string, { label: string; className: string }> =
+  {
+    naplan: { label: "NAPLAN", className: "bg-blue-100 text-blue-800" },
+    icas: { label: "ICAS", className: "bg-purple-100 text-purple-800" },
+  };
 
 export function ExamListPage() {
   const { user } = useAuth();
@@ -35,60 +36,60 @@ export function ExamListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const loadData = useCallback(async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch published exams
+      const { data: examData, error: examError } = await supabase
+        .from("exam_packages")
+        .select("*")
+        .eq("status", "published")
+        .order("year_level")
+        .order("subject");
+
+      if (examError) {
+        throw new Error(`Failed to load exams: ${examError.message}`);
+      }
+
+      setExams(examData || []);
+
+      // Fetch student's existing attempts
+      const { data: attemptData, error: attemptError } = await supabase
+        .from("exam_attempts")
+        .select("*")
+        .eq("student_id", user.id);
+
+      if (attemptError) {
+        console.warn("Failed to load attempts:", attemptError.message);
+      } else if (attemptData) {
+        const attemptMap = new Map<string, ExamAttempt>();
+        attemptData.forEach((attempt) => {
+          // Keep the most recent attempt per exam
+          const existing = attemptMap.get(attempt.exam_package_id);
+          if (
+            !existing ||
+            new Date(attempt.started_at) > new Date(existing.started_at)
+          ) {
+            attemptMap.set(attempt.exam_package_id, attempt);
+          }
+        });
+        setAttempts(attemptMap);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
   // Fetch exams and existing attempts
   useEffect(() => {
-    async function loadData() {
-      if (!user) return;
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        // Fetch published exams
-        const { data: examData, error: examError } = await supabase
-          .from("exam_packages")
-          .select("*")
-          .eq("status", "published")
-          .order("year_level")
-          .order("subject");
-
-        if (examError) {
-          throw new Error(`Failed to load exams: ${examError.message}`);
-        }
-
-        setExams(examData || []);
-
-        // Fetch student's existing attempts
-        const { data: attemptData, error: attemptError } = await supabase
-          .from("exam_attempts")
-          .select("*")
-          .eq("student_id", user.id);
-
-        if (attemptError) {
-          console.warn("Failed to load attempts:", attemptError.message);
-        } else if (attemptData) {
-          const attemptMap = new Map<string, ExamAttempt>();
-          attemptData.forEach((attempt) => {
-            // Keep the most recent attempt per exam
-            const existing = attemptMap.get(attempt.exam_package_id);
-            if (
-              !existing ||
-              new Date(attempt.started_at) > new Date(existing.started_at)
-            ) {
-              attemptMap.set(attempt.exam_package_id, attempt);
-            }
-          });
-          setAttempts(attemptMap);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     loadData();
-  }, [user]);
+  }, [loadData]);
 
   if (isLoading) {
     return (
@@ -107,7 +108,7 @@ export function ExamListPage() {
         <div className="text-center">
           <p className="text-danger-red mb-4">⚠️ {error}</p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={loadData}
             className="text-primary-blue hover:underline"
           >
             Try again
@@ -140,7 +141,7 @@ export function ExamListPage() {
       acc[year].push(exam);
       return acc;
     },
-    {} as Record<number, ExamPackage[]>
+    {} as Record<number, ExamPackage[]>,
   );
 
   return (

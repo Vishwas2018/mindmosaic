@@ -1,12 +1,12 @@
 /**
- * MindMosaic — Auth Context (FIXED)
+ * MindMosaic — Auth Context (FIXED v2)
  *
  * Real Supabase Auth session management.
  *
  * Fixes:
- * - Non-blocking initialization with safety timeout
- * - Graceful error handling
- * - Always exits loading state
+ * - Proper loading state management during sign-in
+ * - No safety timeout interfering with auth flow
+ * - Clear console logging for debugging
  */
 
 import {
@@ -72,6 +72,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const fetchProfile = useCallback(
     async (userId: string): Promise<UserRole | null> => {
       try {
+        console.log("[AuthContext] Fetching profile for:", userId);
+
         const { data, error } = await supabase
           .from("profiles")
           .select("*")
@@ -79,13 +81,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .single();
 
         if (error) {
-          // Profile might not exist yet for new users
           console.warn("[AuthContext] Profile not found:", error.message);
           setProfile(null);
           setRole(null);
           return null;
         }
 
+        console.log("[AuthContext] Profile loaded:", data.role);
         setProfile(data);
         setRole(data.role);
         return data.role;
@@ -102,14 +104,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
-    let initialized = false;
-
-    const completeInit = () => {
-      if (mounted && !initialized) {
-        initialized = true;
-        setIsLoading(false);
-      }
-    };
+    setIsLoading(true);
+    console.log("[AuthContext] Initializing auth state.");
 
     const initAuth = async () => {
       try {
@@ -122,73 +118,105 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (error) {
           console.error("[AuthContext] Session error:", error.message);
-          completeInit();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setRole(null);
+          setIsLoading(false);
           return;
         }
 
+        const currentUser = currentSession?.user ?? null;
         setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        setUser(currentUser);
 
-        if (currentSession?.user) {
-          await fetchProfile(currentSession.user.id);
+        if (currentUser) {
+          void fetchProfile(currentUser.id);
+        } else {
+          setProfile(null);
+          setRole(null);
         }
-
-        completeInit();
-      } catch (error) {
-        console.error("[AuthContext] Init error:", error);
-        completeInit();
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+          console.log("[AuthContext] Initial auth sync complete.");
+        }
       }
     };
 
-    // Start initialization
-    initAuth();
-
-    // Safety: ensure loading ends within 3 seconds
-    const safetyTimeout = setTimeout(completeInit, 3000);
+    void initAuth();
 
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
 
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
+      console.log(
+        "[AuthContext] Auth state changed:",
+        event,
+        newSession ? "session exists" : "no session",
+      );
 
-      if (newSession?.user) {
-        await fetchProfile(newSession.user.id);
+      const currentUser = newSession?.user ?? null;
+      setSession(newSession);
+      setUser(currentUser);
+
+      if (currentUser) {
+        void fetchProfile(currentUser.id);
       } else {
         setProfile(null);
         setRole(null);
       }
 
-      completeInit();
+      // Never block UI loading state on profile fetch inside auth callback.
+      setIsLoading(false);
+      console.log("[AuthContext] Auth state processed. Loading finished.");
     });
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimeout);
+      console.log("[AuthContext] Cleaning up auth listener.");
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
 
   // Sign in
   const signIn = useCallback(async (email: string, password: string) => {
+    console.log("[AuthContext] Sign in attempt for:", email);
+    setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (error) {
+      console.error("[AuthContext] Sign in error:", error.message);
+      setIsLoading(false);
+    } else {
+      console.log("[AuthContext] Sign in successful");
+    }
+
     return { error };
   }, []);
 
   // Sign up
   const signUp = useCallback(async (email: string, password: string) => {
+    console.log("[AuthContext] Sign up attempt for:", email);
     const { error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+      console.error("[AuthContext] Sign up error:", error.message);
+    } else {
+      console.log("[AuthContext] Sign up successful");
+    }
+
     return { error };
   }, []);
 
   // Sign out
   const signOut = useCallback(async () => {
+    console.log("[AuthContext] Sign out");
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
@@ -199,6 +227,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Refresh profile
   const refreshProfile = useCallback(async () => {
     if (user) {
+      console.log("[AuthContext] Refreshing profile");
       await fetchProfile(user.id);
     }
   }, [user, fetchProfile]);
@@ -223,7 +252,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 // Hooks
 // =============================================================================
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
 
@@ -234,7 +262,6 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useHasRole(allowedRoles: UserRole[]): boolean {
   const { role } = useAuth();
   return role !== null && allowedRoles.includes(role);

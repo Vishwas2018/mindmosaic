@@ -32,7 +32,6 @@ export function ExamNavigation({
   answeredCount,
 }: ExamNavigationProps) {
   const isLastQuestion = currentIndex === totalQuestions - 1;
-  const allAnswered = answeredCount === totalQuestions;
 
   return (
     <div className="flex items-center justify-between pt-6 border-t border-border-subtle">

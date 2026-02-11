@@ -197,6 +197,7 @@ export function ExamAttemptPage() {
             <div className="bg-white rounded-xl border border-border-subtle p-6">
               {currentQuestion ? (
                 <QuestionRenderer
+                  key={currentQuestion.id}
                   question={currentQuestion}
                   questionNumber={currentQuestionIndex + 1}
                   totalQuestions={totalQuestions}

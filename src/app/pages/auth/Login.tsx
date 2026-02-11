@@ -18,6 +18,11 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const roleHydrationError =
+    !authLoading && isAuthenticated && !role
+      ? "Signed in, but no profile role is available for this account. Ensure a row exists in public.profiles with this user id and a valid role (student/parent/admin)."
+      : null;
+  const displayError = error ?? roleHydrationError;
 
   // Redirect when authenticated
   useEffect(() => {
@@ -55,17 +60,9 @@ export function LoginPage() {
         setIsSubmitting(false);
         return;
       }
-      // Success - redirect handled by useEffect
-      // Fallback: avoid indefinite "Signing in..." if auth/profile hydration stalls
-      setTimeout(() => {
-        setIsSubmitting((prev) => {
-          if (!prev) return prev;
-          setError(
-            "Sign in is taking longer than expected. If this persists, verify this user has a matching profiles row with a valid role.",
-          );
-          return false;
-        });
-      }, 5000);
+      // Success - redirect handled by useEffect/AuthLayout once role is available.
+      // Always release submitting state so UI cannot get stuck.
+      setIsSubmitting(false);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "An unexpected error occurred";
@@ -103,9 +100,9 @@ export function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Alert */}
-            {error && (
+            {displayError && (
               <div className="bg-red-50 text-danger-red text-sm rounded-lg p-3 border border-red-200">
-                {error}
+                {displayError}
               </div>
             )}
 
