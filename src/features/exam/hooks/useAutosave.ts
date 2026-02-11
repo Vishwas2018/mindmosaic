@@ -71,6 +71,8 @@ export function useAutosave(options: AutosaveOptions = {}): UseAutosaveResult {
       responseType: string,
       responseData: ResponseData,
     ) => {
+      void responseType;
+
       // Cancel any existing request for this question
       const existingController = abortControllers.current.get(questionId);
       if (existingController) {
@@ -84,12 +86,14 @@ export function useAutosave(options: AutosaveOptions = {}): UseAutosaveResult {
       onSaveStart?.();
 
       try {
-        const { data, error, status } =
-          await callEdgeFunction<SaveResponseResponse>("save-response", {
+        const { data, error } = await callEdgeFunction<SaveResponseResponse>(
+          "save-response",
+          {
             attempt_id: attemptId,
             question_id: questionId,
             response_data: responseData,
-          });
+          },
+        );
 
         // Remove controller after request completes
         abortControllers.current.delete(questionId);
@@ -121,6 +125,8 @@ export function useAutosave(options: AutosaveOptions = {}): UseAutosaveResult {
       responseType: string,
       responseData: ResponseData,
     ) => {
+      void responseType;
+
       // Clear existing timeout for this question
       const existing = pendingSaves.current.get(questionId);
       if (existing) {

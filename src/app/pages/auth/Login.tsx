@@ -22,7 +22,8 @@ export function LoginPage() {
   // Redirect when authenticated
   useEffect(() => {
     if (isAuthenticated && role && !authLoading) {
-      const from = (location.state as { from?: { pathname?: string } })?.from?.pathname;
+      const from = (location.state as { from?: { pathname?: string } })?.from
+        ?.pathname;
       const rolePaths: Record<string, string> = {
         admin: "/admin",
         student: "/student",
@@ -39,7 +40,8 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const { error: signInError } = await signIn(email, password);
+      const normalizedEmail = email.trim().toLowerCase();
+      const { error: signInError } = await signIn(normalizedEmail, password);
 
       if (signInError) {
         // User-friendly error messages
@@ -54,8 +56,19 @@ export function LoginPage() {
         return;
       }
       // Success - redirect handled by useEffect
+      // Fallback: avoid indefinite "Signing in..." if auth/profile hydration stalls
+      setTimeout(() => {
+        setIsSubmitting((prev) => {
+          if (!prev) return prev;
+          setError(
+            "Sign in is taking longer than expected. If this persists, verify this user has a matching profiles row with a valid role.",
+          );
+          return false;
+        });
+      }, 5000);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An unexpected error occurred";
+      const message =
+        err instanceof Error ? err.message : "An unexpected error occurred";
       setError(message);
       setIsSubmitting(false);
     }
@@ -162,9 +175,15 @@ export function LoginPage() {
               Test Accounts:
             </p>
             <div className="text-xs text-gray-600 font-mono space-y-1">
-              <p><span className="font-semibold">Student:</span> student@test.com</p>
-              <p><span className="font-semibold">Parent:</span> parent@test.com</p>
-              <p><span className="font-semibold">Admin:</span> admin@test.com</p>
+              <p>
+                <span className="font-semibold">Student:</span> student@test.com
+              </p>
+              <p>
+                <span className="font-semibold">Parent:</span> parent@test.com
+              </p>
+              <p>
+                <span className="font-semibold">Admin:</span> admin@test.com
+              </p>
             </div>
             <p className="text-xs text-gray-400 mt-2">
               Create users in Supabase Auth first

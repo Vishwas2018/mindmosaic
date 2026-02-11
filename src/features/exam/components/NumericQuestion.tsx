@@ -26,7 +26,6 @@ interface NumericQuestionProps {
 }
 
 export function NumericQuestion({
-  questionId,
   value,
   onChange,
   disabled = false,

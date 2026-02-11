@@ -18,8 +18,7 @@ interface ShortAnswerQuestionProps {
   maxLength?: number;
 }
 
-export function ShortAnswerQuestion({
-  questionId,
+export function ShortAnswerQuestion({  
   value,
   onChange,
   disabled = false,

@@ -2,7 +2,7 @@
  * MindMosaic — Auth Context (FIXED)
  *
  * Real Supabase Auth session management.
- * 
+ *
  * Fixes:
  * - Non-blocking initialization with safety timeout
  * - Graceful error handling
@@ -37,11 +37,11 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   signIn: (
     email: string,
-    password: string
+    password: string,
   ) => Promise<{ error: AuthError | null }>;
   signUp: (
     email: string,
-    password: string
+    password: string,
   ) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -69,32 +69,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch user profile from profiles table
-  const fetchProfile = useCallback(async (userId: string): Promise<UserRole | null> => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+  const fetchProfile = useCallback(
+    async (userId: string): Promise<UserRole | null> => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
 
-      if (error) {
-        // Profile might not exist yet for new users
-        console.warn("[AuthContext] Profile not found:", error.message);
+        if (error) {
+          // Profile might not exist yet for new users
+          console.warn("[AuthContext] Profile not found:", error.message);
+          setProfile(null);
+          setRole(null);
+          return null;
+        }
+
+        setProfile(data);
+        setRole(data.role);
+        return data.role;
+      } catch (err) {
+        console.error("[AuthContext] Profile fetch error:", err);
         setProfile(null);
         setRole(null);
         return null;
       }
-
-      setProfile(data);
-      setRole(data.role);
-      return data.role;
-    } catch (err) {
-      console.error("[AuthContext] Profile fetch error:", err);
-      setProfile(null);
-      setRole(null);
-      return null;
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Initialize auth state
   useEffect(() => {
@@ -110,7 +113,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const initAuth = async () => {
       try {
-        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        const {
+          data: { session: currentSession },
+          error,
+        } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
@@ -141,23 +147,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const safetyTimeout = setTimeout(completeInit, 3000);
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        if (!mounted) return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      if (!mounted) return;
 
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
 
-        if (newSession?.user) {
-          await fetchProfile(newSession.user.id);
-        } else {
-          setProfile(null);
-          setRole(null);
-        }
-
-        completeInit();
+      if (newSession?.user) {
+        await fetchProfile(newSession.user.id);
+      } else {
+        setProfile(null);
+        setRole(null);
       }
-    );
+
+      completeInit();
+    });
 
     return () => {
       mounted = false;
@@ -168,7 +174,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Sign in
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     return { error };
   }, []);
 
@@ -214,6 +223,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 // Hooks
 // =============================================================================
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
 
@@ -224,6 +234,7 @@ export function useAuth(): AuthContextValue {
   return context;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useHasRole(allowedRoles: UserRole[]): boolean {
   const { role } = useAuth();
   return role !== null && allowedRoles.includes(role);

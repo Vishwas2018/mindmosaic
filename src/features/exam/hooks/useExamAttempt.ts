@@ -16,7 +16,7 @@ import type {
   ExamAttempt,
   QuestionWithOptions,
   ResponseData,
-  SubmitAttemptResponse  
+  SubmitAttemptResponse,
 } from "../types/exam.types";
 
 // =============================================================================
@@ -166,7 +166,7 @@ export function useExamAttempt({
           )
           .map((q) => q.id);
 
-        let optionsMap = new Map<string, typeof optionsData>();
+        const optionsMap = new Map<string, typeof optionsData>();
         let optionsData: Array<{
           question_id: string;
           option_id: string;
@@ -348,7 +348,7 @@ export function useExamAttempt({
       await flushPending();
 
       // Call submit-attempt Edge Function
-      const { data, error, status } =
+      const { data, error } =
         await callEdgeFunction<SubmitAttemptResponse>("submit-attempt", {
           attempt_id: attempt.id,
         });

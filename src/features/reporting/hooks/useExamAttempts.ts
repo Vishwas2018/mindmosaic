@@ -132,7 +132,7 @@ export function useExamAttempts(
       const attemptIds = (rawAttempts ?? []).map((a) => a.id);
 
       // 3. Fetch results for these attempts
-      let resultsMap = new Map<
+      const resultsMap = new Map<
         string,
         {
           total_score: number;

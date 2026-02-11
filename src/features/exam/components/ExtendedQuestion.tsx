@@ -23,8 +23,7 @@ interface ExtendedQuestionProps {
   wordCountGuidance?: { min: number; max: number };
 }
 
-export function ExtendedQuestion({
-  questionId,
+export function ExtendedQuestion({  
   value,
   onChange,
   disabled = false,

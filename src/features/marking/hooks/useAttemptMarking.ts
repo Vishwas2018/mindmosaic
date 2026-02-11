@@ -278,7 +278,7 @@ export function useAttemptMarking(
         ]),
       );
 
-      let breakdownMap = new Map<string, QuestionScoreBreakdown>();
+      const breakdownMap = new Map<string, QuestionScoreBreakdown>();
       if (resultRow?.breakdown && Array.isArray(resultRow.breakdown)) {
         for (const entry of resultRow.breakdown as QuestionScoreBreakdown[]) {
           breakdownMap.set(entry.question_id, entry);

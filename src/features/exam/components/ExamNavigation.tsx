@@ -56,6 +56,9 @@ export function ExamNavigation({
 
       {/* Center: Save status */}
       <div className="text-sm text-text-muted">
+        <span className="mr-3">
+          {answeredCount}/{totalQuestions} answered
+        </span>
         {isSaving ? (
           <span className="flex items-center gap-2">
             <span className="animate-spin">⏳</span>
