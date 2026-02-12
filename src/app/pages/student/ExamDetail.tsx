@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase, callEdgeFunction } from "../../../lib/supabase";
 import type { ExamPackage, ExamAttempt } from "../../../lib/database.types";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "../../../context/useAuth";
 import type { StartAttemptResponse } from "../../../features/exam/types/exam.types";
 
 // Subject display names

@@ -9,7 +9,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
 import type { ExamPackage, ExamAttempt } from "../../../lib/database.types";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "../../../context/useAuth";
+import { filterVisibleExams, canStartAttempt } from "@/features/exams";
 
 // Subject display names and icons
 const SUBJECT_INFO: Record<string, { label: string; icon: string }> = {

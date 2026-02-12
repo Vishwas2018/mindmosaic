@@ -7,8 +7,9 @@
  * Day 18: Admin reporting routes
  * Day 19: Question bank & exam authoring routes
  */
-
+import { Route } from "react-router-dom";
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { ExamPublishPage } from "./pages/admin/exams/ExamPublish";
 
 // Layouts
 import { PublicLayout } from "./layouts/PublicLayout";
@@ -146,6 +147,7 @@ export const router = createBrowserRouter([
 
       // Day 19: Exam Authoring
       { path: "exams/generate", element: <ExamGeneratePage /> },
+      { path: "/admin/exams/:id/publish", element: <ExamPublishPage /> },
     ],
   },
 

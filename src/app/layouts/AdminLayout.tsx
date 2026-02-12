@@ -5,7 +5,7 @@
  */
 
 import { Outlet, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 
 export function AdminLayout() {
   const { user, signOut } = useAuth();
@@ -25,7 +25,9 @@ export function AdminLayout() {
             {/* Logo */}
             <div className="flex items-center gap-2">
               <span className="text-2xl">🧠</span>
-              <span className="font-semibold text-text-primary">MindMosaic</span>
+              <span className="font-semibold text-text-primary">
+                MindMosaic
+              </span>
               <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">
                 Admin
               </span>

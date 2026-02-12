@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
+import { useAuth } from "../../../context/useAuth";
 
 export function LoginPage() {
   const navigate = useNavigate();
