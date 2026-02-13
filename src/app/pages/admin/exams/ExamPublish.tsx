@@ -5,15 +5,13 @@
  */
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { supabase } from "../../../lib/supabase";
-import { ExamPublishControls } from "../../../features/exams/components/ExamPublishControls";
-import type { ExamPackage } from "../../../features/exams/types/exam-publishing.types";
+import { useParams, Link } from "react-router-dom";
+import { supabase } from "../../../../lib/supabase";
+import { ExamPublishControls } from "../../../../features/exams/components/ExamPublishControls";
+import type { ExamPackage } from "../../../../features/exams/types/exam-publishing.types";
 
 export function ExamPublishPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [exam, setExam] = useState<ExamPackage | null>(null);
   const [error, setError] = useState<string | null>(null);

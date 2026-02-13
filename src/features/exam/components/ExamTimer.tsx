@@ -9,9 +9,12 @@
  * - Exam duration (minutes)
  *
  * No auto-submit (handled server-side).
+ *
+ * BUG-7 FIX: Added ref guard to prevent onTimeExpired firing multiple times
+ * when the callback reference changes between renders.
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 interface ExamTimerProps {
   /** When the attempt started */
@@ -34,7 +37,7 @@ interface TimeRemaining {
 
 function calculateTimeRemaining(
   startedAt: Date,
-  durationMinutes: number
+  durationMinutes: number,
 ): TimeRemaining {
   const now = new Date();
   const endTime = new Date(startedAt.getTime() + durationMinutes * 60 * 1000);
@@ -71,8 +74,18 @@ export function ExamTimer({
   onTimeExpired,
 }: ExamTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>(() =>
-    calculateTimeRemaining(startedAt, durationMinutes)
+    calculateTimeRemaining(startedAt, durationMinutes),
   );
+
+  // BUG-7 FIX: Ref guard to ensure onTimeExpired only fires once.
+  // Without this, if onTimeExpired is not memoized by the parent,
+  // the effect re-runs and the callback can fire multiple times.
+  const hasExpiredRef = useRef(false);
+
+  // Reset the ref if the timer props change (new attempt)
+  useEffect(() => {
+    hasExpiredRef.current = false;
+  }, [startedAt, durationMinutes]);
 
   // Update timer every second
   useEffect(() => {
@@ -80,7 +93,9 @@ export function ExamTimer({
       const remaining = calculateTimeRemaining(startedAt, durationMinutes);
       setTimeRemaining(remaining);
 
-      if (remaining.isExpired) {
+      // BUG-7 FIX: Only fire once
+      if (remaining.isExpired && !hasExpiredRef.current) {
+        hasExpiredRef.current = true;
         clearInterval(interval);
         onTimeExpired?.();
       }
@@ -168,9 +183,7 @@ export function ExamTimer({
         {formattedTime}
       </span>
       {timeRemaining.isExpired && (
-        <span className="text-sm text-danger-red font-medium">
-          Time's up!
-        </span>
+        <span className="text-sm text-danger-red font-medium">Time's up!</span>
       )}
     </div>
   );
@@ -185,9 +198,12 @@ interface CompactTimerProps {
   durationMinutes: number;
 }
 
-export function CompactTimer({ startedAt, durationMinutes }: CompactTimerProps) {
+export function CompactTimer({
+  startedAt,
+  durationMinutes,
+}: CompactTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining>(() =>
-    calculateTimeRemaining(startedAt, durationMinutes)
+    calculateTimeRemaining(startedAt, durationMinutes),
   );
 
   useEffect(() => {

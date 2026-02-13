@@ -2,9 +2,11 @@
  * useExamList — Loads all exam packages for admin selection.
  *
  * The admin needs to pick an exam before viewing its attempts.
- * This hook fetches all packages (draft + published) since admin
+ * This hook fetches all packages (draft + published + archived) since admin
  * has full SELECT access. We include attempt counts via a separate
  * query to show which exams have activity.
+ *
+ * BUG-6 FIX: Added "archived" to the status type union.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -16,7 +18,9 @@ export interface ExamListItem {
   year_level: number;
   subject: string;
   assessment_type: "naplan" | "icas";
-  status: "draft" | "published";
+  // BUG-6 FIX: Added "archived" — the query fetches all packages
+  // including archived ones, so the type must reflect that.
+  status: "draft" | "published" | "archived";
   total_marks: number;
   created_at: string;
   attempt_count: number;
@@ -45,7 +49,7 @@ export function useExamList(): UseExamListReturn {
       const { data: packages, error: pkgErr } = await supabase
         .from("exam_packages")
         .select(
-          "id, title, year_level, subject, assessment_type, status, total_marks, created_at"
+          "id, title, year_level, subject, assessment_type, status, total_marks, created_at",
         )
         .order("created_at", { ascending: false });
 
@@ -65,7 +69,7 @@ export function useExamList(): UseExamListReturn {
       for (const a of attempts ?? []) {
         countMap.set(
           a.exam_package_id,
-          (countMap.get(a.exam_package_id) ?? 0) + 1
+          (countMap.get(a.exam_package_id) ?? 0) + 1,
         );
       }
 
@@ -75,7 +79,7 @@ export function useExamList(): UseExamListReturn {
         year_level: p.year_level,
         subject: p.subject,
         assessment_type: p.assessment_type as "naplan" | "icas",
-        status: p.status as "draft" | "published",
+        status: p.status as "draft" | "published" | "archived",
         total_marks: p.total_marks,
         created_at: p.created_at,
         attempt_count: countMap.get(p.id) ?? 0,

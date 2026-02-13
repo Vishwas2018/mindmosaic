@@ -137,7 +137,6 @@ export function ExamPublishControls({
         <div className="rounded-md border border-border-subtle bg-background-soft p-4">
           <ConfirmationPrompt
             action={confirmAction}
-            exam={exam}
             onConfirm={async () => {
               if (confirmAction === "publish") await handlePublish();
               if (confirmAction === "unpublish") await handleUnpublish();
@@ -284,7 +283,6 @@ function StatusBadge({ status }: { status: ExamStatus }) {
 
 interface ConfirmationPromptProps {
   action: "publish" | "unpublish" | "archive";
-  exam: ExamPackage;
   onConfirm: () => void;
   onCancel: () => void;
   isProcessing: boolean;
@@ -292,7 +290,6 @@ interface ConfirmationPromptProps {
 
 function ConfirmationPrompt({
   action,
-  exam,
   onConfirm,
   onCancel,
   isProcessing,

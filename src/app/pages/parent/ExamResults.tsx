@@ -5,8 +5,8 @@
  */
 
 import { useParams, Link } from "react-router-dom";
-import { useChildProfile } from "../../features/parent/hooks/useChildProfile";
-import { useParentExamDetail } from "../../features/parent/hooks/useParentExamDetail";
+import { useChildProfile } from "../../../features/parent/hooks/useChildProfile";
+import { useParentExamDetail } from "../../../features/parent/hooks/useParentExamDetail";
 
 export function ParentExamResults() {
   const { attemptId } = useParams<{ attemptId: string }>();

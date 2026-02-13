@@ -1,13 +1,7 @@
-/**
- * ParentDashboard — Main parent dashboard
- *
- * Route: /parent/dashboard
- */
-
-import { useChildProfile } from "../../features/parent/hooks/useChildProfile";
-import { useParentExamResults } from "../../features/parent/hooks/useParentExamResults";
-import { ChildSummaryPanel } from "../../features/parent/components/ChildSummaryPanel";
-import { ExamResultCard } from "../../features/parent/components/ExamResultCard";
+import { useChildProfile } from "../../../features/parent/hooks/useChildProfile";
+import { useParentExamResults } from "../../../features/parent/hooks/useParentExamResults";
+import { ChildSummaryPanel } from "../../../features/parent/components/ChildSummaryPanel";
+import { ExamResultCard } from "../../../features/parent/components/ExamResultCard";
 
 export function ParentDashboard() {
   const { status: childStatus, child, error: childError } = useChildProfile();

@@ -5,10 +5,10 @@
  */
 
 import { Link } from "react-router-dom";
-import { useChildProfile } from "../../features/parent/hooks/useChildProfile";
-import { useParentExamResults } from "../../features/parent/hooks/useParentExamResults";
-import { useParentProgress } from "../../features/parent/hooks/useParentProgress";
-import { ProgressTable } from "../../features/parent/components/ProgressTable";
+import { useChildProfile } from "../../../features/parent/hooks/useChildProfile";
+import { useParentExamResults } from "../../../features/parent/hooks/useParentExamResults";
+import { useParentProgress } from "../../../features/parent/hooks/useParentProgress";
+import { ProgressTable } from "../../../features/parent/components/ProgressTable";
 
 export function ParentProgressOverview() {
   const { child } = useChildProfile();

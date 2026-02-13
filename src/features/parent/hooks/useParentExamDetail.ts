@@ -6,11 +6,27 @@
  * - Student responses
  * - Correct answers
  * - Marking comments
+ *
+ * BUG-3 FIX: Rewrote to fetch scores from `exam_results` table
+ * instead of non-existent fields on `exam_attempts` and `exam_responses`.
+ *
+ * BUG-4 FIX: Replaced `SELECT *` with explicit minimal column lists.
  */
 
 import { useState, useEffect } from "react";
 import { supabase } from "../../../lib/supabase";
 import type { ParentExamResult } from "../types/parent-dashboard.types";
+
+/** Raw breakdown entry shape from score-attempt Edge Function */
+interface RawBreakdownEntry {
+  question_id: string;
+  sequence_number?: number;
+  response_type?: string;
+  score?: number;
+  max_score?: number;
+  is_correct?: boolean;
+  requires_manual_review?: boolean;
+}
 
 export interface UseParentExamDetailReturn {
   status: "idle" | "loading" | "error" | "success";
@@ -40,10 +56,12 @@ export function useParentExamDetail(
       setError(null);
 
       try {
-        // 1. Load attempt
+        // 1. Load attempt — explicit columns only (BUG-4 FIX)
         const { data: attempt, error: attErr } = await supabase
           .from("exam_attempts")
-          .select("*")
+          .select(
+            "id, exam_package_id, student_id, status, started_at, submitted_at",
+          )
           .eq("id", attemptId)
           .eq("student_id", childId) // Security: verify ownership
           .single();
@@ -58,52 +76,49 @@ export function useParentExamDetail(
           throw new Error("Exam not yet submitted");
         }
 
-        if (attempt.marking_status !== "complete") {
-          throw new Error("Exam not yet marked");
-        }
-
-        // 2. Load exam package
+        // 2. Load exam package — explicit columns only (BUG-4 FIX)
         const { data: pkg, error: pkgErr } = await supabase
           .from("exam_packages")
-          .select("*")
+          .select(
+            "id, title, subject, year_level, total_marks, duration_minutes",
+          )
           .eq("id", attempt.exam_package_id)
           .single();
 
         if (pkgErr) throw pkgErr;
 
-        // 3. Load responses (marks only, no content)
-        const { data: responses, error: resErr } = await supabase
-          .from("exam_responses")
-          .select("question_id, marks_awarded")
+        // 3. Load result from exam_results table (BUG-3 FIX)
+        // Previously this tried to read marking_status and total_score
+        // from exam_attempts, and marks_awarded from exam_responses —
+        // none of which exist. The actual scored data lives in exam_results.
+        const { data: examResult, error: resErr } = await supabase
+          .from("exam_results")
+          .select("total_score, max_score, percentage, passed, breakdown")
           .eq("attempt_id", attemptId)
-          .order("sequence_number", { ascending: true });
+          .maybeSingle();
 
         if (resErr) throw resErr;
 
-        // 4. Load questions (for marks_available only)
-        const questionIds = (responses || []).map((r) => r.question_id);
-        const { data: questions, error: qErr } = await supabase
-          .from("exam_questions")
-          .select("id, sequence_number, marks, response_type")
-          .in("id", questionIds);
+        if (!examResult) {
+          throw new Error("Exam not yet marked");
+        }
 
-        if (qErr) throw qErr;
+        // 4. Extract per-question scores from breakdown JSONB (BUG-3 FIX)
+        // The breakdown contains per-question scoring from the score-attempt
+        // Edge Function. We only expose numeric marks to parents — no
+        // question content, correct answers, or student responses.
+        const rawBreakdown = Array.isArray(examResult.breakdown)
+          ? (examResult.breakdown as RawBreakdownEntry[])
+          : [];
 
-        // 5. Build question map
-        const questionMap = new Map((questions || []).map((q) => [q.id, q]));
+        const questionResults = rawBreakdown.map((entry) => ({
+          question_number: entry.sequence_number ?? 0,
+          marks_available: entry.max_score ?? 0,
+          marks_awarded: entry.score ?? 0,
+          response_type: entry.response_type ?? "unknown",
+        }));
 
-        // 6. Build question results (marks only)
-        const questionResults = (responses || []).map((res) => {
-          const question = questionMap.get(res.question_id);
-          return {
-            question_number: question?.sequence_number || 0,
-            marks_available: question?.marks || 0,
-            marks_awarded: res.marks_awarded,
-            response_type: question?.response_type || "unknown",
-          };
-        });
-
-        // 7. Sort by question number
+        // Sort by question number
         questionResults.sort((a, b) => a.question_number - b.question_number);
 
         setResult({
@@ -112,11 +127,8 @@ export function useParentExamDetail(
           year_level: pkg.year_level,
           total_marks: pkg.total_marks,
           submitted_at: attempt.submitted_at,
-          total_score: attempt.total_score || 0,
-          percentage:
-            pkg.total_marks > 0
-              ? Math.round(((attempt.total_score || 0) / pkg.total_marks) * 100)
-              : 0,
+          total_score: examResult.total_score,
+          percentage: Math.round(examResult.percentage),
           questions: questionResults,
         });
 

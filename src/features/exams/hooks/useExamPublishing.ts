@@ -11,9 +11,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import type {
-  ExamStatus,
   ExamPackage,
-  PublishingOperation,
   PublishingResult,
   ExamVisibilityRules,
 } from "../types/exam-publishing.types";

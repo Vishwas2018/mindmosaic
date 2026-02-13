@@ -3,6 +3,10 @@
  *
  * Selects questions from the bank based on blueprint rules.
  * Prevents duplicates and excludes recently used questions.
+ *
+ * BUG-8 FIX: Replaced `any` types with proper typed interfaces.
+ * REC-1 FIX: Added `__none__` fallback for empty IN clauses.
+ * REC-4 FIX: Added validation for minimum question count.
  */
 
 import { useState, useCallback } from "react";
@@ -11,8 +15,54 @@ import type {
   ExamBlueprint,
   QuestionFilters,
   QuestionWithAnswer,
+  QuestionOption,
+  CorrectAnswer,
   GenerationResult,
 } from "../../questions/types/question-bank.types";
+
+// ────────────────────────────────────────────
+// Internal types (BUG-8 FIX: replaces `any`)
+// ────────────────────────────────────────────
+
+/** Shape of a row from exam_questions as returned by Supabase */
+interface QuestionRow {
+  id: string;
+  exam_package_id: string;
+  sequence_number: number;
+  difficulty: "easy" | "medium" | "hard";
+  response_type: "mcq" | "multi" | "short" | "extended" | "numeric";
+  marks: number;
+  prompt_blocks: unknown;
+  media_references: unknown;
+  tags: string[] | null;
+  hint: string | null;
+  subject?: string;
+}
+
+/** Shape for inserting into exam_question_options */
+interface OptionInsert {
+  question_id: string;
+  option_id: string;
+  content: string;
+  media_reference: unknown;
+}
+
+/** Shape for inserting into exam_correct_answers */
+interface AnswerInsert {
+  question_id: string;
+  answer_type: string;
+  correct_option_id: string | null;
+  correct_option_ids: string[] | null;
+  accepted_answers: unknown;
+  case_sensitive: boolean;
+  exact_value: number | null;
+  range_min: number | null;
+  range_max: number | null;
+  tolerance: number | null;
+  unit: string | null;
+  rubric: unknown;
+  sample_response: string | null;
+}
 
 export interface UseExamGenerationReturn {
   isGenerating: boolean;
@@ -36,6 +86,17 @@ export function useExamGeneration(): UseExamGenerationReturn {
       setGenerateError(null);
 
       try {
+        // REC-4 FIX: Validate blueprint has sections with questions
+        const totalRequestedQuestions = blueprint.sections.reduce(
+          (sum, s) => sum + s.question_count,
+          0,
+        );
+        if (totalRequestedQuestions === 0) {
+          throw new Error(
+            "Blueprint must request at least one question across all sections.",
+          );
+        }
+
         // 1. Load all available questions
         const { data: allQuestions, error: qErr } = await supabase
           .from("exam_questions")
@@ -55,7 +116,7 @@ export function useExamGeneration(): UseExamGenerationReturn {
         }
 
         // 3. Filter available questions (exclude previous)
-        const available = (allQuestions ?? []).filter(
+        const available = ((allQuestions ?? []) as QuestionRow[]).filter(
           (q) => !excludedIds.has(q.id),
         );
 
@@ -84,26 +145,29 @@ export function useExamGeneration(): UseExamGenerationReturn {
 
         // 5. Load options and correct answers for selected questions
         const questionIds = selectedQuestions.map((q) => q.id);
+        // REC-1 FIX: Guard against empty IN clause
+        const safeQuestionIds =
+          questionIds.length > 0 ? questionIds : ["__none__"];
 
         const { data: options } = await supabase
           .from("exam_question_options")
           .select("*")
-          .in("question_id", questionIds);
+          .in("question_id", safeQuestionIds);
 
         const { data: answers } = await supabase
           .from("exam_correct_answers")
           .select("*")
-          .in("question_id", questionIds);
+          .in("question_id", safeQuestionIds);
 
         // Build maps
-        const optionsMap = new Map<string, typeof options>();
+        const optionsMap = new Map<string, QuestionOption[]>();
         (options ?? []).forEach((opt) => {
           const existing = optionsMap.get(opt.question_id) || [];
-          optionsMap.set(opt.question_id, [...existing, opt]);
+          optionsMap.set(opt.question_id, [...existing, opt as QuestionOption]);
         });
 
-        const answersMap = new Map(
-          (answers ?? []).map((a) => [a.question_id, a]),
+        const answersMap = new Map<string, CorrectAnswer>(
+          (answers ?? []).map((a) => [a.question_id, a as CorrectAnswer]),
         );
 
         // 6. Assemble final questions
@@ -122,6 +186,13 @@ export function useExamGeneration(): UseExamGenerationReturn {
 
         // 7. Calculate total marks
         const total_marks = finalQuestions.reduce((sum, q) => sum + q.marks, 0);
+
+        // REC-4 FIX: Validate total marks
+        if (total_marks === 0) {
+          throw new Error(
+            "Generated exam has 0 total marks. Check question marks values.",
+          );
+        }
 
         // 8. Create exam package
         const packageId = crypto.randomUUID();
@@ -177,8 +248,8 @@ export function useExamGeneration(): UseExamGenerationReturn {
           newQuestionIdMap.set(finalQuestions[idx].id, newQ.id);
         });
 
-        // Options
-        const optionsToInsert: any[] = [];
+        // Options (BUG-8 FIX: properly typed)
+        const optionsToInsert: OptionInsert[] = [];
         finalQuestions.forEach((origQ) => {
           const newQId = newQuestionIdMap.get(origQ.id);
           if (newQId && origQ.options) {
@@ -201,14 +272,25 @@ export function useExamGeneration(): UseExamGenerationReturn {
           if (optInsErr) throw optInsErr;
         }
 
-        // Answers
-        const answersToInsert: any[] = [];
+        // Answers (BUG-8 FIX: properly typed)
+        const answersToInsert: AnswerInsert[] = [];
         finalQuestions.forEach((origQ) => {
           const newQId = newQuestionIdMap.get(origQ.id);
           if (newQId && origQ.correctAnswer) {
             answersToInsert.push({
-              ...origQ.correctAnswer,
               question_id: newQId,
+              answer_type: origQ.correctAnswer.answer_type,
+              correct_option_id: origQ.correctAnswer.correct_option_id,
+              correct_option_ids: origQ.correctAnswer.correct_option_ids,
+              accepted_answers: origQ.correctAnswer.accepted_answers,
+              case_sensitive: origQ.correctAnswer.case_sensitive,
+              exact_value: origQ.correctAnswer.exact_value,
+              range_min: origQ.correctAnswer.range_min,
+              range_max: origQ.correctAnswer.range_max,
+              tolerance: origQ.correctAnswer.tolerance,
+              unit: origQ.correctAnswer.unit,
+              rubric: origQ.correctAnswer.rubric,
+              sample_response: origQ.correctAnswer.sample_response,
             });
           }
         });
@@ -249,11 +331,11 @@ export function useExamGeneration(): UseExamGenerationReturn {
 }
 
 // ────────────────────────────────────────────
-// Selection Logic
+// Selection Logic (BUG-8 FIX: properly typed)
 // ────────────────────────────────────────────
 
 function selectQuestionsForSection(
-  available: any[],
+  available: QuestionRow[],
   filters: QuestionFilters,
   count: number,
   usedIds: Set<string>,
@@ -281,8 +363,13 @@ function selectQuestionsForSection(
   // Shuffle for randomness
   candidates = shuffle(candidates);
 
-  // Select count
-  return candidates.slice(0, count);
+  // Select count and cast to QuestionWithAnswer
+  return candidates.slice(0, count).map((q) => ({
+    ...q,
+    prompt_blocks: Array.isArray(q.prompt_blocks) ? q.prompt_blocks : [],
+    media_references: q.media_references,
+    tags: q.tags ?? [],
+  }));
 }
 
 function shuffle<T>(array: T[]): T[] {

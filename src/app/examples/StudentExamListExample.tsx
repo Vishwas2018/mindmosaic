@@ -15,15 +15,11 @@ import {
   canStartAttempt,
   getAvailabilityStatus,
 } from "../../features/exams";
-import type { ExamPackage } from "../../features/exams";
+import type { ExamPackage } from "../../features/exams/types/exam-publishing.types";
 
 export function ExampleStudentExamList() {
   const [exams, setExams] = useState<ExamPackage[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadExams();
-  }, []);
 
   const loadExams = async () => {
     setLoading(true);
@@ -47,6 +43,11 @@ export function ExampleStudentExamList() {
     setExams(visibleExams);
     setLoading(false);
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadExams();
+  }, []);
 
   if (loading) {
     return <div className="text-center text-text-muted">Loading exams...</div>;

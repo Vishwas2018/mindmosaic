@@ -37,8 +37,9 @@ export function ExamAttemptsTable({
     switch (sortField) {
       case "student":
         return a.student_id.localeCompare(b.student_id) * dir;
+      // BUG-2 FIX: Added parentheses so `dir` multiplies the full expression
       case "status":
-        return statusOrder(a.status) - statusOrder(b.status) * dir;
+        return (statusOrder(a.status) - statusOrder(b.status)) * dir;
       case "score": {
         const aScore = a.result?.percentage ?? -1;
         const bScore = b.result?.percentage ?? -1;

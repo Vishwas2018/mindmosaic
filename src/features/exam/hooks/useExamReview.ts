@@ -69,13 +69,37 @@ interface ReviewResult {
   breakdown: QuestionBreakdown[];
 }
 
-/** Per-question scoring breakdown from score-attempt Edge Function */
+/** Per-question scoring breakdown from score-attempt Edge Function.
+ *
+ * BUG-1 FIX: The Edge Function returns `score`, `max_score`, `is_correct`
+ * but the review UI expects `marks_awarded`, `marks_possible`, `correct`.
+ * We normalize at load time in the hook below.
+ */
 interface QuestionBreakdown {
   question_id: string;
   marks_awarded: number;
   marks_possible: number;
   correct: boolean;
   /** Extended responses may be flagged for manual review */
+  requires_manual_review?: boolean;
+  correct_answer?: unknown;
+}
+
+/**
+ * Raw breakdown shape as stored in exam_results.breakdown JSONB.
+ * The score-attempt Edge Function writes this format.
+ */
+interface RawBreakdownEntry {
+  question_id: string;
+  // Edge Function format
+  score?: number;
+  max_score?: number;
+  is_correct?: boolean;
+  // Possibly already normalized format
+  marks_awarded?: number;
+  marks_possible?: number;
+  correct?: boolean;
+  // Common fields
   requires_manual_review?: boolean;
   correct_answer?: unknown;
 }
@@ -111,6 +135,32 @@ export interface UseExamReviewReturn {
   error: string | null;
   /** Re-fetch all data */
   reload: () => void;
+}
+
+// ────────────────────────────────────────────
+// Normalization helper (BUG-1 FIX)
+// ────────────────────────────────────────────
+
+/**
+ * Normalizes a raw breakdown entry from the DB into the
+ * canonical shape expected by ReviewQuestionCard.
+ *
+ * The score-attempt Edge Function stores:
+ *   { score, max_score, is_correct }
+ * but the review UI reads:
+ *   { marks_awarded, marks_possible, correct }
+ *
+ * This function handles both formats gracefully.
+ */
+function normalizeBreakdownEntry(raw: RawBreakdownEntry): QuestionBreakdown {
+  return {
+    question_id: raw.question_id,
+    marks_awarded: raw.marks_awarded ?? raw.score ?? 0,
+    marks_possible: raw.marks_possible ?? raw.max_score ?? 0,
+    correct: raw.correct ?? raw.is_correct ?? false,
+    requires_manual_review: raw.requires_manual_review ?? false,
+    correct_answer: raw.correct_answer,
+  };
 }
 
 // ────────────────────────────────────────────
@@ -213,10 +263,14 @@ export function useExamReview(
         (responses ?? []).map((r) => [r.question_id, r as ReviewResponse]),
       );
 
+      // BUG-1 FIX: Normalize breakdown entries to canonical field names
       const breakdownMap = new Map<string, QuestionBreakdown>();
       if (result?.breakdown && Array.isArray(result.breakdown)) {
-        for (const entry of result.breakdown as QuestionBreakdown[]) {
-          breakdownMap.set(entry.question_id, entry);
+        for (const rawEntry of result.breakdown as RawBreakdownEntry[]) {
+          breakdownMap.set(
+            rawEntry.question_id,
+            normalizeBreakdownEntry(rawEntry),
+          );
         }
       }
 
@@ -244,11 +298,26 @@ export function useExamReview(
         );
       }
 
+      // BUG-1 FIX: Also normalize the top-level result breakdown array
+      const normalizedResult: ReviewResult | null = result
+        ? {
+            total_score: result.total_score,
+            max_score: result.max_score,
+            percentage: result.percentage,
+            passed: result.passed,
+            breakdown: Array.isArray(result.breakdown)
+              ? (result.breakdown as RawBreakdownEntry[]).map(
+                  normalizeBreakdownEntry,
+                )
+              : [],
+          }
+        : null;
+
       setData({
         attempt: attempt as ReviewAttempt,
         examPackage: examPackage as ReviewExamPackage,
         questions: assembledQuestions,
-        result: result as ReviewResult | null,
+        result: normalizedResult,
         timeTakenSeconds,
       });
       setStatus("ready");
