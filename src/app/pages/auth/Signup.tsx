@@ -8,6 +8,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../context/useAuth";
+import { useEffect } from "react";
 
 export function SignupPage() {
   const navigate = useNavigate();
@@ -54,7 +55,8 @@ export function SignupPage() {
 
       setSuccess(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "An unexpected error occurred";
+      const message =
+        err instanceof Error ? err.message : "An unexpected error occurred";
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -73,6 +75,13 @@ export function SignupPage() {
     );
   }
 
+  // Redirect after success
+  useEffect(() => {
+    if (success) {
+      navigate("/auth/verify-email");
+    }
+  }, [success, navigate]);
+
   // Success state
   if (success) {
     return (
@@ -88,7 +97,7 @@ export function SignupPage() {
               <span className="font-medium text-text-primary">{email}</span>
             </p>
             <Link
-              to="/login"
+              to="/auth/login"
               className="text-primary-blue hover:underline"
             >
               Back to sign in

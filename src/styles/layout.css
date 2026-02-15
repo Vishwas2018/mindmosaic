@@ -1,0 +1,105 @@
+/**
+ * MindMosaic — Layout Utilities
+ *
+ * Consistent spacing and container classes used across the app.
+ * Import this file in index.css AFTER the @theme block.
+ *
+ * Usage:
+ *   className="layout-container"     → centered max-width container
+ *   className="section-padding"      → consistent vertical section spacing
+ *   className="card-base"            → standard card with border, radius, shadow
+ *   className="card-base-interactive"→ card with hover effect
+ */
+
+/* =============================================================================
+   Layout Container
+   ============================================================================= */
+
+.layout-container {
+  width: 100%;
+  max-width: 72rem; /* 1152px */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .layout-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* =============================================================================
+   Section Padding
+   ============================================================================= */
+
+.section-padding {
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+@media (min-width: 640px) {
+  .section-padding {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+}
+
+/* =============================================================================
+   Card Base
+   ============================================================================= */
+
+.card-base {
+  background-color: white;
+  border-radius: 1rem; /* rounded-2xl */
+  border: 1px solid var(--color-border-subtle, #d8e2f3);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
+}
+
+.card-base-interactive {
+  background-color: white;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border-subtle, #d8e2f3);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: box-shadow 0.15s ease;
+}
+
+.card-base-interactive:hover {
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* =============================================================================
+   Touch Target Minimum
+   
+   Apply to any interactive element that might be too small.
+   Ensures 36px minimum hit area without changing visual size.
+   ============================================================================= */
+
+.touch-target {
+  position: relative;
+  min-height: 2.25rem; /* 36px */
+  min-width: 2.25rem;
+}
+
+.touch-target::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+/* =============================================================================
+   Focus Ring (accessibility)
+   
+   Consistent focus-visible ring across the app.
+   Applied automatically to interactive elements.
+   ============================================================================= */
+
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-primary-blue, #1d4ed8);
+  outline-offset: 2px;
+  border-radius: inherit;
+}

@@ -7,8 +7,8 @@
 
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
-import { useAuth } from "../../context/useAuth";
+import { supabase } from "../../../lib/supabase";
+import { useAuth } from "../../../context/useAuth";
 
 export function ForgotPasswordPage() {
   const { isAuthenticated, role, isLoading: authLoading } = useAuth();

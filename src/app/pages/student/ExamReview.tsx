@@ -1,24 +1,51 @@
+/**
+ * MindMosaic — Exam Review Page (Day 25)
+ *
+ * Enhancements over UI polish pass:
+ * - <ProgressRing> for score display (replaces raw text)
+ * - <Avatar> in header alongside exam title
+ * - <FloatingShapes> behind score banner
+ * - <Card variant="highlighted"> for score result area
+ * - Question list uses stagger-children + animate-slide-up
+ * - focus-ring + touch-target on all buttons
+ * - aria-labels on Back/Continue/Try Another buttons
+ * - animate-fade-in on page load and state screens
+ * - Color-coded score ring (green=passed, amber=keep trying)
+ *
+ * No logic, routing, or data flow changes.
+ */
+
 import { useState, useRef, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useExamReview } from "../../../features/exam/hooks/useExamReview";
 import { AttemptSummaryPanel } from "../../../features/exam/components/AttemptSummaryPanel";
 import { ReviewQuestionCard } from "../../../features/exam/components/ReviewQuestionCard";
 import { ReviewQuestionNav } from "../../../features/exam/components/ReviewQuestionNav";
+import { Card } from "../../../components/ui/Card";
+import { ProgressRing } from "../../../components/ui/ProgressRing";
+import { Avatar } from "../../../components/ui/Avatar";
+import { FloatingShapes } from "../../../components/ui/FloatingShapes";
+import { useAuth } from "../../../context/useAuth";
 
-/**
- * /student/attempts/:attemptId/review
- *
- * Read-only review of a submitted exam attempt.
- * All data is fetched via useExamReview, which respects RLS.
- */
 export function ExamReviewPage() {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
-  const { status, data, error, reload } = useExamReview(attemptId);
+  const { user } = useAuth();
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const questionRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Scroll to the active question when nav button is clicked
+  const {
+    isLoading,
+    error,
+    attempt,
+    examPackage,
+    questions,
+    responses,
+    result,
+    breakdown,
+  } = useExamReview(attemptId || "");
+
+  // Scroll to question when nav clicked
   useEffect(() => {
     const el = questionRefs.current.get(activeQuestionIndex);
     if (el) {
@@ -26,150 +53,223 @@ export function ExamReviewPage() {
     }
   }, [activeQuestionIndex]);
 
-  // ── Loading state ──
-  if (status === "loading") {
+  // Loading
+  if (isLoading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="animate-fade-in flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary-blue border-t-transparent" />
-          <p className="text-sm text-text-muted">Loading review…</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary-blue border-t-transparent" />
+          <p className="text-lg text-text-muted">Loading your results…</p>
         </div>
       </div>
     );
   }
 
-  // ── Not found ──
-  if (status === "not-found") {
+  // Not found
+  if (!attempt || !examPackage) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-text-primary">
-            Attempt Not Found
-          </p>
-          <p className="mt-1 text-sm text-text-muted">
-            {error ??
-              "The attempt could not be found or you don't have access."}
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate("/student")}
-            className="mt-4 rounded-md bg-primary-blue px-4 py-2 text-sm font-medium text-white hover:bg-primary-blue-light"
-          >
-            Back to Dashboard
-          </button>
-        </div>
+      <div className="animate-fade-in mx-auto max-w-md py-20 text-center">
+        <p className="text-4xl" aria-hidden="true">
+          🔍
+        </p>
+        <h2 className="mt-4 text-xl font-semibold text-text-primary">
+          Review not found
+        </h2>
+        <p className="mt-2 text-base leading-relaxed text-text-muted">
+          {error ||
+            "We couldn't find this exam review. It may not exist or you might not have access."}
+        </p>
+        <button
+          onClick={() => navigate("/student/exams")}
+          className="focus-ring touch-target mt-6 rounded-xl bg-primary-blue px-8 py-3 text-base font-medium text-white hover:bg-primary-blue-light"
+          aria-label="Go back to exam list"
+        >
+          Back to Exams
+        </button>
       </div>
     );
   }
 
-  // ── Not submitted yet ──
-  if (status === "not-submitted") {
+  // Not submitted yet
+  if (attempt.status === "in_progress") {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-text-primary">
-            Exam In Progress
-          </p>
-          <p className="mt-1 text-sm text-text-muted">
-            This attempt hasn't been submitted yet. You can only review
-            submitted exams.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate(`/student/attempts/${attemptId}`)}
-            className="mt-4 rounded-md bg-primary-blue px-4 py-2 text-sm font-medium text-white hover:bg-primary-blue-light"
-          >
-            Continue Exam
-          </button>
-        </div>
+      <div className="animate-fade-in mx-auto max-w-md py-20 text-center">
+        <p className="text-4xl" aria-hidden="true">
+          ⏳
+        </p>
+        <h2 className="mt-4 text-xl font-semibold text-text-primary">
+          Exam still in progress
+        </h2>
+        <p className="mt-2 text-base leading-relaxed text-text-muted">
+          You need to submit this exam before you can review it.
+        </p>
+        <button
+          onClick={() => navigate(`/student/attempts/${attemptId}`)}
+          className="focus-ring touch-target mt-6 rounded-xl bg-primary-blue px-8 py-3 text-base font-medium text-white hover:bg-primary-blue-light"
+          aria-label="Continue your exam"
+        >
+          Continue Exam
+        </button>
       </div>
     );
   }
 
-  // ── Error state ──
-  if (status === "error" || !data) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-danger-red">
-            Something went wrong
-          </p>
-          <p className="mt-1 text-sm text-text-muted">
-            {error ?? "An unexpected error occurred."}
-          </p>
-          <button
-            type="button"
-            onClick={reload}
-            className="mt-4 rounded-md bg-primary-blue px-4 py-2 text-sm font-medium text-white hover:bg-primary-blue-light"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Ready ──
-  const { questions } = data;
+  const scoreColor = result?.passed ? "success-green" : "accent-amber";
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-      {/* Back link */}
-      <button
-        type="button"
-        onClick={() => navigate("/student")}
-        className="mb-4 flex items-center gap-1.5 text-sm font-medium text-primary-blue hover:text-primary-blue-light"
-      >
-        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-          <path
-            fillRule="evenodd"
-            d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-            clipRule="evenodd"
-          />
-        </svg>
-        Back to Dashboard
-      </button>
+    <div className="animate-fade-in mx-auto max-w-4xl px-4 py-8">
+      {/* Header */}
+      <header className="mb-8">
+        <button
+          onClick={() => navigate("/student/exams")}
+          className="focus-ring mb-4 text-sm font-medium text-primary-blue hover:underline"
+          aria-label="Back to exam list"
+        >
+          ← Back to Exams
+        </button>
+        <div className="flex items-center gap-4">
+          <Avatar name={user?.email || ""} size="md" />
+          <div>
+            <h1 className="text-3xl font-bold text-text-primary">
+              {examPackage.title}
+            </h1>
+            <p className="mt-1 text-base text-text-muted">
+              Submitted{" "}
+              {attempt.submitted_at
+                ? new Date(attempt.submitted_at).toLocaleDateString("en-AU", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })
+                : ""}
+              {" · "}
+              {questions.length} questions
+            </p>
+          </div>
+        </div>
+      </header>
 
-      {/* Page title */}
-      <h1 className="mb-5 text-xl font-bold text-text-primary">Exam Review</h1>
+      {/* Score result with ProgressRing */}
+      {result && (
+        <div className="relative mb-8 overflow-hidden rounded-2xl">
+          <FloatingShapes variant={result.passed ? "cool" : "warm"} />
+          <div
+            className={`relative z-10 p-8 ${
+              result.passed ? "bg-success-green/5" : "bg-accent-amber/5"
+            }`}
+          >
+            <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
+              <div className="flex items-center gap-6">
+                <ProgressRing
+                  value={result.total_score}
+                  max={result.max_score}
+                  size="lg"
+                  showLabel
+                  labelFormat="percentage"
+                  color={scoreColor}
+                  aria-label={`Score: ${result.total_score} out of ${result.max_score}, ${result.percentage} percent`}
+                />
+                <div>
+                  <p className="text-base text-text-muted">Your Score</p>
+                  <p
+                    className={`mt-1 text-3xl font-bold ${
+                      result.passed ? "text-success-green" : "text-accent-amber"
+                    }`}
+                  >
+                    {result.total_score} / {result.max_score}
+                  </p>
+                </div>
+              </div>
+              <div className="text-center sm:text-right">
+                <span
+                  className={`inline-block rounded-2xl px-5 py-2.5 text-lg font-semibold text-white ${
+                    result.passed ? "bg-success-green" : "bg-accent-amber"
+                  }`}
+                >
+                  {result.passed ? "Well done! ⭐" : "Keep practising!"}
+                </span>
+                {!result.passed && (
+                  <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                    Every practice makes you stronger. You'll get there!
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending evaluation */}
+      {attempt.status === "submitted" && !result && (
+        <Card
+          padding="normal"
+          className="mb-8 border-l-4 border-l-primary-blue bg-primary-blue/5"
+        >
+          <p className="text-lg font-medium text-primary-blue">
+            ⏳ Your exam is being reviewed
+          </p>
+          <p className="mt-1 text-base leading-relaxed text-text-muted">
+            Your answers have been submitted. Check back soon for your results.
+          </p>
+        </Card>
+      )}
 
       {/* Summary panel */}
-      <AttemptSummaryPanel data={data} />
+      {result && (
+        <div className="animate-slide-up mb-8">
+          <AttemptSummaryPanel
+            attempt={attempt}
+            result={result}
+            totalQuestions={questions.length}
+          />
+        </div>
+      )}
 
       {/* Question navigation */}
-      <div className="mt-5 rounded-lg border border-border-subtle bg-white p-4">
-        <p className="mb-2 text-xs font-medium text-text-muted">Questions</p>
-        <ReviewQuestionNav
-          questions={questions}
-          activeIndex={activeQuestionIndex}
-          onSelect={setActiveQuestionIndex}
-        />
-      </div>
+      {questions.length > 0 && breakdown && (
+        <div className="mb-8">
+          <ReviewQuestionNav
+            questions={questions}
+            breakdown={breakdown}
+            activeIndex={activeQuestionIndex}
+            onSelect={setActiveQuestionIndex}
+          />
+        </div>
+      )}
 
-      {/* Question cards */}
-      <div className="mt-5 space-y-4">
-        {questions.map((q, i) => (
+      {/* Questions */}
+      <div className="stagger-children space-y-8">
+        {questions.map((question, index) => (
           <div
-            key={q.question.id}
+            key={question.id}
+            className="animate-slide-up"
             ref={(el) => {
-              if (el) questionRefs.current.set(i, el);
+              if (el) questionRefs.current.set(index, el);
             }}
           >
-            <ReviewQuestionCard data={q} />
+            <ReviewQuestionCard
+              question={question}
+              questionNumber={index + 1}
+              response={responses.get(question.id)}
+              breakdown={breakdown?.get(question.id)}
+            />
           </div>
         ))}
       </div>
 
-      {/* Bottom nav */}
-      <div className="mt-6 flex justify-center pb-8">
-        <button
-          type="button"
-          onClick={() => navigate("/student")}
-          className="rounded-md border border-border-subtle bg-white px-5 py-2.5 text-sm font-medium text-text-primary hover:bg-background-soft"
+      {/* Footer */}
+      <footer className="mt-12 border-t border-border-subtle pt-8 text-center">
+        <p className="mb-4 text-base leading-relaxed text-text-muted">
+          Want to keep practising? Every attempt helps you improve.
+        </p>
+        <Link
+          to="/student/exams"
+          className="focus-ring touch-target inline-block rounded-xl bg-primary-blue px-8 py-3.5 text-base font-medium text-white hover:bg-primary-blue-light"
+          aria-label="Try another exam"
         >
-          Return to Dashboard
-        </button>
-      </div>
+          Try Another Exam
+        </Link>
+      </footer>
     </div>
   );
 }

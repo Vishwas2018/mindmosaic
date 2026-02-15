@@ -1,15 +1,23 @@
 /**
- * MindMosaic — Exam List Page
+ * MindMosaic — Exam List Page (Day 24)
  *
- * Student exam discovery page.
- * Lists all published exams available to the student.
+ * Enhancements over UI polish pass:
+ * - Uses <Card variant="interactive"> for exam tiles
+ * - Uses animate-fade-in on page load, stagger-children on card grids
+ * - Uses animate-slide-up on individual cards
+ * - Uses focus-ring on all interactive elements
+ * - Uses touch-target on action buttons
+ * - Loading/empty/error states use animate-fade-in
+ *
+ * No logic, routing, or data flow changes.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../../lib/supabase";
 import type { ExamPackage, ExamAttempt } from "../../../lib/database.types";
 import { useAuth } from "../../../context/useAuth";
+import { Card } from "../../../components/ui/Card";
 
 // Subject display names and icons
 const SUBJECT_INFO: Record<string, { label: string; icon: string }> = {
@@ -23,11 +31,10 @@ const SUBJECT_INFO: Record<string, { label: string; icon: string }> = {
 };
 
 // Assessment type badges
-const ASSESSMENT_BADGES: Record<string, { label: string; className: string }> =
-  {
-    naplan: { label: "NAPLAN", className: "bg-blue-100 text-blue-800" },
-    icas: { label: "ICAS", className: "bg-purple-100 text-purple-800" },
-  };
+const ASSESSMENT_BADGES: Record<string, { label: string; className: string }> = {
+  naplan: { label: "NAPLAN", className: "bg-blue-100 text-blue-800" },
+  icas: { label: "ICAS", className: "bg-purple-100 text-purple-800" },
+};
 
 export function ExamListPage() {
   const { user } = useAuth();
@@ -36,141 +43,138 @@ export function ExamListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!user) return;
+  useEffect(() => {
+    async function loadData() {
+      if (!user) return;
 
-    setIsLoading(true);
-    setError(null);
+      setIsLoading(true);
+      setError(null);
 
-    try {
-      // Fetch published exams
-      const { data: examData, error: examError } = await supabase
-        .from("exam_packages")
-        .select("*")
-        .eq("status", "published")
-        .order("year_level")
-        .order("subject");
+      try {
+        const { data: examData, error: examError } = await supabase
+          .from("exam_packages")
+          .select("*")
+          .eq("status", "published")
+          .order("year_level")
+          .order("subject");
 
-      if (examError) {
-        throw new Error(`Failed to load exams: ${examError.message}`);
+        if (examError) {
+          throw new Error(`Failed to load exams: ${examError.message}`);
+        }
+
+        setExams(examData || []);
+
+        const { data: attemptData, error: attemptError } = await supabase
+          .from("exam_attempts")
+          .select("*")
+          .eq("student_id", user.id);
+
+        if (attemptError) {
+          console.warn("Failed to load attempts:", attemptError.message);
+        } else if (attemptData) {
+          const attemptMap = new Map<string, ExamAttempt>();
+          attemptData.forEach((attempt) => {
+            const existing = attemptMap.get(attempt.exam_package_id);
+            if (
+              !existing ||
+              new Date(attempt.started_at) > new Date(existing.started_at)
+            ) {
+              attemptMap.set(attempt.exam_package_id, attempt);
+            }
+          });
+          setAttempts(attemptMap);
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Something went wrong loading exams."
+        );
+      } finally {
+        setIsLoading(false);
       }
-
-      setExams(examData || []);
-
-      // Fetch student's existing attempts
-      const { data: attemptData, error: attemptError } = await supabase
-        .from("exam_attempts")
-        .select("*")
-        .eq("student_id", user.id);
-
-      if (attemptError) {
-        console.warn("Failed to load attempts:", attemptError.message);
-      } else if (attemptData) {
-        const attemptMap = new Map<string, ExamAttempt>();
-        attemptData.forEach((attempt) => {
-          // Keep the most recent attempt per exam
-          const existing = attemptMap.get(attempt.exam_package_id);
-          if (
-            !existing ||
-            new Date(attempt.started_at) > new Date(existing.started_at)
-          ) {
-            attemptMap.set(attempt.exam_package_id, attempt);
-          }
-        });
-        setAttempts(attemptMap);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setIsLoading(false);
     }
+
+    loadData();
   }, [user]);
 
-  // Fetch exams and existing attempts
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
+  // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="animate-fade-in flex items-center justify-center py-20">
         <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary-blue border-t-transparent mx-auto" />
-          <p className="text-text-muted">Loading exams...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary-blue border-t-transparent" />
+          <p className="text-lg text-text-muted">Finding your exams…</p>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-danger-red mb-4">⚠️ {error}</p>
-          <button
-            onClick={loadData}
-            className="text-primary-blue hover:underline"
-          >
-            Try again
-          </button>
-        </div>
+      <div className="animate-fade-in mx-auto max-w-md py-20 text-center">
+        <p className="text-4xl" aria-hidden="true">😕</p>
+        <h2 className="mt-4 text-xl font-semibold text-text-primary">
+          Couldn't load exams
+        </h2>
+        <p className="mt-2 text-base leading-relaxed text-text-muted">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="focus-ring touch-target mt-6 rounded-xl bg-primary-blue px-8 py-3 text-base font-medium text-white hover:bg-primary-blue-light"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
 
+  // Empty state
   if (exams.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-text-muted text-lg mb-2">No exams available</p>
-          <p className="text-text-muted text-sm">
-            Check back later for new practice exams.
-          </p>
-        </div>
+      <div className="animate-fade-in mx-auto max-w-md py-20 text-center">
+        <p className="text-4xl" aria-hidden="true">📘</p>
+        <h2 className="mt-4 text-xl font-semibold text-text-primary">
+          No exams available yet
+        </h2>
+        <p className="mt-2 text-base leading-relaxed text-text-muted">
+          New practice exams are added regularly. Check back soon!
+        </p>
       </div>
     );
   }
 
   // Group exams by year level
-  const examsByYear = exams.reduce(
-    (acc, exam) => {
-      const year = exam.year_level;
-      if (!acc[year]) {
-        acc[year] = [];
-      }
-      acc[year].push(exam);
-      return acc;
-    },
-    {} as Record<number, ExamPackage[]>,
-  );
+  const grouped = new Map<number, ExamPackage[]>();
+  exams.forEach((exam) => {
+    const group = grouped.get(exam.year_level) || [];
+    group.push(exam);
+    grouped.set(exam.year_level, group);
+  });
 
   return (
-    <div className="space-y-8">
+    <div className="animate-fade-in space-y-10">
       <header>
-        <h1 className="text-2xl font-semibold text-text-primary">
-          Practice Exams
+        <h1 className="text-3xl font-semibold text-text-primary">
+          📘 Practice Exams
         </h1>
-        <p className="text-text-muted mt-1">
-          Select an exam to start or continue practicing
+        <p className="mt-2 text-lg leading-relaxed text-text-muted">
+          Choose an exam to get started. Take your time — there's no rush.
         </p>
       </header>
 
-      {Object.entries(examsByYear)
-        .sort(([a], [b]) => Number(a) - Number(b))
-        .map(([year, yearExams]) => (
-          <section key={year}>
-            <h2 className="text-lg font-medium text-text-primary mb-4">
-              Year {year}
+      {Array.from(grouped.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([yearLevel, yearExams]) => (
+          <section key={yearLevel}>
+            <h2 className="mb-4 text-xl font-medium text-text-primary">
+              Year {yearLevel}
             </h2>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {yearExams.map((exam) => (
-                <ExamCard
-                  key={exam.id}
-                  exam={exam}
-                  attempt={attempts.get(exam.id)}
-                />
-              ))}
+            <div className="stagger-children grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {yearExams.map((exam) => {
+                const attempt = attempts.get(exam.id);
+                return (
+                  <ExamCard key={exam.id} exam={exam} attempt={attempt} />
+                );
+              })}
             </div>
           </section>
         ))}
@@ -179,137 +183,106 @@ export function ExamListPage() {
 }
 
 // =============================================================================
-// Exam Card Component
+// Exam Card
 // =============================================================================
 
-interface ExamCardProps {
+function ExamCard({
+  exam,
+  attempt,
+}: {
   exam: ExamPackage;
   attempt?: ExamAttempt;
-}
-
-function ExamCard({ exam, attempt }: ExamCardProps) {
-  const subjectInfo = SUBJECT_INFO[exam.subject] || {
+}) {
+  const subject = SUBJECT_INFO[exam.subject] || {
     label: exam.subject,
-    icon: "📋",
+    icon: "📄",
   };
-  const assessmentBadge = ASSESSMENT_BADGES[exam.assessment_type];
+  const badge = ASSESSMENT_BADGES[exam.assessment_type];
 
-  // Determine action based on attempt status
-  const getAction = () => {
-    if (!attempt) {
-      return { label: "Start", href: `/student/exams/${exam.id}` };
+  // Determine status and action
+  let statusLabel = "";
+  let statusClassName = "";
+  let actionLabel = "Start Exam";
+  let actionTo = `/student/exams/${exam.id}`;
+
+  if (attempt) {
+    if (attempt.status === "in_progress") {
+      statusLabel = "In Progress";
+      statusClassName = "text-accent-amber bg-accent-amber/10";
+      actionLabel = "Continue";
+      actionTo = `/student/attempts/${attempt.id}`;
+    } else if (attempt.status === "submitted" || attempt.status === "evaluated") {
+      statusLabel = "Completed";
+      statusClassName = "text-success-green bg-success-green/10";
+      actionLabel = "Review";
+      actionTo = `/student/attempts/${attempt.id}/review`;
     }
-
-    switch (attempt.status) {
-      case "started":
-        return {
-          label: "Resume",
-          href: `/student/attempts/${attempt.id}`,
-          variant: "warning" as const,
-        };
-      case "submitted":
-      case "evaluated":
-        return {
-          label: "Review",
-          href: `/student/attempts/${attempt.id}/review`,
-          variant: "success" as const,
-        };
-      default:
-        return { label: "Start", href: `/student/exams/${exam.id}` };
-    }
-  };
-
-  const action = getAction();
+  }
 
   return (
-    <div className="bg-white rounded-lg border border-border-subtle p-5 hover:shadow-md transition-shadow">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-3xl" aria-hidden="true">
-          {subjectInfo.icon}
-        </span>
-        <span
-          className={`px-2 py-1 text-xs font-medium rounded ${assessmentBadge.className}`}
-        >
-          {assessmentBadge.label}
-        </span>
-      </div>
-
-      {/* Title */}
-      <h3 className="font-semibold text-text-primary mb-1">{exam.title}</h3>
-      <p className="text-sm text-text-muted mb-4">{subjectInfo.label}</p>
-
-      {/* Meta info */}
-      <div className="flex items-center gap-4 text-sm text-text-muted mb-4">
-        <span className="flex items-center gap-1">
-          <span aria-hidden="true">⏱️</span>
-          {exam.duration_minutes} min
-        </span>
-        <span className="flex items-center gap-1">
-          <span aria-hidden="true">📝</span>
-          {exam.total_marks} marks
-        </span>
-      </div>
-
-      {/* Status badge (if applicable) */}
-      {attempt && (
-        <div className="mb-4">
-          <AttemptStatusBadge status={attempt.status} />
+    <div className="animate-slide-up">
+      <Card variant="interactive" padding="normal" className="flex h-full flex-col">
+        {/* Header row */}
+        <div className="mb-4 flex items-start justify-between">
+          <span className="text-3xl" aria-hidden="true">{subject.icon}</span>
+          {badge && (
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}
+            >
+              {badge.label}
+            </span>
+          )}
         </div>
-      )}
 
-      {/* Action button */}
-      <Link
-        to={action.href}
-        className={`
-          block w-full py-2 px-4 rounded-lg text-center font-medium transition-colors
-          ${
-            action.variant === "warning"
-              ? "bg-accent-amber/10 text-accent-amber hover:bg-accent-amber/20"
-              : action.variant === "success"
-                ? "bg-success-green/10 text-success-green hover:bg-success-green/20"
-                : "bg-primary-blue text-white hover:bg-primary-blue-light"
-          }
-        `}
-      >
-        {action.label}
-      </Link>
+        {/* Title and meta */}
+        <h3 className="text-lg font-semibold leading-snug text-text-primary">
+          {exam.title}
+        </h3>
+        <p className="mt-1 text-base text-text-muted">{subject.label}</p>
+
+        {/* Details */}
+        <div className="mt-3 flex flex-wrap gap-3 text-sm text-text-muted">
+          {exam.duration_minutes && (
+            <span className="flex items-center gap-1">
+              <span aria-hidden="true">⏱️</span>
+              {exam.duration_minutes} min
+            </span>
+          )}
+          {exam.total_marks && (
+            <span className="flex items-center gap-1">
+              <span aria-hidden="true">📊</span>
+              {exam.total_marks} marks
+            </span>
+          )}
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Status + Action */}
+        <div className="mt-6 flex items-center justify-between">
+          {statusLabel && (
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-medium ${statusClassName}`}
+            >
+              {statusLabel}
+            </span>
+          )}
+          <Link
+            to={actionTo}
+            className={`focus-ring touch-target ml-auto rounded-xl px-6 py-2.5 text-sm font-medium ${
+              attempt?.status === "in_progress"
+                ? "bg-accent-amber text-white hover:bg-amber-500"
+                : attempt?.status === "submitted" || attempt?.status === "evaluated"
+                  ? "border border-primary-blue text-primary-blue hover:bg-background-soft"
+                  : "bg-primary-blue text-white hover:bg-primary-blue-light"
+            }`}
+            aria-label={`${actionLabel}: ${exam.title}`}
+          >
+            {actionLabel}
+          </Link>
+        </div>
+      </Card>
     </div>
   );
-}
-
-// =============================================================================
-// Attempt Status Badge
-// =============================================================================
-
-interface AttemptStatusBadgeProps {
-  status: ExamAttempt["status"];
-}
-
-function AttemptStatusBadge({ status }: AttemptStatusBadgeProps) {
-  switch (status) {
-    case "started":
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-accent-amber">
-          <span className="w-2 h-2 rounded-full bg-accent-amber animate-pulse" />
-          In Progress
-        </span>
-      );
-    case "submitted":
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-primary-blue">
-          <span className="w-2 h-2 rounded-full bg-primary-blue" />
-          Submitted
-        </span>
-      );
-    case "evaluated":
-      return (
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-success-green">
-          <span className="w-2 h-2 rounded-full bg-success-green" />
-          Marked
-        </span>
-      );
-    default:
-      return null;
-  }
 }

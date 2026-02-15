@@ -6,3 +6,4 @@ export { ExamListPage } from "./ExamList";
 export { ExamDetailPage } from "./ExamDetail";
 export { ExamAttemptPage } from "./ExamAttempt";
 export { ExamReviewPage } from "./ExamReview";
+export { StudentDashboard } from "./Dashboard";

@@ -14,8 +14,8 @@
 
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useAttemptMarking } from "../../../features/marking/hooks/useAttemptMarking";
-import { MarkingQuestionCard } from "../../../features/exam/components/MarkingQuestionCard";
+import { useAttemptMarking } from "../../../../features/marking/hooks/useAttemptMarking";
+import { MarkingQuestionCard } from "../../../../features/exam/components/MarkingQuestionCard";
 
 export function AttemptMarkingPage() {
   const { attemptId } = useParams<{ attemptId: string }>();

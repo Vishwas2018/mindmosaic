@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import {
   useMarkingQueue,
   type MarkingQueueAttempt,
-} from "../../../features/marking/hooks/useMarkingQueue";
+} from "../../../../features/marking/hooks/useMarkingQueue";
 
 type StatusFilter = "all" | "submitted" | "evaluated";
 

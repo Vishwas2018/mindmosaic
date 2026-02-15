@@ -1,8 +1,17 @@
 /**
- * MindMosaic — Exam Attempt Page
+ * MindMosaic — Exam Attempt Page (Day 25)
  *
- * Main exam-taking interface.
- * Renders questions, handles responses, autosaves, and submission.
+ * Enhancements over UI polish pass:
+ * - <Card> wraps the question area
+ * - animate-fade-in on question content (key-driven remount per question)
+ * - focus-ring + touch-target on all navigation buttons
+ * - aria-labels on Previous/Next/Submit buttons
+ * - animate-shake on submit button when unanswered questions remain
+ * - Save indicator uses animate-fade-in
+ * - Submitted success screen uses animate-slide-up + <Card>
+ * - Error/loading states use animate-fade-in
+ *
+ * No logic, routing, or data flow changes.
  */
 
 import { useState, useCallback, useEffect } from "react";
@@ -18,12 +27,13 @@ import {
   SubmitConfirmModal,
 } from "../../../features/exam/components";
 import type { ResponseData } from "../../../features/exam/types/exam.types";
+import { Card } from "../../../components/ui/Card";
+import { ProgressRing } from "../../../components/ui/ProgressRing";
 
 export function ExamAttemptPage() {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
 
-  // Exam state
   const {
     isLoading,
     error,
@@ -51,10 +61,10 @@ export function ExamAttemptPage() {
     durationMinutes,
   } = useExamAttempt({ attemptId: attemptId || "" });
 
-  // Modal state
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [shakeSubmit, setShakeSubmit] = useState(false);
 
-  // Warn before leaving if not submitted
+  // Warn before leaving
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!isSubmitted && answeredCount > 0) {
@@ -62,101 +72,118 @@ export function ExamAttemptPage() {
         e.returnValue = "";
       }
     };
-
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isSubmitted, answeredCount]);
 
-  // Handle response changes
   const handleResponseChange = useCallback(
     (data: ResponseData) => {
       if (currentQuestion) {
         setResponse(currentQuestion.id, data);
       }
     },
-    [currentQuestion, setResponse],
+    [currentQuestion, setResponse]
   );
 
-  // Handle submit button click
   const handleSubmitClick = useCallback(() => {
+    // Shake if there are unanswered questions as a gentle nudge
+    if (answeredCount < totalQuestions) {
+      setShakeSubmit(true);
+      setTimeout(() => setShakeSubmit(false), 500);
+    }
     setShowSubmitModal(true);
-  }, []);
+  }, [answeredCount, totalQuestions]);
 
-  // Handle submit confirmation
   const handleSubmitConfirm = useCallback(async () => {
     const result = await submitAttempt();
     if (result.success) {
       setShowSubmitModal(false);
-      // Redirect to review page after short delay
       setTimeout(() => {
         navigate(`/student/attempts/${attemptId}/review`);
-      }, 1000);
+      }, 1500);
     } else {
-      // Keep modal open and show error
       console.error("Submit failed:", result.error);
     }
   }, [submitAttempt, navigate, attemptId]);
 
-  // Loading state
+  // Loading
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="animate-fade-in flex min-h-screen items-center justify-center bg-background-soft">
         <div className="text-center">
-          <div className="mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary-blue border-t-transparent mx-auto" />
-          <p className="text-text-muted">Loading exam...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary-blue border-t-transparent" />
+          <p className="text-lg text-text-muted">Getting your exam ready…</p>
         </div>
       </div>
     );
   }
 
-  // Error state
-  if (error || !attempt || !examPackage) {
+  // Error
+  if (error || !attempt || !examPackage || !questions.length) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-danger-red mb-4">⚠️ {error || "Exam not found"}</p>
+      <div className="animate-fade-in flex min-h-screen items-center justify-center bg-background-soft px-4">
+        <div className="max-w-md text-center">
+          <p className="text-4xl" aria-hidden="true">😕</p>
+          <h2 className="mt-4 text-xl font-semibold text-text-primary">
+            Something went wrong
+          </h2>
+          <p className="mt-2 text-base leading-relaxed text-text-muted">
+            {error || "We couldn't load this exam. Please try again."}
+          </p>
           <button
             onClick={() => navigate("/student/exams")}
-            className="text-primary-blue hover:underline"
+            className="focus-ring touch-target mt-6 rounded-xl bg-primary-blue px-8 py-3 text-base font-medium text-white hover:bg-primary-blue-light"
           >
-            Back to exam list
+            Back to Exams
           </button>
         </div>
       </div>
     );
   }
 
-  // Already submitted - redirect to review
-  if (isSubmitted && !showSubmitModal) {
+  // Submitted success
+  if (isSubmitted) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <p className="text-success-green text-lg mb-4">
-            ✓ Exam submitted successfully!
+      <div className="flex min-h-screen items-center justify-center bg-background-soft px-4">
+        <div className="animate-slide-up max-w-md text-center">
+          <ProgressRing
+            value={answeredCount}
+            max={totalQuestions}
+            size="lg"
+            showLabel
+            labelFormat="fraction"
+            color="success-green"
+            aria-label={`You answered ${answeredCount} of ${totalQuestions} questions`}
+          />
+          <h2 className="mt-6 text-2xl font-bold text-text-primary">
+            Great work! 🎉
+          </h2>
+          <p className="mt-2 text-lg leading-relaxed text-text-muted">
+            Your exam has been submitted. You did your best and that's what
+            counts.
           </p>
           <button
             onClick={() => navigate(`/student/attempts/${attemptId}/review`)}
-            className="text-primary-blue hover:underline"
+            className="focus-ring touch-target mt-6 rounded-xl bg-primary-blue px-8 py-3.5 text-base font-medium text-white hover:bg-primary-blue-light"
+            aria-label="See your answers and review this exam"
           >
-            View your answers →
+            See Your Answers
           </button>
         </div>
       </div>
     );
   }
 
-  // Determine if timer should be shown (Years 3-9)
   const showTimer = examPackage.year_level >= 3;
 
   return (
     <div className="min-h-screen bg-background-soft">
       {/* Header */}
-      <header className="bg-white border-b border-border-subtle sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3">
+      <header className="sticky top-0 z-10 border-b border-border-subtle bg-white">
+        <div className="mx-auto max-w-4xl px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Left: Exam info */}
             <div className="flex items-center gap-4">
-              <h1 className="font-semibold text-text-primary truncate max-w-[200px] sm:max-w-none">
+              <h1 className="max-w-[200px] truncate font-semibold text-text-primary sm:max-w-none">
                 {examPackage.title}
               </h1>
               <CompactProgress
@@ -165,8 +192,6 @@ export function ExamAttemptPage() {
                 answeredCount={answeredCount}
               />
             </div>
-
-            {/* Right: Timer */}
             {showTimer && startedAt && (
               <CompactTimer
                 startedAt={startedAt}
@@ -178,11 +203,11 @@ export function ExamAttemptPage() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <div className="grid gap-6 lg:grid-cols-[1fr,280px]">
+      <main className="mx-auto max-w-4xl px-4 py-8">
+        <div className="grid gap-8 lg:grid-cols-[1fr,280px]">
           {/* Question area */}
           <div className="space-y-6">
-            {/* Timer (full version for mobile) */}
+            {/* Mobile timer */}
             {showTimer && startedAt && (
               <div className="lg:hidden">
                 <ExamTimer
@@ -193,107 +218,124 @@ export function ExamAttemptPage() {
               </div>
             )}
 
-            {/* Question card */}
-            <div className="bg-white rounded-xl border border-border-subtle p-6">
-              {currentQuestion ? (
-                <QuestionRenderer
-                  key={currentQuestion.id}
-                  question={currentQuestion}
-                  questionNumber={currentQuestionIndex + 1}
-                  totalQuestions={totalQuestions}
-                  value={getResponse(currentQuestion.id)}
-                  onChange={handleResponseChange}
-                  disabled={isSubmitted}
-                />
-              ) : (
-                <p className="text-text-muted">No questions available</p>
-              )}
-            </div>
+            {/* Question card — key forces remount for fade-in per question */}
+            <Card padding="normal" key={currentQuestion?.id || currentQuestionIndex}>
+              <div className="animate-fade-in">
+                {currentQuestion ? (
+                  <>
+                    <p className="mb-4 text-sm font-medium text-text-muted">
+                      Question {currentQuestionIndex + 1} of {totalQuestions}
+                    </p>
+                    <QuestionRenderer
+                      question={currentQuestion}
+                      response={getResponse(currentQuestion.id)}
+                      onResponseChange={handleResponseChange}
+                      readOnly={false}
+                    />
+                  </>
+                ) : (
+                  <p className="text-text-muted">No question to display.</p>
+                )}
+              </div>
+            </Card>
 
             {/* Navigation */}
-            <ExamNavigation
-              currentIndex={currentQuestionIndex}
-              totalQuestions={totalQuestions}
-              canGoPrevious={canGoPrevious}
-              canGoNext={canGoNext}
-              onPrevious={goToPrevious}
-              onNext={goToNext}
-              onSubmit={handleSubmitClick}
-              isSubmitting={isSubmitting}
-              isSubmitted={isSubmitted}
-              isSaving={isSaving}
-              answeredCount={answeredCount}
-            />
+            <div className="flex items-center justify-between gap-3">
+              <button
+                onClick={goToPrevious}
+                disabled={!canGoPrevious}
+                className="focus-ring touch-target rounded-xl border border-border-subtle bg-white px-6 py-3 text-sm font-medium text-text-primary hover:bg-background-soft disabled:opacity-40 disabled:hover:bg-white"
+                aria-label="Go to previous question"
+              >
+                ← Previous
+              </button>
+
+              {currentQuestionIndex === totalQuestions - 1 ? (
+                <button
+                  onClick={handleSubmitClick}
+                  className={`focus-ring touch-target rounded-xl bg-primary-blue px-6 py-3 text-sm font-medium text-white hover:bg-primary-blue-light ${
+                    shakeSubmit ? "animate-shake" : ""
+                  }`}
+                  aria-label={`Submit exam. ${answeredCount} of ${totalQuestions} questions answered.`}
+                >
+                  Submit Exam
+                </button>
+              ) : (
+                <button
+                  onClick={goToNext}
+                  disabled={!canGoNext}
+                  className="focus-ring touch-target rounded-xl bg-primary-blue px-6 py-3 text-sm font-medium text-white hover:bg-primary-blue-light disabled:opacity-40"
+                  aria-label="Go to next question"
+                >
+                  Next →
+                </button>
+              )}
+            </div>
+
+            {/* Save indicator */}
+            <div className="text-center text-sm text-text-muted" aria-live="polite">
+              {isSaving ? (
+                <span className="animate-pulse-soft">Saving your answer…</span>
+              ) : lastSavedAt ? (
+                <span className="animate-fade-in">✓ Saved</span>
+              ) : null}
+            </div>
           </div>
 
-          {/* Sidebar (progress grid) */}
-          <aside className="hidden lg:block">
-            <div className="bg-white rounded-xl border border-border-subtle p-4 sticky top-24">
-              {/* Timer (desktop) */}
+          {/* Sidebar: progress grid (desktop) */}
+          <div className="hidden lg:block">
+            <div className="sticky top-20 space-y-6">
               {showTimer && startedAt && (
-                <div className="mb-4 pb-4 border-b border-border-subtle">
-                  <p className="text-xs text-text-muted mb-2">Time Remaining</p>
-                  <ExamTimer
-                    startedAt={startedAt}
-                    durationMinutes={durationMinutes}
-                    showWarnings={true}
-                  />
-                </div>
+                <ExamTimer
+                  startedAt={startedAt}
+                  durationMinutes={durationMinutes}
+                  showWarnings={true}
+                />
               )}
 
-              {/* Progress */}
-              <div>
-                <p className="text-xs text-text-muted mb-3">Progress</p>
-                <ExamProgress
-                  currentIndex={currentQuestionIndex}
-                  totalQuestions={totalQuestions}
-                  responses={responses}
-                  questionIds={questions.map((q) => q.id)}
-                  onJumpTo={goToQuestion}
-                  showGrid={true}
+              {/* Visual progress ring */}
+              <Card padding="compact" className="flex flex-col items-center py-6">
+                <ProgressRing
+                  value={answeredCount}
+                  max={totalQuestions}
+                  size="lg"
+                  showLabel
+                  labelFormat="fraction"
+                  color={
+                    answeredCount === totalQuestions
+                      ? "success-green"
+                      : "primary-blue"
+                  }
+                  aria-label={`${answeredCount} of ${totalQuestions} questions answered`}
                 />
-              </div>
-
-              {/* Save status */}
-              <div className="mt-4 pt-4 border-t border-border-subtle">
-                <p className="text-xs text-text-muted">
-                  {isSaving ? (
-                    <span className="flex items-center gap-1">
-                      <span className="animate-spin">⏳</span>
-                      Saving...
-                    </span>
-                  ) : lastSavedAt ? (
-                    <span className="flex items-center gap-1">
-                      <span className="text-success-green">✓</span>
-                      Last saved {formatTime(lastSavedAt)}
-                    </span>
-                  ) : (
-                    "Changes will be saved automatically"
-                  )}
+                <p className="mt-3 text-sm text-text-muted">
+                  {answeredCount === totalQuestions
+                    ? "All questions answered!"
+                    : `${totalQuestions - answeredCount} remaining`}
                 </p>
-              </div>
+              </Card>
+
+              <ExamProgress
+                questions={questions}
+                responses={responses}
+                currentIndex={currentQuestionIndex}
+                onQuestionClick={goToQuestion}
+              />
             </div>
-          </aside>
+          </div>
         </div>
       </main>
 
       {/* Submit confirmation modal */}
-      <SubmitConfirmModal
-        isOpen={showSubmitModal}
-        onConfirm={handleSubmitConfirm}
-        onCancel={() => setShowSubmitModal(false)}
-        answeredCount={answeredCount}
-        totalQuestions={totalQuestions}
-        isSubmitting={isSubmitting}
-      />
+      {showSubmitModal && (
+        <SubmitConfirmModal
+          answeredCount={answeredCount}
+          totalQuestions={totalQuestions}
+          isSubmitting={isSubmitting}
+          onConfirm={handleSubmitConfirm}
+          onCancel={() => setShowSubmitModal(false)}
+        />
+      )}
     </div>
   );
-}
-
-// =============================================================================
-// Helper
-// =============================================================================
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }

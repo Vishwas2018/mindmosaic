@@ -164,6 +164,12 @@ export function LoginPage() {
             <Link to="/signup" className="text-primary-blue hover:underline">
               Sign up
             </Link>
+            <Link
+              to="/auth/forgot-password"
+              className="text-sm text-primary-blue hover:underline"
+            >
+              Forgot password?
+            </Link>
           </div>
 
           {/* Test Accounts Info */}
