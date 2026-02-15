@@ -9,23 +9,23 @@
 
 @theme {
   /* Primary Brand Colors */
-  --color-primary-blue: #1D4ED8;
-  --color-primary-blue-light: #2563EB;
-  
+  --color-primary-blue: #1d4ed8;
+  --color-primary-blue-light: #2563eb;
+
   /* Background Colors */
-  --color-background-soft: #EEF5FF;
-  
+  --color-background-soft: #eef5ff;
+
   /* Text Colors */
-  --color-text-primary: #0F172A;
+  --color-text-primary: #0f172a;
   --color-text-muted: #475569;
-  
+
   /* Border Colors */
-  --color-border-subtle: #D8E2F3;
-  
+  --color-border-subtle: #d8e2f3;
+
   /* Status Colors */
-  --color-accent-amber: #F59E0B;
-  --color-success-green: #16A34A;
-  --color-danger-red: #DC2626;
+  --color-accent-amber: #f59e0b;
+  --color-success-green: #16a34a;
+  --color-danger-red: #dc2626;
 }
 
 /* =============================================================================
@@ -33,7 +33,8 @@
    ============================================================================= */
 
 :root {
-  --brand-font: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --brand-font:
+    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 body {
@@ -51,3 +52,10 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* =============================================================================
+   Day 23+ Utility Layers
+   ============================================================================= */
+
+@import "./styles/animations.css";
+@import "./styles/layout.css";

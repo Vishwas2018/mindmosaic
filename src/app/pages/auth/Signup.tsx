@@ -21,11 +21,17 @@ export function SignupPage() {
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Redirect if already authenticated
-  if (isAuthenticated && !authLoading) {
-    navigate("/student", { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated && !authLoading) {
+      navigate("/student", { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  useEffect(() => {
+    if (success) {
+      navigate("/auth/verify-email");
+    }
+  }, [success, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,12 +81,9 @@ export function SignupPage() {
     );
   }
 
-  // Redirect after success
-  useEffect(() => {
-    if (success) {
-      navigate("/auth/verify-email");
-    }
-  }, [success, navigate]);
+  if (isAuthenticated && !authLoading) {
+    return null;
+  }
 
   // Success state
   if (success) {
@@ -210,7 +213,10 @@ export function SignupPage() {
           {/* Sign In Link */}
           <div className="mt-6 text-center text-sm text-text-muted">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary-blue hover:underline">
+            <Link
+              to="/auth/login"
+              className="text-primary-blue hover:underline"
+            >
               Sign in
             </Link>
           </div>

@@ -266,7 +266,7 @@ export function useExamReview(
       // BUG-1 FIX: Normalize breakdown entries to canonical field names
       const breakdownMap = new Map<string, QuestionBreakdown>();
       if (result?.breakdown && Array.isArray(result.breakdown)) {
-        for (const rawEntry of result.breakdown as RawBreakdownEntry[]) {
+        for (const rawEntry of result.breakdown as unknown as RawBreakdownEntry[]) {
           breakdownMap.set(
             rawEntry.question_id,
             normalizeBreakdownEntry(rawEntry),
@@ -306,7 +306,7 @@ export function useExamReview(
             percentage: result.percentage,
             passed: result.passed,
             breakdown: Array.isArray(result.breakdown)
-              ? (result.breakdown as RawBreakdownEntry[]).map(
+              ? (result.breakdown as unknown as RawBreakdownEntry[]).map(
                   normalizeBreakdownEntry,
                 )
               : [],

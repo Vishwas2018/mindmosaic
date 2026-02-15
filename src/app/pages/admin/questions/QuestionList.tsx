@@ -7,6 +7,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuestions } from "../../../../features/questions/hooks/useQuestions";
+import type {
+  QuestionWithAnswer,
+  PromptBlock,
+} from "../../../../features/questions/types/question-bank.types";
 
 type FilterDifficulty = "all" | "easy" | "medium" | "hard";
 type FilterType = "all" | "mcq" | "multi" | "short" | "extended" | "numeric";
@@ -175,14 +179,14 @@ export function QuestionListPage() {
 // ── Question Card ──
 
 interface QuestionCardProps {
-  question: any;
+  question: QuestionWithAnswer;
   onEdit: () => void;
 }
 
 function QuestionCard({ question, onEdit }: QuestionCardProps) {
   // Extract first text block for preview
   const firstText = question.prompt_blocks.find(
-    (b: any) => b.type === "text",
+    (b: PromptBlock) => b.type === "text",
   )?.content;
 
   return (

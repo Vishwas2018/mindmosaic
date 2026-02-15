@@ -23,7 +23,6 @@ import {
   CompactTimer,
   ExamProgress,
   CompactProgress,
-  ExamNavigation,
   SubmitConfirmModal,
 } from "../../../features/exam/components";
 import type { ResponseData } from "../../../features/exam/types/exam.types";
@@ -99,7 +98,7 @@ export function ExamAttemptPage() {
     if (result.success) {
       setShowSubmitModal(false);
       setTimeout(() => {
-        navigate(`/student/attempts/${attemptId}/review`);
+        navigate(`/student/review/${attemptId}`);
       }, 1500);
     } else {
       console.error("Submit failed:", result.error);
@@ -163,7 +162,7 @@ export function ExamAttemptPage() {
             counts.
           </p>
           <button
-            onClick={() => navigate(`/student/attempts/${attemptId}/review`)}
+            onClick={() => navigate(`/student/review/${attemptId}`)}
             className="focus-ring touch-target mt-6 rounded-xl bg-primary-blue px-8 py-3.5 text-base font-medium text-white hover:bg-primary-blue-light"
             aria-label="See your answers and review this exam"
           >
@@ -228,9 +227,11 @@ export function ExamAttemptPage() {
                     </p>
                     <QuestionRenderer
                       question={currentQuestion}
-                      response={getResponse(currentQuestion.id)}
-                      onResponseChange={handleResponseChange}
-                      readOnly={false}
+                      questionNumber={currentQuestionIndex + 1}
+                      totalQuestions={totalQuestions}
+                      value={getResponse(currentQuestion.id)}
+                      onChange={handleResponseChange}
+                      disabled={false}
                     />
                   </>
                 ) : (
@@ -316,10 +317,11 @@ export function ExamAttemptPage() {
               </Card>
 
               <ExamProgress
-                questions={questions}
+                totalQuestions={totalQuestions}
                 responses={responses}
                 currentIndex={currentQuestionIndex}
-                onQuestionClick={goToQuestion}
+                questionIds={questions.map((q) => q.id)}
+                onJumpTo={goToQuestion}
               />
             </div>
           </div>
@@ -327,15 +329,14 @@ export function ExamAttemptPage() {
       </main>
 
       {/* Submit confirmation modal */}
-      {showSubmitModal && (
-        <SubmitConfirmModal
-          answeredCount={answeredCount}
-          totalQuestions={totalQuestions}
-          isSubmitting={isSubmitting}
-          onConfirm={handleSubmitConfirm}
-          onCancel={() => setShowSubmitModal(false)}
-        />
-      )}
+      <SubmitConfirmModal
+        isOpen={showSubmitModal}
+        answeredCount={answeredCount}
+        totalQuestions={totalQuestions}
+        isSubmitting={isSubmitting}
+        onConfirm={handleSubmitConfirm}
+        onCancel={() => setShowSubmitModal(false)}
+      />
     </div>
   );
 }

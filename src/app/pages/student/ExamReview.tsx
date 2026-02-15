@@ -1,20 +1,3 @@
-/**
- * MindMosaic — Exam Review Page (Day 25)
- *
- * Enhancements over UI polish pass:
- * - <ProgressRing> for score display (replaces raw text)
- * - <Avatar> in header alongside exam title
- * - <FloatingShapes> behind score banner
- * - <Card variant="highlighted"> for score result area
- * - Question list uses stagger-children + animate-slide-up
- * - focus-ring + touch-target on all buttons
- * - aria-labels on Back/Continue/Try Another buttons
- * - animate-fade-in on page load and state screens
- * - Color-coded score ring (green=passed, amber=keep trying)
- *
- * No logic, routing, or data flow changes.
- */
-
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useExamReview } from "../../../features/exam/hooks/useExamReview";
@@ -34,18 +17,8 @@ export function ExamReviewPage() {
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const questionRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  const {
-    isLoading,
-    error,
-    attempt,
-    examPackage,
-    questions,
-    responses,
-    result,
-    breakdown,
-  } = useExamReview(attemptId || "");
+  const { status, data, error } = useExamReview(attemptId);
 
-  // Scroll to question when nav clicked
   useEffect(() => {
     const el = questionRefs.current.get(activeQuestionIndex);
     if (el) {
@@ -53,31 +26,26 @@ export function ExamReviewPage() {
     }
   }, [activeQuestionIndex]);
 
-  // Loading
-  if (isLoading) {
+  if (status === "loading") {
     return (
       <div className="animate-fade-in flex items-center justify-center py-20">
         <div className="text-center">
           <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-primary-blue border-t-transparent" />
-          <p className="text-lg text-text-muted">Loading your results…</p>
+          <p className="text-lg text-text-muted">Loading your results...</p>
         </div>
       </div>
     );
   }
 
-  // Not found
-  if (!attempt || !examPackage) {
+  if (status === "not-found" || status === "error") {
     return (
       <div className="animate-fade-in mx-auto max-w-md py-20 text-center">
-        <p className="text-4xl" aria-hidden="true">
-          🔍
-        </p>
         <h2 className="mt-4 text-xl font-semibold text-text-primary">
           Review not found
         </h2>
         <p className="mt-2 text-base leading-relaxed text-text-muted">
           {error ||
-            "We couldn't find this exam review. It may not exist or you might not have access."}
+            "We could not find this exam review. It may not exist or you might not have access."}
         </p>
         <button
           onClick={() => navigate("/student/exams")}
@@ -90,13 +58,9 @@ export function ExamReviewPage() {
     );
   }
 
-  // Not submitted yet
-  if (attempt.status === "in_progress") {
+  if (status === "not-submitted") {
     return (
       <div className="animate-fade-in mx-auto max-w-md py-20 text-center">
-        <p className="text-4xl" aria-hidden="true">
-          ⏳
-        </p>
         <h2 className="mt-4 text-xl font-semibold text-text-primary">
           Exam still in progress
         </h2>
@@ -104,7 +68,7 @@ export function ExamReviewPage() {
           You need to submit this exam before you can review it.
         </p>
         <button
-          onClick={() => navigate(`/student/attempts/${attemptId}`)}
+          onClick={() => navigate(`/student/attempt/${attemptId}`)}
           className="focus-ring touch-target mt-6 rounded-xl bg-primary-blue px-8 py-3 text-base font-medium text-white hover:bg-primary-blue-light"
           aria-label="Continue your exam"
         >
@@ -114,18 +78,28 @@ export function ExamReviewPage() {
     );
   }
 
+  if (!data) {
+    return (
+      <div className="animate-fade-in mx-auto max-w-md py-20 text-center">
+        <p className="text-base leading-relaxed text-text-muted">
+          Could not load review data.
+        </p>
+      </div>
+    );
+  }
+
+  const { attempt, examPackage, questions, result } = data;
   const scoreColor = result?.passed ? "success-green" : "accent-amber";
 
   return (
     <div className="animate-fade-in mx-auto max-w-4xl px-4 py-8">
-      {/* Header */}
       <header className="mb-8">
         <button
           onClick={() => navigate("/student/exams")}
           className="focus-ring mb-4 text-sm font-medium text-primary-blue hover:underline"
           aria-label="Back to exam list"
         >
-          ← Back to Exams
+          Back to Exams
         </button>
         <div className="flex items-center gap-4">
           <Avatar name={user?.email || ""} size="md" />
@@ -149,7 +123,6 @@ export function ExamReviewPage() {
         </div>
       </header>
 
-      {/* Score result with ProgressRing */}
       {result && (
         <div className="relative mb-8 overflow-hidden rounded-2xl">
           <FloatingShapes variant={result.passed ? "cool" : "warm"} />
@@ -186,11 +159,11 @@ export function ExamReviewPage() {
                     result.passed ? "bg-success-green" : "bg-accent-amber"
                   }`}
                 >
-                  {result.passed ? "Well done! ⭐" : "Keep practising!"}
+                  {result.passed ? "Well done!" : "Keep practicing!"}
                 </span>
                 {!result.passed && (
                   <p className="mt-2 text-sm leading-relaxed text-text-muted">
-                    Every practice makes you stronger. You'll get there!
+                    Every practice makes you stronger. You will get there.
                   </p>
                 )}
               </div>
@@ -199,14 +172,13 @@ export function ExamReviewPage() {
         </div>
       )}
 
-      {/* Pending evaluation */}
       {attempt.status === "submitted" && !result && (
         <Card
           padding="normal"
           className="mb-8 border-l-4 border-l-primary-blue bg-primary-blue/5"
         >
           <p className="text-lg font-medium text-primary-blue">
-            ⏳ Your exam is being reviewed
+            Your exam is being reviewed
           </p>
           <p className="mt-1 text-base leading-relaxed text-text-muted">
             Your answers have been submitted. Check back soon for your results.
@@ -214,53 +186,39 @@ export function ExamReviewPage() {
         </Card>
       )}
 
-      {/* Summary panel */}
       {result && (
         <div className="animate-slide-up mb-8">
-          <AttemptSummaryPanel
-            attempt={attempt}
-            result={result}
-            totalQuestions={questions.length}
-          />
+          <AttemptSummaryPanel data={data} />
         </div>
       )}
 
-      {/* Question navigation */}
-      {questions.length > 0 && breakdown && (
+      {questions.length > 0 && (
         <div className="mb-8">
           <ReviewQuestionNav
             questions={questions}
-            breakdown={breakdown}
             activeIndex={activeQuestionIndex}
             onSelect={setActiveQuestionIndex}
           />
         </div>
       )}
 
-      {/* Questions */}
       <div className="stagger-children space-y-8">
-        {questions.map((question, index) => (
+        {questions.map((questionData, index) => (
           <div
-            key={question.id}
+            key={questionData.question.id}
             className="animate-slide-up"
             ref={(el) => {
               if (el) questionRefs.current.set(index, el);
             }}
           >
-            <ReviewQuestionCard
-              question={question}
-              questionNumber={index + 1}
-              response={responses.get(question.id)}
-              breakdown={breakdown?.get(question.id)}
-            />
+            <ReviewQuestionCard data={questionData} />
           </div>
         ))}
       </div>
 
-      {/* Footer */}
       <footer className="mt-12 border-t border-border-subtle pt-8 text-center">
         <p className="mb-4 text-base leading-relaxed text-text-muted">
-          Want to keep practising? Every attempt helps you improve.
+          Want to keep practicing? Every attempt helps you improve.
         </p>
         <Link
           to="/student/exams"

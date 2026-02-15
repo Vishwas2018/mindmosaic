@@ -55,7 +55,7 @@ export function RoleGuard({ children, allowed, redirectTo }: RoleGuardProps) {
   // If not authenticated, AuthGuard should handle this
   // But add a safety check
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
   // Check if user's role is in allowed list

@@ -7,10 +7,10 @@
 import { useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import type {
-  QuestionWithAnswer,
   QuestionOption,
   CorrectAnswer,
 } from "../types/question-bank.types";
+import type { Database, Json } from "../../../lib/database.types";
 
 export interface SaveQuestionInput {
   id?: string; // If editing existing
@@ -49,7 +49,6 @@ export function useQuestionEditor(): UseQuestionEditorReturn {
     setSaveError(null);
 
     try {
-      const isUpdate = !!input.id;
       const questionId = input.id || crypto.randomUUID();
 
       // 1. Upsert question
@@ -60,7 +59,7 @@ export function useQuestionEditor(): UseQuestionEditorReturn {
         difficulty: input.difficulty,
         response_type: input.response_type,
         marks: input.marks,
-        prompt_blocks: input.prompt_blocks,
+        prompt_blocks: input.prompt_blocks as Json,
         media_references: null,
         tags: input.tags,
         hint: input.hint,
@@ -88,7 +87,7 @@ export function useQuestionEditor(): UseQuestionEditorReturn {
             question_id: questionId,
             option_id: opt.option_id,
             content: opt.content,
-            media_reference: opt.media_reference,
+            media_reference: (opt.media_reference ?? null) as Json,
           }));
 
           const { error: insOptErr } = await supabase
@@ -100,7 +99,7 @@ export function useQuestionEditor(): UseQuestionEditorReturn {
       }
 
       // 3. Upsert correct answer
-      const answerData = {
+      const answerData: Database["public"]["Tables"]["exam_correct_answers"]["Insert"] = {
         ...input.correctAnswer,
         question_id: questionId,
       };

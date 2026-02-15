@@ -190,9 +190,9 @@ function PromptBlocks({ blocks }: PromptBlocksProps) {
                 className="border-l-3 border-primary-blue pl-3 text-sm italic text-text-muted"
               >
                 {block.content as string}
-                {block.attribution && (
+                {typeof block.attribution === "string" && (
                   <span className="mt-1 block text-xs not-italic">
-                    — {block.attribution as string}
+                    - {block.attribution}
                   </span>
                 )}
               </blockquote>
@@ -542,3 +542,4 @@ function formatResponseType(type: string): string {
   };
   return labels[type] ?? type;
 }
+

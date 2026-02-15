@@ -13,7 +13,7 @@ export function ParentLayout() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   return (
@@ -24,8 +24,12 @@ export function ParentLayout() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🧠</span>
-              <span className="font-semibold text-text-primary">MindMosaic</span>
+              <span className="text-2xl" aria-hidden="true">
+                🧠
+              </span>
+              <span className="font-semibold text-text-primary">
+                MindMosaic
+              </span>
               <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
                 Parent
               </span>

@@ -5,7 +5,7 @@
  * If missing, returns clear error message.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import { useAuth } from "../../../context/AuthContext";
 import type { ChildProfile } from "../types/parent-dashboard.types";
@@ -25,7 +25,7 @@ export function useChildProfile(): UseChildProfileReturn {
   const [child, setChild] = useState<ChildProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) {
       setStatus("error");
       setError("Not authenticated");
@@ -68,11 +68,11 @@ export function useChildProfile(): UseChildProfileReturn {
       setError(message);
       setStatus("error");
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    load();
-  }, [user?.id]);
+    void load();
+  }, [load]);
 
   return {
     status,

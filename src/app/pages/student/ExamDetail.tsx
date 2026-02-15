@@ -20,8 +20,12 @@ import { callEdgeFunction } from "../../../lib/supabase";
 import type { ExamPackage, ExamAttempt } from "../../../lib/database.types";
 import { useAuth } from "../../../context/useAuth";
 
+interface StartAttemptFunctionResponse {
+  attempt_id: string;
+}
+
 export function ExamDetailPage() {
-  const { packageId } = useParams<{ packageId: string }>();
+  const { examId } = useParams<{ examId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -35,7 +39,7 @@ export function ExamDetailPage() {
 
   useEffect(() => {
     async function loadData() {
-      if (!user || !packageId) return;
+      if (!user || !examId) return;
 
       setIsLoading(true);
       setError(null);
@@ -45,30 +49,33 @@ export function ExamDetailPage() {
         const { data: pkg, error: pkgError } = await supabase
           .from("exam_packages")
           .select("*")
-          .eq("id", packageId)
+          .eq("id", examId)
           .eq("status", "published")
           .single();
 
-        if (pkgError || !pkg) {
+        const packageRow = (pkg as ExamPackage | null) ?? null;
+
+        if (pkgError || !packageRow) {
           setError("This exam isn't available right now.");
           setIsLoading(false);
           return;
         }
 
-        setExamPackage(pkg);
+        setExamPackage(packageRow);
 
         // Check for existing in-progress attempt
         const { data: attemptData } = await supabase
           .from("exam_attempts")
           .select("*")
-          .eq("exam_package_id", packageId)
+          .eq("exam_package_id", examId)
           .eq("student_id", user.id)
-          .eq("status", "in_progress")
+          .eq("status", "started")
           .order("started_at", { ascending: false })
           .limit(1);
 
-        if (attemptData && attemptData.length > 0) {
-          setExistingAttempt(attemptData[0]);
+        const attemptRows = ((attemptData as ExamAttempt[] | null) ?? []);
+        if (attemptRows.length > 0) {
+          setExistingAttempt(attemptRows[0]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -78,26 +85,26 @@ export function ExamDetailPage() {
     }
 
     loadData();
-  }, [user, packageId]);
+  }, [user, examId]);
 
   const handleStart = async () => {
-    if (!packageId) return;
+    if (!examId) return;
 
     setIsStarting(true);
     setError(null);
 
     try {
-      const { data, error: startError } = await callEdgeFunction(
-        "start-attempt",
-        { exam_package_id: packageId },
-      );
+      const { data, error: startError } =
+        await callEdgeFunction<StartAttemptFunctionResponse>("start-attempt", {
+          exam_package_id: examId,
+        });
 
       if (startError || !data?.attempt_id) {
         setError("Couldn't start the exam. Please try again.");
         return;
       }
 
-      navigate(`/student/attempts/${data.attempt_id}`);
+      navigate(`/student/attempt/${data.attempt_id}`);
     } catch {
       setError("Something went wrong starting the exam.");
     } finally {
@@ -203,7 +210,7 @@ export function ExamDetailPage() {
               </p>
               <button
                 onClick={() =>
-                  navigate(`/student/attempts/${existingAttempt.id}`)
+                  navigate(`/student/attempt/${existingAttempt.id}`)
                 }
                 className="w-full rounded-xl bg-accent-amber px-8 py-3.5 text-base font-medium text-white hover:bg-amber-500 sm:w-auto"
               >

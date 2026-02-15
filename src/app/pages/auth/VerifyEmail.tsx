@@ -69,7 +69,7 @@ export function VerifyEmailPage() {
             account.
           </p>
           <Link
-            to="/login"
+            to="/auth/login"
             className="mt-6 inline-block rounded-lg bg-primary-blue px-6 py-2.5 text-sm font-medium text-white hover:bg-primary-blue-light"
           >
             Go to Login
@@ -98,7 +98,7 @@ export function VerifyEmailPage() {
           </p>
           <div className="mt-6 flex items-center justify-center gap-4">
             <Link
-              to="/signup"
+              to="/auth/signup"
               className="rounded-lg bg-primary-blue px-6 py-2.5 text-sm font-medium text-white hover:bg-primary-blue-light"
             >
               Sign Up
@@ -134,7 +134,7 @@ export function VerifyEmailPage() {
         <p className="mt-4 text-sm text-text-muted">
           Didn't receive the email? Check your spam folder or{" "}
           <Link
-            to="/signup"
+            to="/auth/signup"
             className="font-medium text-primary-blue hover:underline"
           >
             try signing up again
@@ -142,7 +142,7 @@ export function VerifyEmailPage() {
           .
         </p>
         <Link
-          to="/login"
+          to="/auth/login"
           className="mt-6 inline-block text-sm font-medium text-primary-blue hover:underline"
         >
           Back to Login

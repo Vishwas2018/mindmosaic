@@ -108,7 +108,7 @@ export function useParentExamDetail(
         // Edge Function. We only expose numeric marks to parents — no
         // question content, correct answers, or student responses.
         const rawBreakdown = Array.isArray(examResult.breakdown)
-          ? (examResult.breakdown as RawBreakdownEntry[])
+          ? (examResult.breakdown as unknown as RawBreakdownEntry[])
           : [];
 
         const questionResults = rawBreakdown.map((entry) => ({

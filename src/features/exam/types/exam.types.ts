@@ -118,7 +118,8 @@ export type ResponseData =
 // UI State Types
 // =============================================================================
 
-export interface QuestionWithOptions extends ExamQuestion {
+export interface QuestionWithOptions
+  extends Omit<ExamQuestion, "prompt_blocks" | "media_references"> {
   options?: ExamQuestionOption[];
   prompt_blocks: PromptBlock[];
   media_references: MediaReference[] | null;
@@ -211,14 +212,14 @@ export function parsePromptBlocks(json: Json): PromptBlock[] {
   if (!Array.isArray(json)) {
     return [];
   }
-  return json as PromptBlock[];
+  return json as unknown as PromptBlock[];
 }
 
 export function parseMediaReferences(json: Json | null): MediaReference[] | null {
   if (!json || !Array.isArray(json)) {
     return null;
   }
-  return json as MediaReference[];
+  return json as unknown as MediaReference[];
 }
 
 export function getResponseForQuestion(

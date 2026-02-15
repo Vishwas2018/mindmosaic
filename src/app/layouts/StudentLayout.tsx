@@ -14,7 +14,7 @@ export function StudentLayout() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   return (
@@ -25,8 +25,12 @@ export function StudentLayout() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🧠</span>
-              <span className="font-semibold text-text-primary">MindMosaic</span>
+              <span className="text-2xl" aria-hidden="true">
+                🧠
+              </span>
+              <span className="font-semibold text-text-primary">
+                MindMosaic
+              </span>
             </div>
 
             {/* User menu */}
@@ -51,13 +55,13 @@ export function StudentLayout() {
           <nav className="hidden md:block w-48 shrink-0">
             <ul className="space-y-1">
               <NavItem to="/student" end>
-                🏠 Dashboard
+                <span aria-hidden="true">🏠</span> Dashboard
               </NavItem>
               <NavItem to="/student/exams">
-                📝 Practice Exams
+                <span aria-hidden="true">📝</span> Practice Exams
               </NavItem>
               <NavItem to="/student/progress" disabled>
-                📊 My Progress
+                <span aria-hidden="true">📊</span> My Progress
               </NavItem>
             </ul>
           </nav>
@@ -74,7 +78,12 @@ export function StudentLayout() {
         <div className="flex justify-around py-2">
           <MobileNavItem to="/student" end icon="🏠" label="Home" />
           <MobileNavItem to="/student/exams" icon="📝" label="Exams" />
-          <MobileNavItem to="/student/progress" icon="📊" label="Progress" disabled />
+          <MobileNavItem
+            to="/student/progress"
+            icon="📊"
+            label="Progress"
+            disabled
+          />
         </div>
       </nav>
     </div>
@@ -134,7 +143,9 @@ function MobileNavItem({ to, icon, label, end, disabled }: MobileNavItemProps) {
   if (disabled) {
     return (
       <span className="flex flex-col items-center gap-1 px-4 py-1 text-text-muted opacity-50">
-        <span className="text-xl">{icon}</span>
+        <span className="text-xl" aria-hidden="true">
+          {icon}
+        </span>
         <span className="text-xs">{label}</span>
       </span>
     );
@@ -150,7 +161,9 @@ function MobileNavItem({ to, icon, label, end, disabled }: MobileNavItemProps) {
         }`
       }
     >
-      <span className="text-xl">{icon}</span>
+      <span className="text-xl" aria-hidden="true">
+        {icon}
+      </span>
       <span className="text-xs">{label}</span>
     </NavLink>
   );

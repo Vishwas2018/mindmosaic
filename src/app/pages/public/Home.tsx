@@ -32,7 +32,7 @@ export function HomePage() {
         </p>
         <div className="mt-10 flex items-center justify-center gap-4">
           <Link
-            to="/signup"
+            to="/auth/signup"
             className="rounded-xl bg-primary-blue px-8 py-3.5 text-base font-medium text-white hover:bg-primary-blue-light"
           >
             Get Started Free
@@ -110,7 +110,7 @@ export function HomePage() {
           Join families across Australia preparing for NAPLAN and ICAS.
         </p>
         <Link
-          to="/signup"
+          to="/auth/signup"
           className="mt-8 inline-block rounded-xl bg-primary-blue px-8 py-3.5 text-base font-medium text-white hover:bg-primary-blue-light"
         >
           Create Free Account

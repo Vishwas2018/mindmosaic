@@ -13,7 +13,7 @@ export function AdminLayout() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   return (
@@ -24,7 +24,7 @@ export function AdminLayout() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <span className="text-2xl">🧠</span>
+              <span className="text-2xl" aria-hidden="true">🧠</span>
               <span className="font-semibold text-text-primary">
                 MindMosaic
               </span>

@@ -5,5 +5,5 @@
  * Router imports { MarkingQueuePage, AttemptMarkingPage } from "./pages/admin/marking"
  */
 
-export { MarkingQueuePage } from "./MarkingQueue";
-export { AttemptMarkingPage } from "./AttemptMarking";
+export { MarkingQueuePage } from "./reporting/MarkingQueue";
+export { AttemptMarkingPage } from "./reporting/AttemptMarking";

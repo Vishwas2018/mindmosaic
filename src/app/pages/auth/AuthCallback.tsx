@@ -45,7 +45,7 @@ export function AuthCallbackPage() {
           navigate(`/${role}`, { replace: true });
         } else {
           // No session — might be email confirmation without auto-login
-          navigate("/login", { replace: true });
+          navigate("/auth/login", { replace: true });
         }
       } catch {
         setError("Something went wrong. Please try logging in.");
@@ -66,7 +66,7 @@ export function AuthCallbackPage() {
           </h1>
           <p className="mt-2 text-sm text-text-muted">{error}</p>
           <a
-            href="/login"
+            href="/auth/login"
             className="mt-6 inline-block rounded-lg bg-primary-blue px-6 py-2.5 text-sm font-medium text-white hover:bg-primary-blue-light"
           >
             Go to Login

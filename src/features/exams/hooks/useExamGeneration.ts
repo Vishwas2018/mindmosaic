@@ -11,6 +11,7 @@
 
 import { useState, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
+import type { Json } from "../../../lib/database.types";
 import type {
   ExamBlueprint,
   QuestionFilters,
@@ -32,8 +33,8 @@ interface QuestionRow {
   difficulty: "easy" | "medium" | "hard";
   response_type: "mcq" | "multi" | "short" | "extended" | "numeric";
   marks: number;
-  prompt_blocks: unknown;
-  media_references: unknown;
+  prompt_blocks: Json;
+  media_references: Json | null;
   tags: string[] | null;
   hint: string | null;
   subject?: string;
@@ -44,7 +45,7 @@ interface OptionInsert {
   question_id: string;
   option_id: string;
   content: string;
-  media_reference: unknown;
+  media_reference: Json | null;
 }
 
 /** Shape for inserting into exam_correct_answers */
@@ -53,14 +54,14 @@ interface AnswerInsert {
   answer_type: string;
   correct_option_id: string | null;
   correct_option_ids: string[] | null;
-  accepted_answers: unknown;
+  accepted_answers: Json | null;
   case_sensitive: boolean;
   exact_value: number | null;
   range_min: number | null;
   range_max: number | null;
   tolerance: number | null;
   unit: string | null;
-  rubric: unknown;
+  rubric: Json | null;
   sample_response: string | null;
 }
 
@@ -112,7 +113,11 @@ export function useExamGeneration(): UseExamGenerationReturn {
             .select("id")
             .eq("exam_package_id", excludeFromPackageId);
 
-          excludedIds = new Set((prevQuestions ?? []).map((q) => q.id));
+          excludedIds = new Set(
+            ((prevQuestions as Array<{ id: string }> | null) ?? []).map(
+              (q) => q.id,
+            ),
+          );
         }
 
         // 3. Filter available questions (exclude previous)
@@ -161,13 +166,16 @@ export function useExamGeneration(): UseExamGenerationReturn {
 
         // Build maps
         const optionsMap = new Map<string, QuestionOption[]>();
-        (options ?? []).forEach((opt) => {
+        (((options as QuestionOption[] | null) ?? [])).forEach((opt) => {
           const existing = optionsMap.get(opt.question_id) || [];
-          optionsMap.set(opt.question_id, [...existing, opt as QuestionOption]);
+          optionsMap.set(opt.question_id, [...existing, opt]);
         });
 
         const answersMap = new Map<string, CorrectAnswer>(
-          (answers ?? []).map((a) => [a.question_id, a as CorrectAnswer]),
+          (((answers as CorrectAnswer[] | null) ?? []).map((a) => [
+            a.question_id,
+            a,
+          ])),
         );
 
         // 6. Assemble final questions
@@ -176,7 +184,7 @@ export function useExamGeneration(): UseExamGenerationReturn {
             ...q,
             sequence_number: idx + 1, // Re-sequence
             prompt_blocks: Array.isArray(q.prompt_blocks)
-              ? q.prompt_blocks
+              ? (q.prompt_blocks as QuestionWithAnswer["prompt_blocks"])
               : [],
             tags: Array.isArray(q.tags) ? q.tags : [],
             options: optionsMap.get(q.id),
@@ -244,9 +252,11 @@ export function useExamGeneration(): UseExamGenerationReturn {
 
         // 10. Insert options and answers
         const newQuestionIdMap = new Map<string, string>();
-        (insertedQuestions ?? []).forEach((newQ, idx) => {
-          newQuestionIdMap.set(finalQuestions[idx].id, newQ.id);
-        });
+        ((insertedQuestions as Array<{ id: string }> | null) ?? []).forEach(
+          (newQ, idx) => {
+            newQuestionIdMap.set(finalQuestions[idx].id, newQ.id);
+          },
+        );
 
         // Options (BUG-8 FIX: properly typed)
         const optionsToInsert: OptionInsert[] = [];
@@ -366,7 +376,9 @@ function selectQuestionsForSection(
   // Select count and cast to QuestionWithAnswer
   return candidates.slice(0, count).map((q) => ({
     ...q,
-    prompt_blocks: Array.isArray(q.prompt_blocks) ? q.prompt_blocks : [],
+    prompt_blocks: Array.isArray(q.prompt_blocks)
+      ? (q.prompt_blocks as QuestionWithAnswer["prompt_blocks"])
+      : [],
     media_references: q.media_references,
     tags: q.tags ?? [],
   }));

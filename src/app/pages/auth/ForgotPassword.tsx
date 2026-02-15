@@ -80,7 +80,7 @@ export function ForgotPasswordPage() {
               </p>
             </div>
             <Link
-              to="/login"
+              to="/auth/login"
               className="mt-6 block text-center text-sm font-medium text-primary-blue hover:underline"
             >
               Back to Login
@@ -131,7 +131,7 @@ export function ForgotPasswordPage() {
             <p className="mt-4 text-center text-sm text-text-muted">
               Remember your password?{" "}
               <Link
-                to="/login"
+                to="/auth/login"
                 className="font-medium text-primary-blue hover:underline"
               >
                 Log in

@@ -93,6 +93,7 @@ export function useAutosave(options: AutosaveOptions = {}): UseAutosaveResult {
             question_id: questionId,
             response_data: responseData,
           },
+          { signal: controller.signal },
         );
 
         // Remove controller after request completes

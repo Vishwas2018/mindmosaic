@@ -63,35 +63,48 @@ export function QuestionEditorPage() {
 
   // Load existing question if editing
   useEffect(() => {
-    if (!isEdit || !id) return;
+    const questionId = id ?? "";
+    if (!isEdit || questionId === "") return;
 
     async function load() {
       try {
         const { data: q, error: qErr } = await supabase
           .from("exam_questions")
           .select("*")
-          .eq("id", id)
+          .eq("id", questionId)
           .single();
 
         if (qErr) throw qErr;
 
-        setDifficulty(q.difficulty);
-        setResponseType(q.response_type);
-        setMarks(q.marks);
-        setTags(q.tags ?? []);
-        setHint(q.hint ?? "");
+        const question = q as {
+          difficulty: "easy" | "medium" | "hard";
+          response_type: "mcq" | "multi" | "short" | "extended" | "numeric";
+          marks: number;
+          tags: string[] | null;
+          hint: string | null;
+          prompt_blocks: unknown;
+        };
+
+        setDifficulty(question.difficulty);
+        setResponseType(question.response_type);
+        setMarks(question.marks);
+        setTags(question.tags ?? []);
+        setHint(question.hint ?? "");
         setPromptBlocks(
-          Array.isArray(q.prompt_blocks) && q.prompt_blocks.length > 0
-            ? q.prompt_blocks
+          Array.isArray(question.prompt_blocks) && question.prompt_blocks.length > 0
+            ? (question.prompt_blocks as PromptBlock[])
             : [{ type: "text", content: "" }],
         );
 
         // Load options if MCQ
-        if (q.response_type === "mcq" || q.response_type === "multi") {
+        if (
+          question.response_type === "mcq" ||
+          question.response_type === "multi"
+        ) {
           const { data: opts } = await supabase
             .from("exam_question_options")
             .select("*")
-            .eq("question_id", id)
+            .eq("question_id", questionId)
             .order("option_id");
 
           if (opts && opts.length > 0) {
@@ -103,11 +116,11 @@ export function QuestionEditorPage() {
         const { data: ans } = await supabase
           .from("exam_correct_answers")
           .select("*")
-          .eq("question_id", id)
+          .eq("question_id", questionId)
           .single();
 
         if (ans) {
-          setCorrectAnswer(ans);
+          setCorrectAnswer(ans as Partial<CorrectAnswer>);
         }
 
         setIsLoading(false);
@@ -123,7 +136,12 @@ export function QuestionEditorPage() {
   // Handle save
   const handleSave = async () => {
     // Validation
-    if (promptBlocks.length === 0 || !promptBlocks[0].content) {
+    const firstBlock = promptBlocks[0];
+    if (
+      promptBlocks.length === 0 ||
+      firstBlock.type !== "text" ||
+      !firstBlock.content.trim()
+    ) {
       alert("Please add question content");
       return;
     }

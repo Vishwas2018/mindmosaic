@@ -425,7 +425,7 @@ function ManualMarkingForm({
       </p>
 
       {/* Rubric display (if available) */}
-      {rubric && typeof rubric === "object" && (
+      {typeof rubric === "object" && rubric !== null && (
         <div className="mb-3 rounded-md border border-border-subtle bg-white p-3">
           <p className="mb-1 text-xs font-medium text-text-muted">Rubric</p>
           <pre className="whitespace-pre-wrap text-xs text-text-primary">

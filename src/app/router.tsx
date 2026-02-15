@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 
 /* =========================
    Layouts
@@ -144,7 +144,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <ParentDashboard /> },
-      { path: "results", element: <ParentExamResults /> },
+      { path: "results/:attemptId", element: <ParentExamResults /> },
       { path: "progress", element: <ParentProgressOverview /> },
     ],
   },

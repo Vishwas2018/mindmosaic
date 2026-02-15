@@ -70,7 +70,7 @@ export function ResetPasswordPage() {
       } else {
         setSuccess(true);
         // Redirect to login after brief delay
-        setTimeout(() => navigate("/login", { replace: true }), 3000);
+        setTimeout(() => navigate("/auth/login", { replace: true }), 3000);
       }
     } catch {
       setError("An unexpected error occurred. Please try again.");

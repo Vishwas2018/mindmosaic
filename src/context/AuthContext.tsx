@@ -131,7 +131,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(currentUser);
 
         if (currentUser) {
-          void fetchProfile(currentUser.id);
+          await fetchProfile(currentUser.id);
         } else {
           setProfile(null);
           setRole(null);

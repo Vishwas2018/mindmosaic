@@ -2,5 +2,5 @@
  * Admin reporting page exports — Day 18
  */
 
-export { AdminExamListPage } from "./ExamList";
-export { ExamAttemptsPage } from "./ExamAttempts";
+export { MarkingQueuePage } from "./MarkingQueue";
+export { AttemptMarkingPage } from "./AttemptMarking";

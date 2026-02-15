@@ -36,7 +36,7 @@ export function PricingPage() {
               <PricingItem text="1 student account" />
             </ul>
             <Link
-              to="/signup"
+              to="/auth/signup"
               className="mt-8 block rounded-lg border border-primary-blue px-4 py-2.5 text-center text-sm font-medium text-primary-blue hover:bg-background-soft"
             >
               Get Started
@@ -71,7 +71,7 @@ export function PricingPage() {
               <PricingItem text="Priority support" />
             </ul>
             <Link
-              to="/signup"
+              to="/auth/signup"
               className="mt-8 block rounded-lg bg-primary-blue px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-primary-blue-light"
             >
               Start Free Trial

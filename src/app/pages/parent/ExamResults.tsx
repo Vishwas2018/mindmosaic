@@ -35,7 +35,7 @@ export function ParentExamResults() {
       <div className="mx-auto max-w-4xl px-4 py-6">
         <div className="mb-4">
           <Link
-            to="/parent/dashboard"
+            to="/parent"
             className="text-sm text-primary-blue hover:underline"
           >
             ← Back to Dashboard
@@ -56,7 +56,7 @@ export function ParentExamResults() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          to="/parent/dashboard"
+          to="/parent"
           className="mb-2 inline-block text-sm text-primary-blue hover:underline"
         >
           ← Back to Dashboard
@@ -153,7 +153,7 @@ export function ParentExamResults() {
                         </span>
                       )}
                       {isPartial && (
-                        <span className="inline-flex items-center rounded-full bg-warning-yellow/10 px-2 py-0.5 text-xs font-medium text-warning-yellow">
+                        <span className="inline-flex items-center rounded-full bg-accent-amber/10 px-2 py-0.5 text-xs font-medium text-accent-amber">
                           ◐ Partial
                         </span>
                       )}

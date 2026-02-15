@@ -14,6 +14,8 @@ import { useAutosave } from "./useAutosave";
 import type {
   ExamPackage,
   ExamAttempt,
+  ExamQuestion,
+  ExamQuestionOption,
   QuestionWithOptions,
   ResponseData,
   SubmitAttemptResponse,
@@ -131,26 +133,27 @@ export function useExamAttempt({
           throw new Error("Attempt not found");
         }
 
-        setAttempt(attemptData);
+        const attemptRow = attemptData as ExamAttempt;
+        setAttempt(attemptRow);
 
         // 2. Load exam package
         const { data: packageData, error: packageError } = await supabase
           .from("exam_packages")
           .select("*")
-          .eq("id", attemptData.exam_package_id)
+          .eq("id", attemptRow.exam_package_id)
           .single();
 
         if (packageError) {
           throw new Error(`Failed to load exam: ${packageError.message}`);
         }
 
-        setExamPackage(packageData);
+        setExamPackage(packageData as ExamPackage);
 
         // 3. Load questions
         const { data: questionsData, error: questionsError } = await supabase
           .from("exam_questions")
           .select("*")
-          .eq("exam_package_id", attemptData.exam_package_id)
+          .eq("exam_package_id", attemptRow.exam_package_id)
           .order("sequence_number");
 
         if (questionsError) {
@@ -160,19 +163,16 @@ export function useExamAttempt({
         }
 
         // 4. Load options for MCQ/multi questions
-        const mcqQuestionIds = questionsData
+        const questionRows = ((questionsData as ExamQuestion[] | null) ?? []);
+
+        const mcqQuestionIds = questionRows
           .filter(
             (q) => q.response_type === "mcq" || q.response_type === "multi",
           )
           .map((q) => q.id);
 
-        const optionsMap = new Map<string, typeof optionsData>();
-        let optionsData: Array<{
-          question_id: string;
-          option_id: string;
-          content: string;
-          media_reference: unknown;
-        }> = [];
+        const optionsMap = new Map<string, ExamQuestionOption[]>();
+        let optionsData: ExamQuestionOption[] = [];
 
         if (mcqQuestionIds.length > 0) {
           const { data: opts, error: optsError } = await supabase
@@ -184,7 +184,7 @@ export function useExamAttempt({
           if (optsError) {
             console.warn("Failed to load options:", optsError.message);
           } else {
-            optionsData = opts || [];
+            optionsData = ((opts as ExamQuestionOption[] | null) ?? []);
           }
         }
 
@@ -195,15 +195,15 @@ export function useExamAttempt({
         });
 
         // Build questions with options
-        const questionsWithOptions: QuestionWithOptions[] = questionsData.map(
+        const questionsWithOptions: QuestionWithOptions[] = questionRows.map(
           (q) => ({
             ...q,
             options: optionsMap.get(q.id),
             prompt_blocks: Array.isArray(q.prompt_blocks)
-              ? q.prompt_blocks
+              ? (q.prompt_blocks as unknown as QuestionWithOptions["prompt_blocks"])
               : [],
             media_references: Array.isArray(q.media_references)
-              ? q.media_references
+              ? (q.media_references as unknown as QuestionWithOptions["media_references"])
               : null,
           }),
         );
@@ -220,8 +220,13 @@ export function useExamAttempt({
           console.warn("Failed to load responses:", responsesError.message);
         } else if (responsesData) {
           const responseMap = new Map<string, ResponseData>();
-          responsesData.forEach((r) => {
-            responseMap.set(r.question_id, r.response_data as ResponseData);
+          (
+            responsesData as Array<{
+              question_id: string;
+              response_data: unknown;
+            }>
+          ).forEach((r) => {
+            responseMap.set(r.question_id, r.response_data as unknown as ResponseData);
           });
           setResponses(responseMap);
         }

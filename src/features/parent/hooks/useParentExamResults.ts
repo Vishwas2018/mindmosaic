@@ -19,7 +19,7 @@
  * BUG-5 FIX: Replaced `SELECT *` with explicit minimal column lists.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import type { ParentExamSummary } from "../types/parent-dashboard.types";
 
@@ -39,7 +39,7 @@ export function useParentExamResults(
   const [exams, setExams] = useState<ParentExamSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!childId) {
       setStatus("idle");
       setExams([]);
@@ -151,11 +151,11 @@ export function useParentExamResults(
       setError(message);
       setStatus("error");
     }
-  };
+  }, [childId]);
 
   useEffect(() => {
-    load();
-  }, [childId]);
+    void load();
+  }, [load]);
 
   return {
     status,

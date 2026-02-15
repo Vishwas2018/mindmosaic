@@ -182,7 +182,7 @@ interface InfoBoxProps {
 function InfoBox({ title, items, variant = "info" }: InfoBoxProps) {
   const styles = {
     info: "bg-primary-blue/5 border-primary-blue/20",
-    warning: "bg-warning-yellow/10 border-warning-yellow/30",
+    warning: "bg-accent-amber/10 border-accent-amber/30",
   };
 
   return (

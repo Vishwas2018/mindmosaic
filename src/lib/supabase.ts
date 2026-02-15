@@ -45,7 +45,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
  */
 export async function callEdgeFunction<T>(
   functionName: string,
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
+  options: { signal?: AbortSignal } = {},
 ): Promise<{ data: T | null; error: string | null; status: number }> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -63,6 +64,7 @@ export async function callEdgeFunction<T>(
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(body),
+        signal: options.signal,
       }
     );
 

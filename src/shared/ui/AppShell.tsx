@@ -14,10 +14,10 @@ export function AppShell({
   footer,
 }: AppShellProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-brand-bgSoft text-brand-text">
+    <div className="min-h-screen flex flex-col bg-background-soft text-text-primary">
       {header}
       <div className="flex flex-1">
-        {sidebar && <aside className="w-64 border-r border-brand-borderSubtle p-4">{sidebar}</aside>}
+        {sidebar && <aside className="w-64 border-r border-border-subtle p-4">{sidebar}</aside>}
         <main className="flex-1 p-6">{children}</main>
       </div>
       {footer}

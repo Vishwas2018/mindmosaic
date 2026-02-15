@@ -20,6 +20,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabase";
 import { callEdgeFunction } from "../../../lib/supabase";
+import type { Json } from "../../../lib/database.types";
 
 // ────────────────────────────────────────────
 // Types
@@ -271,8 +272,9 @@ export function useAttemptMarking(
       const responseMap = new Map(
         (responses ?? []).map((r) => [r.question_id, r as MarkingResponse]),
       );
+      const correctRows = ((correctAnswers as CorrectAnswer[] | null) ?? []);
       const correctMap = new Map(
-        (correctAnswers ?? []).map((ca) => [
+        correctRows.map((ca) => [
           ca.question_id,
           ca as CorrectAnswer,
         ]),
@@ -280,7 +282,7 @@ export function useAttemptMarking(
 
       const breakdownMap = new Map<string, QuestionScoreBreakdown>();
       if (resultRow?.breakdown && Array.isArray(resultRow.breakdown)) {
-        for (const entry of resultRow.breakdown as QuestionScoreBreakdown[]) {
+        for (const entry of resultRow.breakdown as unknown as QuestionScoreBreakdown[]) {
           breakdownMap.set(entry.question_id, entry);
         }
       }
@@ -293,7 +295,9 @@ export function useAttemptMarking(
           prompt_blocks: q.prompt_blocks as PromptBlock[],
           tags: q.tags ?? [],
         } as MarkingQuestion,
-        options: (options ?? []).filter((o) => o.question_id === q.id),
+        options: ((options as MarkingOption[] | null) ?? []).filter(
+          (o) => o.question_id === q.id,
+        ),
         response: responseMap.get(q.id) ?? null,
         correctAnswer: correctMap.get(q.id) ?? null,
         existingScore: breakdownMap.get(q.id) ?? null,
@@ -321,7 +325,8 @@ export function useAttemptMarking(
           ? ({
               ...resultRow,
               breakdown:
-                (resultRow.breakdown as QuestionScoreBreakdown[]) ?? [],
+                (resultRow.breakdown as unknown as QuestionScoreBreakdown[]) ??
+                [],
             } as ExistingResult)
           : null,
       });
@@ -414,7 +419,7 @@ export function useAttemptMarking(
           max_score: maxScore,
           percentage: Math.round(percentage * 100) / 100,
           passed,
-          breakdown: updatedBreakdown as unknown as Record<string, unknown>[],
+          breakdown: updatedBreakdown as unknown as Json,
           updated_at: new Date().toISOString(),
         })
         .eq("attempt_id", attemptId);
