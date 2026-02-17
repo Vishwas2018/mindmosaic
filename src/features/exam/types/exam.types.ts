@@ -34,7 +34,17 @@ export type {
 // Prompt Block Types (from contract)
 // =============================================================================
 
-export type PromptBlockType = "text" | "heading" | "list" | "quote" | "instruction";
+export type PromptBlockType =
+  | "text"
+  | "heading"
+  | "list"
+  | "quote"
+  | "instruction"
+  | "stimulus"
+  | "mcq"
+  | "multi_select"
+  | "ordering"
+  | "matching";
 
 export interface TextBlock {
   type: "text";
@@ -64,12 +74,47 @@ export interface InstructionBlock {
   content: string;
 }
 
+export interface StimulusBlock {
+  type: "stimulus";
+  content: string;
+  title?: string;
+}
+
+export interface McqPromptBlock {
+  type: "mcq";
+  options: Array<{ id: string; text: string }>;
+  correctOptionId: string;
+}
+
+export interface MultiSelectPromptBlock {
+  type: "multi_select";
+  options: Array<{ id: string; text: string }>;
+  correctOptionIds: string[];
+  partialCredit?: boolean;
+}
+
+export interface OrderingPromptBlock {
+  type: "ordering";
+  instruction: string;
+  items: string[];
+}
+
+export interface MatchingPromptBlock {
+  type: "matching";
+  pairs: Array<{ left: string; right: string }>;
+}
+
 export type PromptBlock =
   | TextBlock
   | HeadingBlock
   | ListBlock
   | QuoteBlock
-  | InstructionBlock;
+  | InstructionBlock
+  | StimulusBlock
+  | McqPromptBlock
+  | MultiSelectPromptBlock
+  | OrderingPromptBlock
+  | MatchingPromptBlock;
 
 // =============================================================================
 // Media Reference Types
@@ -107,22 +152,79 @@ export interface ExtendedResponseData {
   answer: string;
 }
 
+export interface BooleanResponseData {
+  answer: boolean;
+  explanation?: string;
+}
+
+export interface OrderingResponseData {
+  orderedItems: string[];
+}
+
+export interface MatchingResponseData {
+  pairs: Record<string, string>;
+}
+
 export type ResponseData =
   | McqResponseData
   | MultiSelectResponseData
   | ShortResponseData
   | NumericResponseData
-  | ExtendedResponseData;
+  | ExtendedResponseData
+  | BooleanResponseData
+  | OrderingResponseData
+  | MatchingResponseData;
+
+// =============================================================================
+// Validation Types (per response_type)
+// =============================================================================
+
+export interface ShortValidation {
+  acceptedAnswers: string[];
+  caseSensitive?: boolean;
+}
+
+export interface NumericValidation {
+  correct: number;
+  tolerance?: number;
+}
+
+export interface BooleanValidation {
+  correct: boolean;
+  requireExplanation?: boolean;
+}
+
+export interface OrderingValidation {
+  correctOrder: string[];
+}
+
+export interface MatchingValidation {
+  correctPairs: Record<string, string>;
+}
+
+export type QuestionValidation =
+  | ShortValidation
+  | NumericValidation
+  | BooleanValidation
+  | OrderingValidation
+  | MatchingValidation;
 
 // =============================================================================
 // UI State Types
 // =============================================================================
 
-export interface QuestionWithOptions
-  extends Omit<ExamQuestion, "prompt_blocks" | "media_references"> {
+export interface QuestionWithOptions extends Omit<
+  ExamQuestion,
+  "prompt_blocks" | "media_references"
+> {
   options?: ExamQuestionOption[];
   prompt_blocks: PromptBlock[];
   media_references: MediaReference[] | null;
+  validation?: QuestionValidation | null;
+  /** Links questions sharing a stimulus passage (passage_group). */
+  stimulus_group_id?: string | null;
+  /** Links questions forming a multi_part group. */
+  multi_part_group_id?: string | null;
 }
 
 export interface AttemptState {
@@ -188,7 +290,9 @@ export function isMcqResponse(data: ResponseData): data is McqResponseData {
   return "selectedOptionId" in data;
 }
 
-export function isMultiSelectResponse(data: ResponseData): data is MultiSelectResponseData {
+export function isMultiSelectResponse(
+  data: ResponseData,
+): data is MultiSelectResponseData {
   return "selectedOptionIds" in data;
 }
 
@@ -196,12 +300,38 @@ export function isShortResponse(data: ResponseData): data is ShortResponseData {
   return "answer" in data && typeof data.answer === "string";
 }
 
-export function isNumericResponse(data: ResponseData): data is NumericResponseData {
+export function isNumericResponse(
+  data: ResponseData,
+): data is NumericResponseData {
   return "answer" in data && typeof data.answer === "number";
 }
 
-export function isExtendedResponse(data: ResponseData): data is ExtendedResponseData {
+export function isExtendedResponse(
+  data: ResponseData,
+): data is ExtendedResponseData {
   return "answer" in data && typeof data.answer === "string";
+}
+
+export function isBooleanResponse(
+  data: ResponseData,
+): data is BooleanResponseData {
+  return "answer" in data && typeof data.answer === "boolean";
+}
+
+export function isOrderingResponse(
+  data: ResponseData,
+): data is OrderingResponseData {
+  return "orderedItems" in data;
+}
+
+export function isMatchingResponse(
+  data: ResponseData,
+): data is MatchingResponseData {
+  return (
+    "pairs" in data &&
+    typeof data.pairs === "object" &&
+    !Array.isArray(data.pairs)
+  );
 }
 
 // =============================================================================
@@ -215,7 +345,9 @@ export function parsePromptBlocks(json: Json): PromptBlock[] {
   return json as unknown as PromptBlock[];
 }
 
-export function parseMediaReferences(json: Json | null): MediaReference[] | null {
+export function parseMediaReferences(
+  json: Json | null,
+): MediaReference[] | null {
   if (!json || !Array.isArray(json)) {
     return null;
   }
@@ -224,14 +356,14 @@ export function parseMediaReferences(json: Json | null): MediaReference[] | null
 
 export function getResponseForQuestion(
   responses: Map<string, ResponseData>,
-  questionId: string
+  questionId: string,
 ): ResponseData | undefined {
   return responses.get(questionId);
 }
 
 export function isQuestionAnswered(
   responses: Map<string, ResponseData>,
-  questionId: string
+  questionId: string,
 ): boolean {
   const response = responses.get(questionId);
   if (!response) return false;
@@ -247,6 +379,15 @@ export function isQuestionAnswered(
   }
   if (isNumericResponse(response)) {
     return !isNaN(response.answer);
+  }
+  if (isBooleanResponse(response)) {
+    return true; // boolean always has a value once set
+  }
+  if (isOrderingResponse(response)) {
+    return response.orderedItems.length > 0;
+  }
+  if (isMatchingResponse(response)) {
+    return Object.keys(response.pairs).length > 0;
   }
 
   return false;

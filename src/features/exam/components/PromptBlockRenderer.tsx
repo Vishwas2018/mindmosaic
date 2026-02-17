@@ -35,7 +35,9 @@ function BlockRenderer({ block }: BlockRendererProps) {
       return <TextBlockRenderer content={block.content} />;
 
     case "heading":
-      return <HeadingBlockRenderer level={block.level} content={block.content} />;
+      return (
+        <HeadingBlockRenderer level={block.level} content={block.content} />
+      );
 
     case "list":
       return <ListBlockRenderer ordered={block.ordered} items={block.items} />;
@@ -51,9 +53,35 @@ function BlockRenderer({ block }: BlockRendererProps) {
     case "instruction":
       return <InstructionBlockRenderer content={block.content} />;
 
+    case "stimulus":
+      return (
+        <StimulusBlockRenderer content={block.content} title={block.title} />
+      );
+
+    case "ordering":
+      // Ordering blocks render their instruction text only — the items
+      // are rendered by the OrderingQuestion component
+      return <InstructionBlockRenderer content={block.instruction} />;
+
+    case "matching":
+      // Matching blocks render a brief instruction — the interactive
+      // pairs are rendered by the MatchingQuestion component
+      return (
+        <InstructionBlockRenderer content="Match each item on the left with the correct option on the right." />
+      );
+
+    case "mcq":
+    case "multi_select":
+      // These prompt blocks contain the answer key and are used for scoring;
+      // the actual UI is rendered by McqQuestion / MultiSelectQuestion
+      return null;
+
     default:
       // Handle unknown block types gracefully
-      console.warn("Unknown prompt block type:", (block as { type: string }).type);
+      console.warn(
+        "Unknown prompt block type:",
+        (block as { type: string }).type,
+      );
       return null;
   }
 }
@@ -64,9 +92,7 @@ function BlockRenderer({ block }: BlockRendererProps) {
 
 function TextBlockRenderer({ content }: { content: string }) {
   return (
-    <p className="text-text-primary leading-relaxed text-base">
-      {content}
-    </p>
+    <p className="text-text-primary leading-relaxed text-base">{content}</p>
   );
 }
 
@@ -139,6 +165,25 @@ function InstructionBlockRenderer({ content }: { content: string }) {
       <p className="text-text-primary text-sm flex items-start gap-2">
         <span className="text-accent-amber font-medium shrink-0">📝</span>
         <span>{content}</span>
+      </p>
+    </div>
+  );
+}
+
+function StimulusBlockRenderer({
+  content,
+  title,
+}: {
+  content: string;
+  title?: string;
+}) {
+  return (
+    <div className="border-l-4 border-primary-blue bg-background-soft rounded-r-lg p-4 space-y-2">
+      {title && (
+        <p className="text-sm font-semibold text-primary-blue">{title}</p>
+      )}
+      <p className="text-text-primary leading-relaxed text-sm whitespace-pre-wrap">
+        {content}
       </p>
     </div>
   );

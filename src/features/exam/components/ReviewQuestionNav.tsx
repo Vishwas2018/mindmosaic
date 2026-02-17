@@ -6,6 +6,32 @@ interface ReviewQuestionNavProps {
   onSelect: (index: number) => void;
 }
 
+function getButtonColorClass(
+  isActive: boolean,
+  isScored: boolean,
+  isManual: boolean,
+  isCorrect: boolean,
+): string {
+  if (!isScored) {
+    return isActive
+      ? "bg-primary-blue text-white"
+      : "bg-background-soft text-text-muted hover:bg-border-subtle";
+  }
+  if (isManual) {
+    return isActive
+      ? "bg-accent-amber text-white"
+      : "bg-accent-amber/10 text-accent-amber hover:bg-accent-amber/20";
+  }
+  if (isCorrect) {
+    return isActive
+      ? "bg-success-green text-white"
+      : "bg-success-green/10 text-success-green hover:bg-success-green/20";
+  }
+  return isActive
+    ? "bg-danger-red text-white"
+    : "bg-danger-red/10 text-danger-red hover:bg-danger-red/20";
+}
+
 /**
  * Compact question navigator for the review page.
  * Shows numbered buttons with color-coded correctness.
@@ -24,25 +50,12 @@ export function ReviewQuestionNav({
         const isCorrect = breakdown?.correct ?? false;
         const isManual = breakdown?.requires_manual_review ?? false;
 
-        // Determine dot/ring styling
-        let colorClass: string;
-        if (!isScored) {
-          colorClass = isActive
-            ? "bg-primary-blue text-white"
-            : "bg-background-soft text-text-muted hover:bg-border-subtle";
-        } else if (isManual) {
-          colorClass = isActive
-            ? "bg-accent-amber text-white"
-            : "bg-accent-amber/10 text-accent-amber hover:bg-accent-amber/20";
-        } else if (isCorrect) {
-          colorClass = isActive
-            ? "bg-success-green text-white"
-            : "bg-success-green/10 text-success-green hover:bg-success-green/20";
-        } else {
-          colorClass = isActive
-            ? "bg-danger-red text-white"
-            : "bg-danger-red/10 text-danger-red hover:bg-danger-red/20";
-        }
+        const colorClass = getButtonColorClass(
+          isActive,
+          isScored,
+          isManual,
+          isCorrect,
+        );
 
         // Unanswered indicator
         const unanswered = q.response === null;

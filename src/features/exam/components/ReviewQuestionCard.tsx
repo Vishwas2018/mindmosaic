@@ -260,6 +260,7 @@ function AnswerDisplay({
         />
       );
 
+    case "multi_select":
     case "multi":
       return (
         <MultiSelectReview
@@ -307,6 +308,37 @@ function AnswerDisplay({
     case "extended":
       return (
         <ExtendedReview answer={responseData?.answer as string | undefined} />
+      );
+
+    case "boolean":
+      return (
+        <BooleanReview
+          answer={responseData?.answer as boolean | undefined}
+          explanation={responseData?.explanation as string | undefined}
+          correctAnswer={correctAnswer as boolean | undefined}
+        />
+      );
+
+    case "ordering":
+      return (
+        <OrderingReview
+          orderedItems={
+            (responseData?.orderedItems as string[] | undefined) ?? []
+          }
+          correctOrder={(correctAnswer as string[] | undefined) ?? []}
+        />
+      );
+
+    case "matching":
+      return (
+        <MatchingReview
+          pairs={
+            (responseData?.pairs as Record<string, string> | undefined) ?? {}
+          }
+          correctPairs={
+            (correctAnswer as Record<string, string> | undefined) ?? {}
+          }
+        />
       );
 
     default:
@@ -496,6 +528,207 @@ function ExtendedReview({ answer }: { answer?: string }) {
   );
 }
 
+// ── Boolean review ──
+
+function BooleanReview({
+  answer,
+  explanation,
+  correctAnswer,
+}: {
+  answer?: boolean;
+  explanation?: string;
+  correctAnswer?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="rounded-md border border-border-subtle bg-background-soft px-3 py-2.5">
+        <p className="text-xs font-medium text-text-muted">Your answer</p>
+        <p className="mt-0.5 text-sm font-medium text-text-primary">
+          {answer !== undefined ? (
+            answer ? (
+              "True"
+            ) : (
+              "False"
+            )
+          ) : (
+            <span className="italic text-text-muted">No answer provided</span>
+          )}
+        </p>
+        {explanation && (
+          <p className="mt-1 text-sm text-text-muted">{explanation}</p>
+        )}
+      </div>
+      {correctAnswer !== undefined && (
+        <div className="rounded-md border border-success-green/30 bg-success-green/5 px-3 py-2.5">
+          <p className="text-xs font-medium text-success-green">
+            Correct answer
+          </p>
+          <p className="mt-0.5 text-sm font-medium text-text-primary">
+            {correctAnswer ? "True" : "False"}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Ordering review ──
+
+function OrderingReview({
+  orderedItems,
+  correctOrder,
+}: {
+  orderedItems: string[];
+  correctOrder: string[];
+}) {
+  const hasCorrectOrder = correctOrder.length > 0;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-text-muted">Your order</p>
+      {orderedItems.length === 0 ? (
+        <p className="text-xs italic text-text-muted">No answer provided.</p>
+      ) : (
+        <div className="space-y-1">
+          {orderedItems.map((item, index) => {
+            const isCorrectPosition =
+              hasCorrectOrder && correctOrder[index] === item;
+            return (
+              <div
+                key={`${item}-${index}`}
+                className={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm ${
+                  hasCorrectOrder
+                    ? isCorrectPosition
+                      ? "border-success-green bg-success-green/5"
+                      : "border-danger-red bg-danger-red/5"
+                    : "border-border-subtle bg-white"
+                }`}
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-blue text-xs font-bold text-white">
+                  {index + 1}
+                </span>
+                <span className="flex-1 text-text-primary">{item}</span>
+                {hasCorrectOrder &&
+                  (isCorrectPosition ? (
+                    <CheckIcon className="text-success-green" />
+                  ) : (
+                    <CrossIcon className="text-danger-red" />
+                  ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {hasCorrectOrder && (
+        <div className="mt-2">
+          <p className="text-xs font-medium text-success-green mb-1">
+            Correct order
+          </p>
+          <div className="space-y-1">
+            {correctOrder.map((item, index) => (
+              <div
+                key={`correct-${item}-${index}`}
+                className="flex items-center gap-3 rounded-md border border-success-green/30 bg-success-green/5 px-3 py-2 text-sm"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success-green text-xs font-bold text-white">
+                  {index + 1}
+                </span>
+                <span className="text-text-primary">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Matching review ──
+
+function MatchingReview({
+  pairs,
+  correctPairs,
+}: {
+  pairs: Record<string, string>;
+  correctPairs: Record<string, string>;
+}) {
+  const hasCorrectPairs = Object.keys(correctPairs).length > 0;
+  const allKeys = hasCorrectPairs
+    ? Object.keys(correctPairs)
+    : Object.keys(pairs);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-text-muted">Your matches</p>
+      {allKeys.length === 0 ? (
+        <p className="text-xs italic text-text-muted">No answer provided.</p>
+      ) : (
+        <div className="space-y-1">
+          {allKeys.map((left) => {
+            const studentAnswer = pairs[left] ?? "";
+            const correctAnswer = correctPairs[left];
+            const isCorrect =
+              hasCorrectPairs && studentAnswer === correctAnswer;
+
+            return (
+              <div
+                key={left}
+                className={`flex items-center gap-3 rounded-md border px-3 py-2 text-sm ${
+                  hasCorrectPairs
+                    ? isCorrect
+                      ? "border-success-green bg-success-green/5"
+                      : "border-danger-red bg-danger-red/5"
+                    : "border-border-subtle bg-white"
+                }`}
+              >
+                <span className="font-medium text-text-primary">{left}</span>
+                <span className="text-text-muted" aria-hidden="true">
+                  →
+                </span>
+                <span className="text-text-primary">
+                  {studentAnswer || (
+                    <span className="italic text-text-muted">—</span>
+                  )}
+                </span>
+                {hasCorrectPairs &&
+                  (isCorrect ? (
+                    <CheckIcon className="ml-auto text-success-green" />
+                  ) : (
+                    <CrossIcon className="ml-auto text-danger-red" />
+                  ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {hasCorrectPairs &&
+        Object.values(pairs).some(
+          (v, i) => v !== Object.values(correctPairs)[i],
+        ) && (
+          <div className="mt-2">
+            <p className="text-xs font-medium text-success-green mb-1">
+              Correct matches
+            </p>
+            <div className="space-y-1">
+              {Object.entries(correctPairs).map(([left, right]) => (
+                <div
+                  key={`correct-${left}`}
+                  className="flex items-center gap-3 rounded-md border border-success-green/30 bg-success-green/5 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium text-text-primary">{left}</span>
+                  <span className="text-text-muted" aria-hidden="true">
+                    →
+                  </span>
+                  <span className="text-text-primary">{right}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+    </div>
+  );
+}
+
 // ── Icons ──
 
 function CheckIcon({ className }: { className?: string }) {
@@ -535,11 +768,14 @@ function CrossIcon({ className }: { className?: string }) {
 function formatResponseType(type: string): string {
   const labels: Record<string, string> = {
     mcq: "Multiple Choice",
+    multi_select: "Multi-Select",
     multi: "Multi-Select",
     short: "Short Answer",
     numeric: "Numeric",
     extended: "Extended Response",
+    boolean: "True / False",
+    ordering: "Ordering",
+    matching: "Matching",
   };
   return labels[type] ?? type;
 }
-

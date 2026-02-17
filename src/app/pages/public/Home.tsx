@@ -22,7 +22,7 @@ export function HomePage() {
       {/* Hero */}
       <section className="bg-background-soft px-6 py-24 text-center">
         <h1 className="text-4xl font-bold leading-tight tracking-tight text-text-primary sm:text-5xl lg:text-6xl">
-          Practice smarter for
+          Practise smarter for
           <br className="hidden sm:block" /> NAPLAN &amp; ICAS
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-text-muted">
@@ -89,7 +89,7 @@ export function HomePage() {
             />
             <StepCard
               step="3"
-              title="Practice"
+              title="Practise"
               description="Complete timed exams with auto-save — no work is lost."
             />
             <StepCard
