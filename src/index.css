@@ -1,10 +1,18 @@
+/* =============================================================================
+   MindMosaic — src/index.css
+   
+   CRITICAL PostCSS RULE:
+   ALL @import statements MUST come before ANY other CSS content.
+   Order: 1) tailwindcss  2) Google Fonts  3) local files  4) THEN all rules
+   ============================================================================= */
+
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap");
+@import "./styles/animations.css";
+@import "./styles/layout.css";
 
 /* =============================================================================
-   MindMosaic Theme - Tailwind v4 Custom Theme
-   
-   This @theme block defines custom design tokens that generate utility classes.
-   Example: --color-primary-blue generates bg-primary-blue, text-primary-blue, etc.
+   MindMosaic Theme — Tailwind v4 Custom Theme Tokens
    ============================================================================= */
 
 @theme {
@@ -13,7 +21,7 @@
   --color-primary-blue-light: #2563eb;
 
   /* Background Colors */
-  --color-background-soft: #eef5ff;
+  --color-background-soft: #eef2f9;
 
   /* Text Colors */
   --color-text-primary: #0f172a;
@@ -33,18 +41,84 @@
    ============================================================================= */
 
 :root {
-  --brand-font:
-    "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  /* Typography — Nunito replaces IBM Plex Sans */
+  --brand-font: "Nunito", ui-rounded, system-ui, -apple-system, sans-serif;
+
+  /* =========================================================================
+     Shared design tokens — used throughout shared/ui and feature components.
+     Without these, CSS variable references (e.g. bg-[--color-accent]) fall
+     back to empty/transparent and the UI appears unstyled.
+     ========================================================================= */
+
+  /* Accent (primary interactive blue) */
+  --color-accent: #2563eb;
+  --color-accent-fg: #ffffff;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-subtle: rgba(37, 99, 235, 0.08);
+
+  /* Surface layers */
+  --color-surface: #ffffff;
+  --color-surface-raised: #f8fafc;
+  --color-surface-overlay: rgba(2, 6, 23, 0.52);
+
+  /* Border */
+  --color-border-strong: rgba(15, 23, 42, 0.20);
+
+  /* Status — success */
+  --color-success: #16a34a;
+  --color-success-subtle: rgba(22, 163, 74, 0.08);
+
+  /* Border radius scale */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  /* =========================================================================
+     Exam shell design tokens (used only inside #mm-exam-shell portal)
+     ========================================================================= */
+  --mm-brand: #2563eb;
+  --mm-accent: #14b8a6;
+  --mm-answered: #16a34a;
+  --mm-flagged: #f59e0b;
+  --mm-unanswered: #94a3b8;
+  --mm-danger: #ef4444;
+  --mm-warning: #f59e0b;
+
+  /* Timer tokens (used by ExamTimer component) */
+  --color-timer-normal: #0f172a;
+  --color-timer-warning: #f59e0b;
+  --color-timer-critical: #ef4444;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-warning-subtle: rgba(245, 158, 11, 0.1);
+  --color-danger-subtle: rgba(239, 68, 68, 0.1);
+  --color-surface-subtle: #f8fafc;
+  --color-border: rgba(15, 23, 42, 0.1);
+}
+
+html {
+  font-family: var(--brand-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   font-family: var(--brand-font);
   letter-spacing: 0.01em;
   font-weight: 400;
+  margin: 0;
+  background: #eef2f9;
+}
+
+/* Lock scroll during exam portal runtime */
+body.exam-runtime-active {
+  overflow: hidden;
 }
 
 /* =============================================================================
-   Animation Keyframes (used by Tailwind animate-* classes)
+   spin keyframe (used by Tailwind animate-spin; kept here as fallback)
    ============================================================================= */
 
 @keyframes spin {
@@ -52,10 +126,3 @@ body {
     transform: rotate(360deg);
   }
 }
-
-/* =============================================================================
-   Day 23+ Utility Layers
-   ============================================================================= */
-
-@import "./styles/animations.css";
-@import "./styles/layout.css";
