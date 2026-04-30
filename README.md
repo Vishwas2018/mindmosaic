@@ -44,6 +44,7 @@ Turborepo + pnpm 9 · Next.js 14 App Router · TypeScript strict · Tailwind + s
 
 ```bash
 pnpm install
+git config commit.template .gitmessage   # per-machine; not committed — run once after clone
 supabase start
 pnpm db:reset       # applies migrations + seeds
 pnpm -C apps/web dev

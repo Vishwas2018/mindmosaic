@@ -1,0 +1,14 @@
+# <type>(<scope>): <subject>   ← imperative, ≤72 chars, no trailing period
+#
+# Body — explain WHY (required for multi-domain stages):
+#
+# Implements DEV_PLAN.md Stage N.
+# Stage exit criteria: <all green | partial — reason>
+# CI: <url or "local only">
+#
+# ─────────────────────────────────────────────────────────────────────
+# Types:  feat | fix | chore | test | docs | refactor
+# Scopes: monorepo | auth | sessions | content | ui | types | sdk
+#         schema | ci | dev-context | dev-plan | adr
+# Rules:  one stage = one commit to main  (BUILD_CONTRACT §11.1)
+#         no TODO/FIXME without linked OPEN_ISSUES entry  (BC §12.3)

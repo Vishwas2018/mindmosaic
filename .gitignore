@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+.next
+out
+
+# Turbo
+.turbo
+
+# Environment variables
+.env.local
+.env.*.local
+!.env.example
+
+# Debug logs
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage
+
+# TypeScript build info
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea
+
+# Claude Code project context
+.claude/
+
+# Supabase local dev
+supabase/.branches
+supabase/.temp
+
+# Vercel
+.vercel
