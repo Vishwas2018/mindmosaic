@@ -5,16 +5,16 @@
 
 ## Position
 
-- Last completed stage: none (pre-Stage 1)
-- Next stage: Stage 1 — Monorepo & Tooling
-- Days remaining (target 75): 75
+- Last completed stage: Stage 1 — Monorepo & Tooling (2026-04-30)
+- Next stage: Stage 2 — Migration 0001 — Enums + Tenancy + Auth
+- Days remaining (target 75): 74
 - Buffer days consumed in Phase 0 (Stages 1–14): 0 of 3
 
 ## Test suite
 
 | Suite        | Status | Count | Last run |
 | ------------ | ------ | ----- | -------- |
-| Unit         | n/a    | n/a   | n/a |
+| Unit         | ✅ green | 0 (pass-with-no-tests) | 2026-04-30 |
 | Integration  | n/a    | n/a   | n/a |
 | pgTAP        | n/a    | n/a   | n/a |
 | Contract     | n/a    | n/a   | n/a |
@@ -25,12 +25,12 @@
 
 | Gate            | Last status | Last run |
 | --------------- | ----------- | -------- |
-| pnpm lint       | n/a         | n/a |
-| pnpm typecheck  | n/a         | n/a |
-| pnpm test       | n/a         | n/a |
-| pnpm build      | n/a         | n/a |
-| RLS coverage    | n/a         | n/a |
-| pnpm audit      | n/a         | n/a |
+| pnpm lint       | ✅ green (6/6 workspaces) | 2026-04-30 |
+| pnpm typecheck  | ✅ green (6/6 workspaces) | 2026-04-30 |
+| pnpm test       | ✅ green (6/6 workspaces) | 2026-04-30 |
+| pnpm build      | ✅ green (6/6 workspaces) | 2026-04-30 |
+| RLS coverage    | n/a — no migrations yet   | n/a |
+| pnpm audit      | unknown — TODO measure    | n/a |
 
 ## Performance vs BUILD_CONTRACT §10 budgets
 
@@ -43,23 +43,19 @@
 
 ## Open items
 
-- ADRs accepted: 0
+- ADRs accepted: 1 (ADR-0001)
 - ADRs proposed: 0
 - Issues critical / high / medium / low: 0/0/0/0
 - Open questions: 0
 - Open bugs: 0
-- Deviations logged: 0
+- Deviations logged: 1 (DEV-20260430-1)
 
 ## Notes for next session
 
-- Stage 1 is Monorepo & Tooling per DEV_PLAN.md §2. Run morning ritual (CLAUDE_PROMPTS.md §1) before any code.
-- Pre-flight (verify before pasting morning prompt):
-  - Node 20+ installed (`node -v`)
-  - pnpm 9+ installed (`pnpm -v`)
-  - Supabase CLI 1.180+ installed (`supabase -v`)
-  - Docker installed and running (for local Supabase)
-  - GitHub repo `mindmosaic` exists and is cloned locally
-  - Supabase project `mindmosaic-dev` created in `ap-southeast-2`
-  - Codespaces user secrets configured (or local `.env.local` with Supabase keys, never committed)
-- Stage 1 exit criteria: `pnpm install && pnpm turbo build` green on empty repo, CI matrix green on first commit, `git config commit.template .gitmessage` set.
-- After Stage 1 close: install Supabase CLI if not done in Stage 1, then proceed to Stage 2 (Migration 0001 — enums + tenancy + auth).
+- Stage 2 is Migration 0001 — Enums + Tenancy + Auth per DEV_PLAN.md §2.
+- Supabase project exists: https://tohmshcpdhcdfsubvnok.supabase.co (ap-southeast-2).
+- Stage 2 is a schema/policy stage → must run §2A pre-implementation review before C-C-D-V.
+- Stage 2 needs Supabase CLI (v2.96.0 confirmed) and Docker (v29.3.1 confirmed).
+- Reminder: pnpm test:rls and pnpm test:migration scripts not yet wired (Stage 2 must add them).
+- ADR-0001 commit SHA: to be updated after first push.
+- Vite CJS deprecation warning in vitest output is cosmetic — address in Stage 11 when real tests are written (add vitest.config with `pool: 'forks'` or ESM mode).
