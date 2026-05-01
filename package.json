@@ -13,6 +13,8 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:rls": "npx supabase db reset --local && npx supabase test db supabase/tests/rls",
+    "test:migration": "bash scripts/migration-roundtrip.sh",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md}\" --ignore-path .prettierignore",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md}\" --ignore-path .prettierignore",
     "prepare": "husky"
