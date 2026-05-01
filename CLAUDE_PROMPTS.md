@@ -84,7 +84,13 @@ Before generating the C-C-D-V prompt, for ANY stage that:
 (c) The RLS policy plan — for every policy that touches another
     tenant-scoped table, name the SECURITY DEFINER helper used
 (d) The down migration drop order, with reasoning
-(e) The pgTAP test plan — what assertions, what edge cases
+(e) The pgTAP test plan — what assertions, what edge cases; for every
+    pgTAP assertion pattern not previously used in this codebase (e.g.
+    DML-CTE top-level WITH, throws_ok 4-arg form, sentinel timestamps
+    for trigger tests, throws_like for RAISE messages), show the exact
+    1–2-line skeleton form so the reviewer can sanity-check it before
+    code generation. Patterns established in prior stages need no
+    skeleton. (ADR-0006)
 (f) Any spec ambiguity that needs resolution before coding starts
     (file as Q-NNNN before proceeding, do not assume)
 
