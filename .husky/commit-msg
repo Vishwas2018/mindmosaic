@@ -1,0 +1,5 @@
+if grep -iE "^Co-Authored-By:.*\b(Claude|ChatGPT|Copilot|GPT-4|Sonnet|Opus|noreply@anthropic\.com)\b" \
+   "$1" > /dev/null; then
+  echo "ERROR: AI Co-Authored-By trailers prohibited (BUILD_CONTRACT §11.2)"
+  exit 1
+fi

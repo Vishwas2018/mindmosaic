@@ -241,6 +241,11 @@ Every migration that creates tables, policies, or functions MUST:
 
 ### 11.2 Commit convention
 
+**Commits MUST NOT include Co-Authored-By trailers attributing AI tools** (Claude, ChatGPT,
+Copilot, GPT-4, Sonnet, Opus, Haiku, etc.). Commits are authored by the human pushing. AI tool
+attribution lives in `DAILY_LOG.md` and `docs/prompts/`, not git history. The commit-msg
+husky hook rejects any matching trailer (see `.husky/commit-msg`).
+
 Format: `type(scope): subject`
 
 | type       | Use for                                       |
