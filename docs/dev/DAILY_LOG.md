@@ -2,6 +2,108 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 5 + Audit Day 1 — 2026-05-02
+
+**Planned (from DEV_PLAN.md Stage 5):** Migration 0004 — Sessions + Canonical Events; 7 tables;
+Pattern A (student-data) + Pattern G (service-only); create_session_response_atomic atomic write;
+UTA per-role RLS extension (ADR-0004 obligation); pgTAP plan(95). Audit Day 1: ISSUE-0001 Node 22
+LTS bump, DEVIATIONS triage, OPEN_ISSUES triage.
+
+**Actually delivered:**
+
+- `chore(ci): bump Node 20 → 22 LTS (closes ISSUE-0001)` — commit 5bb1156
+  - `.github/workflows/ci.yml`: node-version 20 → 22 in all 3 runner jobs
+  - `package.json`: engines.node >=20 → >=22
+  - `.nvmrc`: created with value 22
+  - `.husky/commit-msg`: added Haiku to AI trailer rejection regex (missed in f146e85)
+  - `docs/dev/OPEN_ISSUES.md`: ISSUE-0001 → Resolved (2026-05-02)
+  - `docs/dev/decisions/0010-node-22-lts-ci-upgrade.md`: ADR-0010 filed
+- `feat(db): migration 0004 — Sessions + Canonical Events` — commit b1bd4a0
+  - `supabase/migrations/0004_sessions_events.sql` — 7 tables, 3 SECURITY DEFINER helpers,
+    create_session_response_atomic (4-table atomic write, optimistic lock, VERSION_CONFLICT),
+    RLS on 7 tables (Pattern A + Pattern G), UTA per-role extension (user_profile,
+    parent_student_link, class_group, class_student DROP broad + ADD per-role)
+  - `supabase/migrations/down/0004_sessions_events.down.sql` — DROP tables → restore UTA
+    broad policies → DROP functions (BUG-B-correct order)
+  - `supabase/tests/rls/004_sessions_events.sql` — plan(95); 25 groups; 240/240 cumulative
+- `chore(dev-context): audit stage 5 — ...` — commit d79e7f7
+  - `docs/dev/OPEN_ISSUES.md`: ISSUE-0002 filed (low; Stage 2/3 helpers missing anon REVOKE)
+  - `docs/dev/decisions/0012-partitioned-table-pk-includes-partition-key.md`: ADR-0012 filed
+  - `BUILD_CONTRACT.md`: §6 + §10 updated with triple-REVOKE rule and partition-PK checklist
+- `chore(dev-context): stage 5 close — ...` — commit (this commit)
+  - ADR-0011, DAILY_LOG, PROJECT_STATE, prompts archive
+
+**Time spent:** ~4h (§2A pre-implementation review + implementation + verification + audit triage)
+
+**Surprises / departures:**
+
+1. **BUG-C (headline) — Supabase platform auto-grants EXECUTE to `anon` on every new function.**
+   This is a Supabase default-privileges delta from vanilla PostgreSQL. `REVOKE EXECUTE FROM PUBLIC`
+   (the ADR-0008 "double REVOKE" pattern) strips the PUBLIC pseudo-role but leaves a direct `anon`
+   grant that Supabase applies independently. Discovery path: G16.1–G16.4 assertions (`anon cannot
+   execute helper`) all returned `have: true, want: false`. Root cause confirmed via
+   `information_schema.routine_privileges` — `anon` appeared as an explicit grantee alongside
+   `authenticated` and `service_role`.
+   **Why this is the headline lesson**: Stage 6–14 will create multiple new SECURITY DEFINER
+   functions for intelligence-layer helpers. Each will silently acquire `anon` EXECUTE under the
+   old double-REVOKE pattern. BUILD_CONTRACT §6 and §10 now carry the canonical triple-REVOKE
+   pattern as the safety net; any reviewer who misses it on a PR will be caught by the updated
+   migration checklist (point 5). Stage 2/3 helpers have the gap — ISSUE-0002 filed for remediation
+   before Stage 10 audit.
+
+2. **BUG-A — PostgreSQL partitioned-table PK must include all partition key columns.**
+   `learning_event` declared `id uuid PRIMARY KEY` but is partitioned `BY RANGE (created_at)`.
+   PostgreSQL raised SQLSTATE 0A000 at DDL time: "unique constraint on partitioned table must
+   include all partitioning columns." Fixed: `PRIMARY KEY (id, created_at)`. Same rule applied to
+   `idx_le_dedup` (also a UNIQUE constraint). ADR-0012 filed; BUILD_CONTRACT §10 checklist updated.
+   The `intelligence_audit_log` table in Stage 6 is also partitioned monthly — apply the composite
+   PK rule there preemptively.
+
+3. **BUG-B — Down migration dropped helper functions while surviving-table policies still referenced them.**
+   Policies on `user_profile` and `class_student` (`up_teacher_select`, `cs_teacher_select`) reference
+   `fn_teacher_student_ids()`. These tables are NOT dropped by the down migration (they are from
+   earlier migrations), so their policies survive the DROP TABLE block. Attempting to DROP FUNCTION
+   while a policy references it raised "cannot drop function … because other objects depend on it."
+   Fix: reorder the down migration — clear UTA per-role policies (restoring Stage 2 broad policies)
+   **before** dropping helper functions. This is a strict dependency: policies → functions.
+
+4. **BUG-D — `throws_ok(sql, errcode, text)` 3-arg form treats `text` as the message to match.**
+   G18.1 was written as `throws_ok($$...$$, 'P0001', 'G18.1: stale expected_version=1…')`.
+   pgTAP's 3-arg `throws_ok` uses the third argument as the error message to assert against
+   (displaying it as `wanted: P0001: G18.1: …` vs `caught: P0001: VERSION_CONFLICT`). The test
+   name comes from auto-generation. Fix: 4-arg form `throws_ok(sql, 'P0001', 'VERSION_CONFLICT',
+   'G18.1: …')`. Alternatively, `throws_like(sql, '%VERSION_CONFLICT%', description)` for
+   message-pattern checks without an errcode assertion. Stage 4's PROJECT_STATE pgTAP pattern
+   table entry for "Function raises (code check)" was incorrect; updated in this session's
+   PROJECT_STATE.
+
+**Decisions made (not in stage):**
+
+- ADR-0010: Node 22 LTS CI upgrade (audit day work)
+- ADR-0011: Pattern A SECURITY DEFINER helpers — three binding principles
+- ADR-0012: Partitioned-table PK must include all partition key columns
+- BUILD_CONTRACT §6 + §10 updated (triple REVOKE canonical pattern; partition-PK checklist item)
+
+**Deviations logged:**
+
+- none (four bugs fixed in-stage before commit; no scope deviation from DEV_PLAN.md Stage 5)
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0001 closed: Node 22 LTS bump complete (commit 5bb1156; ADR-0010 filed)
+- ISSUE-0002 opened: Stage 2/3 helpers missing `REVOKE EXECUTE FROM anon` (low severity;
+  remediation before Stage 10 audit; ISSUE-0002 in OPEN_ISSUES.md)
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (18/18, all cached) · Build ✅ (cached from Stage 1) · RLS ✅ (240/240, 28 tables) · Migration roundtrip ✅ (pnpm test:migration green)
+
+**Tomorrow — first thing:**
+Stage 6 — Migration 0005 — Intelligence Foundation (L1 Foundation Layer). Schema/policy stage →
+run §2A pre-implementation review before C-C-D-V.
+
+---
+
 ## Stage 4 — 2026-05-02
 
 **Planned (from DEV_PLAN.md Stage 4):** Migration 0003 — Assessment Configuration; 5 tables; RLS Pattern F admin-write public-read; pgTAP plan(40).
