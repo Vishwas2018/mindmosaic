@@ -2,6 +2,76 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 6 — 2026-05-03
+
+**Planned (from DEV_PLAN.md Stage 6):** Migration 0005 — Intelligence Foundation (L1 Foundation Layer);
+12 tables from arch §2.8–§2.10; RLS/policies per §2A pre-implementation review; pgTAP plan(70).
+
+**Actually delivered:**
+
+- `feat(db): migration 0005 — Intelligence Foundation (Stage 6)` — commit 2343cce
+  - `supabase/migrations/0005_intelligence_orchestration.sql` — 12 tables, 7 updated_at triggers,
+    C7 partial unique indexes on repair_record, intelligence_audit_log partitioned (default partition
+    only), full RLS/policies implementing D1-D4 decisions from §2A review
+  - `supabase/migrations/down/0005_intelligence_orchestration.down.sql` — DROP 12 tables in reverse
+    FK dependency order
+  - `supabase/tests/rls/005_intelligence_orchestration.sql` — plan(70): 60 Pattern A tests (6 per
+    table × 10 tables), 2 plan_revision Pattern G, 3 cohort_metric_cache selective grant, 1 G4
+    guard reactivation, 2 C7 concurrency, 2 partition routing; 308/308 cumulative
+  - `supabase/tests/rls/002_content.sql` — plan(40)→plan(38): G11 in-transaction stub removed
+    (skill_mastery now real table; per ADR-0007 G_G4 in Stage 6 is the real test)
+- `chore(dev-context): stage 6 close — ...` — this commit
+
+**Time spent:** ~3h (§2A review spanned prior session; implementation + verification + ritual)
+
+**Surprises / departures:**
+
+1. **idx_plan_override_active**: `WHERE expires_at > now()` in index predicate rejected —
+   PostgreSQL requires index predicates to be IMMUTABLE; `now()` is STABLE. Fixed: plain index
+   on `(student_id, type, expires_at)` — query planner can range-scan for `WHERE expires_at > now()`.
+
+2. **Anon SELECT tests removed from Pattern A groups (plan 81→70)**:
+   Pattern A tables have policies calling `fn_teacher_student_ids()` / `fn_my_child_ids()`
+   (REVOKE FROM PUBLIC/anon per triple-REVOKE pattern, Stage 4). When `anon` role evaluates
+   these policies, permission denied is raised before returning 0 rows. Same issue for
+   `cohort_metric_cache` (policies call `auth_role()`). Established precedent: Stage 4 tests
+   anon access via `has_function_privilege` in G16, not via SET ROLE anon + SELECT. Anon tests
+   removed; plan reduced from 81 to 70. `plan_revision` G12.2 kept (no policies = no function
+   calls = safe for anon).
+
+3. **Nested data-modifying CTE invalid** (PostgreSQL):
+   INSERT deny tests used `SELECT is((WITH x AS (INSERT...RETURNING 1) SELECT count(*) FROM x), 0, ...)`.
+   PostgreSQL rejects data-modifying CTEs nested inside subqueries — must be top-level. Correct
+   pattern for INSERT RLS deny: `throws_like($$INSERT...$$, '%row-level security%', description)`.
+   All 10 G?.7 tests converted. This pattern is now documented in PROJECT_STATE.md.
+
+4. **cohort_metric_cache deviation from arch** (DAILY_LOG deviation, no ADR):
+   Arch §2.10 DDL has no `tenant_id` column. Arch §3.2 designates it Pattern G. Stage 6 §2A (D3)
+   overrode both: tenant_id added + selective grant to teacher/org_admin/platform_admin. tenant_id
+   also added to PRIMARY KEY to prevent PK conflicts for aggregate cohort_key values across tenants
+   (e.g., 'year:5:naplan' would clash for tenant A vs tenant B without tenant_id in PK).
+
+**Decisions made (not in stage):**
+
+- ADR-0013: row-level RLS + app-layer column projection for audit/explainability tables
+
+**Deviations logged:**
+
+- none (cohort_metric_cache deviation logged in DAILY_LOG per policy — no ADR warranted)
+
+**Issues opened / closed / questions raised:**
+
+- none
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (18/18 packages) · Build ✅ (cached) · RLS ✅ (308/308)
+- Migration roundtrip ✅ (up→down→up clean)
+
+**Tomorrow — first thing:**
+Stage 7 — Migration 0006 — Assignments + Notifications (arch §2.11–§2.12); §2A pre-implementation
+review required before coding.
+
 ## Stage 5 + Audit Day 1 — 2026-05-02
 
 **Planned (from DEV_PLAN.md Stage 5):** Migration 0004 — Sessions + Canonical Events; 7 tables;
