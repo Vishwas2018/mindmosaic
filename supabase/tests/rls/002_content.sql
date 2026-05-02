@@ -1,13 +1,16 @@
 -- =============================================================================
 -- pgTAP Test: 002_content.sql
 -- Stage 3 · 2026-05-02
--- plan(40)
+-- plan(38)
 -- Tests: RLS enabled (G1×9), fn_graph_version_is_published shape (G2×4),
 --        publish_skill_graph shape (G3×4), set_updated_at triggers (G4×5),
 --        v_item_current (G5×2), cycle detection (G6×4), forked DAG (G7×1),
 --        draft isolation pre-publish (G8×3), clean publish (G9×2),
---        draft isolation post-publish (G10×3), G4 guard (G11×2),
+--        draft isolation post-publish (G10×3),
 --        permission denied (G12×1)
+-- G11 (G4 guard in-transaction stub × 2) removed: skill_mastery is now a real table
+--   (Migration 0005); stub CREATE TABLE fails. Real G4 guard test lives in
+--   005_intelligence_orchestration.sql G_G4 per ADR-0007.
 --
 -- New pgTAP patterns (per ADR-0006 — skeleton forms required):
 --   lives_ok(sql, description)  — asserts SQL executes without raising
@@ -29,7 +32,7 @@
 -- =============================================================================
 
 BEGIN;
-SELECT plan(40);
+SELECT plan(38);
 
 -- =============================================================================
 -- G1 — RLS enabled on all 9 Stage 3 tables (9 assertions)
@@ -482,27 +485,6 @@ VALUES
    '00000000-0000-0000-0000-0000e1000001',
    '00000000-0000-0000-0000-0000e1000002',
    'prerequisite', 0.9, 'required');
-
--- Create in-transaction stub for skill_mastery and populate it
-CREATE TABLE skill_mastery (id uuid);
-INSERT INTO skill_mastery VALUES (gen_random_uuid());
-
--- G11.1: G4 guard fires when skill_mastery has rows → PUBLISH_BLOCKED
--- throws_like matches against the error message text (pattern, description)
-SELECT throws_like(
-  $$SELECT publish_skill_graph('00000000-0000-0000-0000-0000000000e1')$$,
-  '%PUBLISH_BLOCKED%',
-  'G11.1: G4 guard blocks publish when skill_mastery stub has rows'
-);
-
--- Empty the stub — guard should now pass
-DELETE FROM skill_mastery;
-
--- G11.2: G4 guard inactive when skill_mastery is empty → publish succeeds
-SELECT lives_ok(
-  $$SELECT publish_skill_graph('00000000-0000-0000-0000-0000000000e1')$$,
-  'G11.2: G4 guard passes when skill_mastery stub is empty'
-);
 
 -- =============================================================================
 -- G12 — Permission denied: authenticated has no execute privilege on publish_skill_graph
