@@ -49,7 +49,11 @@ Path: `supabase/functions/content-svc`
 - `repair_sequence` — **[v1.1]** table exists but no writer in v1
 - `stimulus` — mutable (seeded in v1)
 - `item` — mutable
-- `item_version` — immutable
+- `item_version` — immutable. **Writer contract:** any writer to `item_version` must
+  UPDATE the prior current row to `is_current = false` BEFORE inserting the new row.
+  `idx_item_version_current_one` (unique on `(item_id) WHERE is_current = true`) will
+  raise on violation. v1 writers: seeder (Stage 14). v1.1 writer: L8 content
+  recalibration. No trigger enforces ordering in v1 — caller responsibility.
 - `pathway`, `framework_config`, `assessment_profile`, `blueprint`, `diagnostic_rule` — seeded in v1
 
 ### Endpoints Owned [v1]
