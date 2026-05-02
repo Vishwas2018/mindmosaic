@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "description": "MindMosaic v1 — adaptive learning platform for NAPLAN Y5 + ICAS Math",
   "engines": {
-    "node": ">=20",
+    "node": ">=22",
     "pnpm": ">=9"
   },
   "packageManager": "pnpm@10.30.3",

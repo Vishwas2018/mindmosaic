@@ -5,26 +5,17 @@
 
 ## Open
 
-### ISSUE-0001 — CI node-version: GitHub Actions Node 20 deprecation; upgrade to Node 22 LTS required
+## Resolved
 
+### ISSUE-0001 — CI node-version: GitHub Actions Node 20 deprecation; upgrade to Node 22 LTS
+
+- Status: resolved
 - Severity: medium
 - Reported: 2026-05-02 (Stage 3 morning reconciliation)
-- Deadline: Stage 5 audit day (hard deadline: before 2026-06-02)
-- Area: infra
-- Tags: ci
-
-GitHub Actions deprecated Node 20; the hard deadline is 2026-06-02. `.github/workflows/ci.yml`
-pins `node-version: '20'` across all four CI jobs (lint, typecheck, unit, migration-dryrun).
-After 2026-06-02 these will emit deprecation errors and are at risk of breaking the CI matrix.
-
-The root package.json `engines` field already allows `node >=20`, so bumping CI to Node 22 LTS
-is a one-line change per job with no downstream code changes required.
-
-Root commit: Stage 1 CI scaffold.
-
-- Resolution: Stage 5 audit day (upgrade `node-version` to `'22'` in `.github/workflows/ci.yml`)
-
-## Resolved
+- Closed: 2026-05-02 (Stage 5 audit day)
+- Resolution: Bumped `node-version` to `"22"` in all three CI runner jobs (lint, typecheck, unit);
+  updated `package.json` `engines.node` to `>=22`; created `.nvmrc` with `22`.
+  ADR-0010 filed. Commit: this audit day commit.
 
 ### ISSUE-0001 (original, 2026-05-01) — UTA-table SELECT policies: tenant-scoped only, per-role absent until Stage 5
 
