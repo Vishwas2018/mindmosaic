@@ -15,6 +15,8 @@ export type BrandSize = 'sm' | 'md' | 'lg';
 export type BrandVariant = 'default' | 'on-dark';
 
 export interface BrandProps {
+  /** Public-path URL to the logo image. Passed by the consuming app — not bundled into @mm/ui. */
+  logoSrc?: string;
   size?: BrandSize;
   variant?: BrandVariant;
   showSlogan?: boolean;
@@ -34,11 +36,11 @@ const wordmarkSizes: Record<BrandSize, string> = {
 };
 
 export const Brand = forwardRef<HTMLDivElement, BrandProps>(
-  ({ size = 'md', variant = 'default', showSlogan = false, className }, ref) => {
+  ({ logoSrc = '/logo.svg', size = 'md', variant = 'default', showSlogan = false, className }, ref) => {
     const mosaicColor =
       variant === 'on-dark'
         ? 'text-[var(--accent-400)]'
-        : 'text-[var(--accent-500)]';
+        : 'text-brand-secondary';
 
     return (
       <div
@@ -48,13 +50,13 @@ export const Brand = forwardRef<HTMLDivElement, BrandProps>(
       >
         <div className="flex items-center gap-2">
           <img
-            src="/logo.svg"
+            src={logoSrc}
             alt=""
             aria-hidden="true"
             className={clsx(logoSizes[size], 'flex-shrink-0')}
           />
           <span className={clsx(wordmarkSizes[size], 'leading-none select-none')}>
-            <span className="text-[var(--primary)]">Mind</span>
+            <span className="text-brand-primary">Mind</span>
             <span className={mosaicColor}>Mosaic</span>
           </span>
         </div>
