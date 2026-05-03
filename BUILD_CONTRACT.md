@@ -231,6 +231,21 @@ Every migration that creates tables, policies, or functions MUST:
    - Any new partitioned table: every UNIQUE constraint and PRIMARY
      KEY includes all partition key columns (SQLSTATE 0A000 at DDL
      time if missing; per ADR-0012)
+   - pgTAP test patterns: see docs/dev/PGTAP_PATTERNS.md (catalogue
+     maintained across stages per ADR-0006)
+
+6. Partial index predicates must use only IMMUTABLE expressions.
+   Functions like `now()` and `current_date` are STABLE/VOLATILE —
+   PostgreSQL rejects them at index creation time with SQLSTATE 42P17
+   ("functions in index predicate must be marked IMMUTABLE"). Use a
+   stored column comparison instead. Examples:
+   - Allowed: `WHERE is_active = true`, `WHERE status IN ('queued','in_progress')`
+   - Rejected: `WHERE expires_at > now()`, `WHERE created_at > current_date`
+   Fix: include the time column in the index and let the query planner
+   do the range scan:
+     `CREATE INDEX ... ON t(col1, col2, expires_at)` — not
+     `CREATE INDEX ... ON t(col1, col2) WHERE expires_at > now()`
+   Discovered Stage 6, Lesson 1. SQLSTATE 42P17.
 
 ---
 
