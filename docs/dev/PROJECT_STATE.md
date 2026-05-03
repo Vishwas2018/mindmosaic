@@ -5,9 +5,9 @@
 
 ## Position
 
-- Last completed stage: Stage 6 — Migration 0005 — Intelligence Foundation (2026-05-03)
-- Next stage: Stage 7 — Migration 0006 — Assignments + Notifications
-- Days remaining (target 75): 70
+- Last completed stage: Stage 7 — Migration 0006 — Jobs + Outbox + Rate Limit (2026-05-03)
+- Next stage: Stage 8 — Migration 0007 — New Domains (Assignments + Billing + Engagement + Notifications)
+- Days remaining (target 75): 69
 - Buffer days consumed in Phase 0 (Stages 1–14): 0 of 3
 
 ## Test suite
@@ -16,9 +16,9 @@
 | ------------ | -------- | --------- | ---------- |
 | Unit         | ✅ green  | 0 (pass-with-no-tests) | 2026-05-03 |
 | Integration  | n/a      | n/a       | n/a        |
-| pgTAP        | ✅ green  | 308/308   | 2026-05-03 |
+| pgTAP        | ✅ green  | 334/334   | 2026-05-03 |
 | Contract     | n/a      | n/a       | n/a        |
-| RLS          | ✅ green  | 308/308 (39 tables) | 2026-05-03 |
+| RLS          | ✅ green  | 334/334 (42 tables) | 2026-05-03 |
 | E2E          | n/a      | n/a       | n/a        |
 
 ## Quality gates
@@ -29,7 +29,7 @@
 | pnpm typecheck  | ✅ green (18/18, cached) | 2026-05-03 |
 | pnpm test       | ✅ green (18/18, cached) | 2026-05-03 |
 | pnpm build      | ✅ green (cached from Stage 1) | 2026-04-30 |
-| RLS coverage    | ✅ 39/39 tables enabled + tested | 2026-05-03 |
+| RLS coverage    | ✅ 42/42 tables enabled + tested | 2026-05-03 |
 | pnpm audit      | unknown — TODO measure | n/a |
 | pnpm test:migration | ✅ green (roundtrip up→down→up) | 2026-05-03 |
 
@@ -44,7 +44,7 @@
 
 ## Open items
 
-- ADRs accepted: 13 (ADR-0001 through ADR-0013)
+- ADRs accepted: 14 (ADR-0001 through ADR-0014)
 - ADRs proposed: 0
 - Issues critical / high / medium / low: 0/0/1/1
 - Open questions: 0
@@ -53,13 +53,29 @@
 
 ## Notes for next session
 
-**Stage 7 is Migration 0006 — Assignments + Notifications.** Schema/policy stage
-→ §2A pre-implementation review required before C-C-D-V.
+**Stage 8 is Migration 0007 — New Domains (Assignments + Billing + Engagement + Notifications).**
+§2A pre-implementation review required before C-C-D-V. User to provide Stage 8 §2A
+pre-cues (i)–(v) at session start (provided in Stage 7 morning ritual but not captured
+verbatim due to context compaction; topics covered assignments, billing, engagement, and
+notification domain tables including session_record.assignment_id FK wiring).
+
+**outbox_event scope note:** arch §2.15 and DEV_PLAN Stage 7 both list outbox_event as
+a Stage 7 deliverable, but it was silently included in migration 0004. Do NOT include it
+again in any future migration. Its RLS, index, and column tests are in 004_sessions_events.sql.
+
+**ADR-0014 cleanup:** `docs/dev/decisions/0014-pgtap-index-assertions-catalog-not-explain.md`
+is an incorrectly-named stub left untracked. Delete before Stage 10 audit. Correct committed
+file: `docs/dev/decisions/0014-pgtap-index-assertions-structural-not-explain.md`.
+
+**pgTAP index assertion rule (ADR-0014, Stage 7):** use `pg_indexes` catalog check for
+all indexes (existence proof); use P5 dedup (throws_like '%duplicate key%') for unique /
+partial-unique indexes (predicate correctness proof). EXPLAIN-based assertions deferred
+to Stage 26 load tests.
 
 **ISSUE-0002 (low, open):** Stage 2/3 helpers (`auth_tenant_id`, `auth_user_id`, `auth_role`,
 `fn_user_in_my_tenant`, `fn_class_in_my_tenant`, `fn_graph_version_is_published`) are missing
 `REVOKE EXECUTE FROM anon`. Remediation is a small follow-up migration. Due before Stage 10 audit.
-Any new SECURITY DEFINER function created in Stage 7+ must use the triple-REVOKE pattern per
+Any new SECURITY DEFINER function created in Stage 8+ must use the triple-REVOKE pattern per
 BUILD_CONTRACT §6 + §10.
 
 **ISSUE-0003 (medium, open):** GitHub Actions action runners (actions/checkout@v4 etc.) pin to
@@ -73,15 +89,11 @@ auth_role, auth_tenant_id — all REVOKE'd from anon). Anon evaluation of such p
 safe to test with anon via SELECT — no function calls in zero-policy RLS.
 
 **INSERT RLS deny pattern (established Stage 6):** For INSERT denied by RLS, use
-`throws_like($$INSERT...$$, '%row-level security%', description)`. Do NOT use nested CTE:
-`SELECT is((WITH x AS (INSERT...RETURNING 1) SELECT count(*) FROM x), 0, ...)` — PostgreSQL
-rejects data-modifying CTEs nested inside subqueries (must be top-level WITH clause).
+`throws_like($$INSERT...$$, '%row-level security%', description)`. Do NOT use nested CTE.
 
 **Index predicate IMMUTABLE requirement (established Stage 6):** PostgreSQL requires index
 predicate functions to be IMMUTABLE. `now()` is STABLE — cannot be used in `WHERE` clause of
-partial index. Fix: include the time column in the index, let query planner do the range scan.
-E.g., `CREATE INDEX ... ON table(col1, col2, expires_at)` instead of
-`CREATE INDEX ... ON table(col1, col2) WHERE expires_at > now()`.
+partial index. Fix: include the time column in the index.
 
 **ADR-0013 (Stage 6) — audit table column redaction:** Row-level RLS controls row visibility;
 column-level access is application-layer responsibility. intelligence-svc (Stage 18+) must
@@ -108,7 +120,11 @@ verify this gap does not become a security issue as the application layer evolve
 (PostgreSQL will scan partitions). Any hypothetical FK to `learning_event(id)` from a future table
 would need to include `created_at`. No such FK exists in v1.
 
-**pgTAP patterns established through Stage 6:**
+**session_record.assignment_id FK (from 0004 header):** Added to session_record in migration 0004
+without a FK constraint. FK (`assignment_id REFERENCES assignment(id) ON DELETE SET NULL`) must
+be added in Stage 8 (Migration 0007) when the assignment table is created.
+
+**pgTAP patterns established through Stage 7:**
 - SELECT isolation: `SET ROLE authenticated; SELECT set_config(...); SELECT is(COUNT(*)::int, ...)`
 - DML deny (silent UPDATE/DELETE): `WITH x AS (UPDATE/DELETE ... RETURNING 1) SELECT is(..., 0, ...)`
 - DML deny (INSERT raises): `SELECT throws_like($$INSERT...$$, '%row-level security%', description)`
@@ -121,8 +137,12 @@ would need to include `created_at`. No such FK exists in v1.
 - Optimistic-lock: call atomic fn with stale version → `throws_ok(sql, 'P0001', 'VERSION_CONFLICT', description)`
 - Dedup unique index: `throws_like($$INSERT...$$, '%duplicate key%', description)`
 - Partial unique index (one-active): `throws_like($$INSERT...$$, '%duplicate key%', description)`
+- Partial index predicate proof (ADR-0014, Stage 7): 3-subtest: lives_ok first insert /
+  throws_like '%duplicate key%' duplicate / lives_ok excluded-status insert (proves WHERE clause honored)
 - Anon permission check (no SELECT on helper-policy table): `has_function_privilege('anon', 'fn()', 'execute') = false`
   (do NOT use SET ROLE anon + SELECT COUNT(*) on tables with SECURITY DEFINER helper policies)
+- Structural index existence (ADR-0014): `SELECT ok(EXISTS(SELECT 1 FROM pg_indexes WHERE tablename='T' AND indexname='I'), ...)`
+- Policy count = 0 check (Pattern G structural): `SELECT is((SELECT count(*)::int FROM pg_policies WHERE tablename='T'), 0, ...)`
 
 **Supabase remote project:** https://tohmshcpdhcdfsubvnok.supabase.co (ap-southeast-2)
 
@@ -142,3 +162,8 @@ Stage 19 assessment-svc treats 'public' as always-granted. No CHECK constraint i
 check. This is wrong — the 3-arg form checks the message, not just the errcode. Correct pattern:
 `throws_ok(sql, 'PCODE', 'ERROR_KEY', description)` (4-arg). Or use `throws_like(sql,
 '%ERROR_KEY%', description)` for message-pattern matching without errcode assertion.
+
+**Stage 26 forward-flag (ADR-0014):** load-test framework must include EXPLAIN-based assertions
+for critical indexes: idx_job_poll (job_queue polling), idx_job_dedup (idempotency uniqueness),
+idx_outbox_unprocessed (outbox drain), idx_pe_pending (pipeline step tracking). Document in
+Stage 26 prompt.

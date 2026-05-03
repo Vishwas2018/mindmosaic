@@ -2,6 +2,60 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 7 — 2026-05-03
+
+**Planned (from DEV_PLAN.md Stage 7):** Migration 0006 — Jobs + Outbox + Rate Limit;
+4 infra tables, Pattern G, no new SECURITY DEFINER functions.
+
+**Actually delivered:**
+
+- `feat(db): migration 0006 — Jobs + Outbox + Rate Limit` (Stage commit)
+  - `supabase/migrations/0006_jobs_outbox_rate_limit.sql` — 3 tables (outbox_event
+    already in 0004), 7 indexes, RLS enabled + 0 policies
+  - `supabase/migrations/down/0006_jobs_outbox_rate_limit.down.sql` — DROP 3 tables
+  - `supabase/tests/rls/006_jobs_outbox_rate_limit.sql` — plan(26), 334/334 cumulative
+- `chore(dev-context): stage 7 close — Jobs + Outbox + Rate Limit` (dev-context commit)
+  - ADR-0014: pgTAP structural index assertions, not EXPLAIN
+  - DAILY_LOG Stage 7 entry, PROJECT_STATE refresh, Stage 7 prompt archive
+
+**Time spent:** ~2h (§2A + impl + verification)
+
+**Surprises / departures:**
+
+- outbox_event already in migration 0004 (arch §2.15 and DEV_PLAN Stage 7 both list it
+  but it was silently included in Stage 5). Excluded from 0006 scope; no deviation filed
+  (stage-plan mismatch, not a build deviation from DEV_PLAN intent).
+- plan(26) not plan(30) (X3 target projection): outbox_event removal = -4 tests.
+  Cumulative 334, not 338 as X3 projected.
+- ADR-0014 slug error: initially filed as `catalog-not-explain.md`. Correct committed
+  slug: `structural-not-explain.md`. Stub at catalog path left untracked; clean up
+  before Stage 10 audit.
+- Pre-cues (i)–(v) provided in Stage 7 morning ritual were Stage 8 content (Claude
+  model mis-assigned them to Stage 7). Deferred to Stage 8 per user direction.
+
+**Decisions made (not in stage):**
+
+- ADR-0014: pgTAP index assertions via structural catalog check + dedup; not EXPLAIN.
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- none
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (0/0 pass-with-no-tests) · Build ✅ (cached) · RLS ✅ (334/334)
+
+**Tomorrow — first thing:**
+
+Stage 8 — Migration 0007 — New Domains (Assignments + Billing + Engagement + Notifications).
+§2A pre-implementation review required. User to provide Stage 8 §2A pre-cues (i)–(v).
+
+---
+
 ## Stage 6 — 2026-05-03
 
 **Planned (from DEV_PLAN.md Stage 6):** Migration 0005 — Intelligence Foundation (L1 Foundation Layer);
