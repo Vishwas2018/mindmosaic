@@ -1,3 +1,7 @@
+// Brand
+export { Brand } from './Brand/Brand.js';
+export type { BrandProps, BrandSize, BrandVariant } from './Brand/Brand.js';
+
 // Layout
 export { AppShell } from './AppShell/AppShell.js';
 export type { AppShellProps, AppShellVariant } from './AppShell/AppShell.js';
