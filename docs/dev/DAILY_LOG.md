@@ -169,6 +169,86 @@ Stage 12 — SDK + API Client (packages/sdk). Run morning ritual before any work
 
 ---
 
+## Stage 12 — 2026-05-03
+
+**Planned (from DEV_PLAN.md Stage 12):** Typed fetch client + React Query hooks for Phase 1
+endpoints. MmClient with JWT, X-Trace-Id, X-Client-Version, Idempotency-Key, APIError decoding.
+hooks/ one file per endpoint group. mmKeys query-key factory. Unit tests.
+
+**Actually delivered:**
+
+- `feat(sdk): stage 12 -- typed fetch client + React Query hooks + ADR-0019` — commit 0c3b311
+  - `packages/sdk/src/client.ts` — MmClient class; raw fetch wrapper (Q1 approved); getToken
+    callback (Q2 approved); SDKResponse<T> = { data: T; traceId: string } (X2); APIError extends
+    Error (X1 exact shape: code: ErrorCode, status, traceId, message); X-Trace-Id generated via
+    crypto.randomUUID() if absent, echoed from response header preferred (X2); X-Client-Version:
+    SCHEMA_VERSION auto-attached (G3); Idempotency-Key threaded per method; network errors
+    propagate as-is (no wrapping); get/post/patch/delete typed methods.
+  - `packages/sdk/src/context.ts` — MmClientProvider + useMmClient() via React.createElement
+    (no JSX needed, no tsconfig jsx change).
+  - `packages/sdk/src/keys.ts` — mmKeys factory with .all()/.byId(id)/.state(id)/.summary(id)
+    hierarchy per X4 for all 7 domains.
+  - `packages/sdk/src/hooks/identity.ts` — useMe(), useTenant(tenantId)
+  - `packages/sdk/src/hooks/content.ts` — usePathways(), useAssessmentProfile(id)
+  - `packages/sdk/src/hooks/session.ts` — useCreateSession, useSessionState, useSessionSummary,
+    useRecordResponse, useSubmitSession, useCheckpoint; all mutations carry idempotencyKey (X3);
+    auto-generated key stabilised per-mount via useRef; JSDoc warns not retry-safe without stable key.
+  - `packages/sdk/src/hooks/intelligence.ts` — useLearningDNA, useSkillProgress, useCausalMap
+  - `packages/sdk/src/hooks/orchestration.ts` — useLearningPlan, usePathwayReadiness, usePlanOverride
+  - `packages/sdk/src/hooks/index.ts` — re-exports 5 groups
+  - `packages/sdk/src/index.ts` — re-exports MmClient, APIError, SDKResponse<T>, MmClientProvider,
+    useMmClient, mmKeys, all hooks
+  - `packages/sdk/src/__tests__/client.test.ts` — 13 tests: X1 (APIError + instanceof + code),
+    X2 (traceId from response header, success + error), X5 (X-Client-Version === SCHEMA_VERSION),
+    header assertions (Auth Bearer, Idempotency-Key, X-Trace-Id UUID, omission cases)
+  - `packages/sdk/src/__tests__/keys.test.ts` — 9 tests: X4 hierarchy, domain isolation
+  - `packages/sdk/src/__tests__/hooks.test.ts` — 2 tests (jsdom, Q4): renderHook useMe() success
+    + error paths via mock fetch + QueryClientProvider + MmClientProvider wrapper
+  - `packages/sdk/tsconfig.json` — added `"lib": ["ES2022", "DOM"]` for crypto.randomUUID() +
+    fetch types
+  - `packages/sdk/package.json` — peerDependencies (react@^18, @tanstack/react-query@^5);
+    deps: @mm/types@workspace:*, @tanstack/react-query@^5; devDeps: react, @types/react,
+    @testing-library/react@^16, jsdom@^25
+  - `docs/dev/decisions/0019-sdk-response-wrapper.md` — ADR-0019 accepted
+
+**Time spent:** ~2h (morning ritual + Q1–Q4 + X1–X5 analysis + implementation + quality gates)
+
+**Surprises / departures:**
+
+- Q3 REVISED: analytics/assignments/billing/engagement hook stubs excluded per user direction
+  ("build smallest complete production-shaped slice first"). Hooks will be added in the stage
+  that first consumes them.
+- `no-useless-catch` lint: try/catch that just rethrew was flagged. Removed entirely — network
+  errors propagate naturally without a wrapper.
+- `@typescript-eslint/no-unused-vars`: `_data` prefix not honoured for unused params in inline
+  schema objects. Fixed by removing the parameter from the lambda (`(): void => undefined`).
+- `children: ReactNode` (required) in MmClientProviderProps caused a TypeScript error with
+  `createElement(Provider, { client }, children)`. Fixed by making `children?: ReactNode`
+  (optional — createElement variadic arg merges into props.children at runtime).
+
+**Decisions made (not in stage):**
+
+- ADR-0019: SDKResponse<T> = { data: T; traceId: string } wrapper on all SDK methods.
+  Sets precedent for future SDK methods (Stage 14+). Hooks unwrap via .then(r => r.data).
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- none
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (121 total: 97 types + 24 sdk) · Build ✅ (cached) · RLS ✅ (451/451)
+
+**Tomorrow — first thing:**
+
+Stage 13 — packages/ui Primitives + Design Tokens + axe-core Gate. Run morning ritual before any work.
+
+---
+
 ## Stage 9 — 2026-05-03
 
 **Planned (from DEV_PLAN.md Stage 9):** Migration 0008 — pg_cron Setup; 8 cron functions +
