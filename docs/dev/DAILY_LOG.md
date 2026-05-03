@@ -2,6 +2,47 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 14 — 2026-05-04
+
+**Planned (from DEV_PLAN.md Stage 14):** apps/web scaffold (auth pages, middleware, route groups), Edge Functions (auth-svc + users-svc), seeds (01-06), scripts (validate-content, set-tenant-tier), CI update.
+
+**Actually delivered:**
+
+- Cluster A — apps/web scaffold: Next.js 14 App Router with `(public)/(student)/(parent)/(teacher)/(admin)` route groups, `@supabase/ssr` cookie handling, middleware role guard, AuthProvider/EntitlementsProvider/Providers, LoginForm + SignupForm (RHF + Zod), AuthPageShell two-panel layout, all role-gated dashboard placeholder pages with "Available in a future release" copy. Commit 5e3e1f0.
+- Cluster B — Edge Functions + migration: auth-svc (6 endpoints: signup/login/refresh/logout/forgot-password/reset-password) + users-svc (4 endpoints: GET/PATCH /users/me, GET/POST /users/me/children), `_shared/` utilities (trace-id, error-envelope, rate-limit, auth, logger), migration 0011 (fn_check_rate_limit RPC + fn_cleanup_outbox + outbox.cleanup cron — resolves ISSUE-0004). Commit c3df874.
+- Cluster C — Seeds + Scripts + CI: 6 seed files (skill graph, 50 items, assessment config, users, feature flags, subscriptions), scripts/validate-content.ts (G5 assertion), scripts/set-tenant-tier.ts (G2 authorised writer), supabase/config.toml glob seed path, root package.json deps (tsx/dotenv/@supabase/supabase-js), CI seed-file-count check. Commit 969ec57.
+
+**Time spent:** ~5h (two sessions due to context compaction mid-stage)
+
+**Surprises / departures:**
+
+- `noPropertyAccessFromIndexSignature: true` in tsconfig.base.json caused 22 typecheck errors in Cluster A. Fixed with bracket notation throughout (`process.env['KEY']`, `app_metadata?.['role']`); `CookieOptions` type imported from `@supabase/ssr` to type the setAll callback parameter.
+- favicon.svg was absent at session resume (pre-existing deletion); switched to favicon.png metadata reference in layout.tsx.
+- `if (x) y++ else z++` without braces rejected by tsc when run against scripts/tsconfig.json — may be `isolatedModules` interaction. Fixed with explicit braces.
+- feature_flag table uses partial unique index (`WHERE tenant_id IS NOT NULL`); PostgREST upsert cannot target partial indexes — switched set-tenant-tier.ts to delete+insert pattern.
+- subscription table also uses partial unique index (`WHERE is_active = true`) — used SELECT-then-UPDATE-or-INSERT pattern.
+- BUILD_CONTRACT §11.2 prohibits AI "Co-Authored-By" trailers in commit messages; first commit attempt was rejected by commit-msg hook.
+
+**Decisions made (not in stage):**
+
+- ADR-0021: Use `@supabase/ssr` for Next.js SSR Supabase client (vs. manual cookie handling). See `docs/dev/decisions/0021-supabase-ssr-package.md`.
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0004 closed: outbox_event 7-day cleanup resolved in migration 0011 via fn_cleanup_outbox + outbox.cleanup cron (04:15 UTC daily).
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (171/171 unit, pgTAP not re-run — migration-only delta) · Build ✅ · RLS ✅ (from Stage 13; no new tables in Stage 14 Clusters B/C)
+
+**Tomorrow — first thing:**
+
+Stage 15 — engines-client package (AdaptiveEngine interface, LinearEngine interface, session scaffolding). Check DEV_PLAN Stage 15 preconditions.
+
 ## Stage 13 — 2026-05-03
 
 **Planned (from DEV_PLAN.md Stage 13):** packages/ui Primitives + Design Tokens + axe-core Gate.
