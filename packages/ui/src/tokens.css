@@ -53,6 +53,11 @@
   --accent-400: #ef8c56;     /* accent on purple surface (overlays) */
   --accent-300: #f9a825;     /* marketing-only warm amber (landing page only) */
 
+  /* ── Extended brand (Stage 14: Brand component + auth panel) ── */
+  --brand-primary:    #5D3FD3;  /* bright-purple — auth panel gradient, link accent */
+  --brand-secondary:  #D35400;  /* warm burnt-sienna secondary */
+  --brand-text-deep:  #4A154B;  /* deep plum — headings on white surfaces */
+
   /* ── Semantic surface aliases ── */
   --bg:            var(--slate-50);
   --surface:       #FFFFFF;

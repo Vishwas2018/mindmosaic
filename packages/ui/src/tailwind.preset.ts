@@ -14,6 +14,9 @@ const preset: Partial<Config> = {
         incorrect: { 50:'#fef2f2',100:'#fee2e2',200:'#fecaca',500:'#ef4444',600:'#dc2626',700:'#b91c1c' },
         warn:      { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',500:'#f59e0b',600:'#d97706',700:'#b45309' },
         accent:    { 300:'#f9a825',400:'#ef8c56',500:'#ef6843' },
+        'brand-primary':   '#5D3FD3',
+        'brand-secondary': '#D35400',
+        'brand-text-deep': '#4A154B',
       },
       boxShadow: {
         card:         'var(--shadow-card)',
