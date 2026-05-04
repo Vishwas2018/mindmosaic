@@ -6,53 +6,45 @@ import { z } from 'zod';
 export const SCHEMA_VERSION = '1.0.0' as const;
 
 // ─── Branded IDs ─────────────────────────────────────────────────────────────
-// X2: unique symbol pattern — prevents cross-brand collisions under structural typing edge cases.
-// `declare const` emits no runtime code; brands exist at the type level only.
+// X2: Named phantom-property brand pattern. Each type carries a uniquely-named
+// readonly property so structural typing prevents cross-brand assignment.
+// Avoids `unique symbol` computed keys which tsc --declaration cannot emit
+// across module boundaries (TS4023).
 
-declare const TenantIdBrand: unique symbol;
-export type TenantId = string & { [TenantIdBrand]: never };
+export type TenantId = string & { readonly _TenantId: never };
 export const TenantIdSchema = z.string().uuid().transform((s): TenantId => s as TenantId);
 
-declare const UserIdBrand: unique symbol;
-export type UserId = string & { [UserIdBrand]: never };
+export type UserId = string & { readonly _UserId: never };
 export const UserIdSchema = z.string().uuid().transform((s): UserId => s as UserId);
 
-declare const SessionIdBrand: unique symbol;
-export type SessionId = string & { [SessionIdBrand]: never };
+export type SessionId = string & { readonly _SessionId: never };
 export const SessionIdSchema = z.string().uuid().transform((s): SessionId => s as SessionId);
 
-declare const ItemIdBrand: unique symbol;
-export type ItemId = string & { [ItemIdBrand]: never };
+export type ItemId = string & { readonly _ItemId: never };
 export const ItemIdSchema = z.string().uuid().transform((s): ItemId => s as ItemId);
 
-declare const SkillIdBrand: unique symbol;
-export type SkillId = string & { [SkillIdBrand]: never };
+export type SkillId = string & { readonly _SkillId: never };
 export const SkillIdSchema = z.string().uuid().transform((s): SkillId => s as SkillId);
 
-declare const PathwayIdBrand: unique symbol;
-export type PathwayId = string & { [PathwayIdBrand]: never };
+export type PathwayId = string & { readonly _PathwayId: never };
 export const PathwayIdSchema = z.string().uuid().transform((s): PathwayId => s as PathwayId);
 
-declare const AssignmentIdBrand: unique symbol;
-export type AssignmentId = string & { [AssignmentIdBrand]: never };
+export type AssignmentId = string & { readonly _AssignmentId: never };
 export const AssignmentIdSchema = z
   .string()
   .uuid()
   .transform((s): AssignmentId => s as AssignmentId);
 
-declare const PlanIdBrand: unique symbol;
-export type PlanId = string & { [PlanIdBrand]: never };
+export type PlanId = string & { readonly _PlanId: never };
 export const PlanIdSchema = z.string().uuid().transform((s): PlanId => s as PlanId);
 
-declare const GraphVersionIdBrand: unique symbol;
-export type GraphVersionId = string & { [GraphVersionIdBrand]: never };
+export type GraphVersionId = string & { readonly _GraphVersionId: never };
 export const GraphVersionIdSchema = z
   .string()
   .uuid()
   .transform((s): GraphVersionId => s as GraphVersionId);
 
-declare const FrameworkConfigIdBrand: unique symbol;
-export type FrameworkConfigId = string & { [FrameworkConfigIdBrand]: never };
+export type FrameworkConfigId = string & { readonly _FrameworkConfigId: never };
 export const FrameworkConfigIdSchema = z
   .string()
   .uuid()
