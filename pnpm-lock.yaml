@@ -93,6 +93,9 @@ importers:
         specifier: ^3.25.76
         version: 3.25.76
     devDependencies:
+      '@mm/engines-client':
+        specifier: workspace:*
+        version: link:../../packages/engines-client
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.39
@@ -117,7 +120,20 @@ importers:
 
   packages/core: {}
 
-  packages/engines: {}
+  packages/engines:
+    dependencies:
+      '@mm/types':
+        specifier: workspace:*
+        version: link:../types
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+
+  packages/engines-client:
+    devDependencies:
+      '@mm/engines':
+        specifier: workspace:*
+        version: link:../engines
 
   packages/sdk:
     dependencies:

@@ -1,5 +1,5 @@
 {
-  "name": "@mm/engines",
+  "name": "@mm/engines-client",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,8 +13,10 @@
     "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest run --passWithNoTests"
   },
-  "dependencies": {
-    "@mm/types": "workspace:*",
-    "zod": "^3.25.76"
+  "peerDependencies": {
+    "@mm/engines": "workspace:*"
+  },
+  "devDependencies": {
+    "@mm/engines": "workspace:*"
   }
 }
