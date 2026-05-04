@@ -2,6 +2,55 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 15 — 2026-05-04
+
+**Planned (from DEV_PLAN.md Stage 15):** `AssessmentEngine` interface (Spec §3.1) + ICAS `LinearEngine` implementation; create `packages/engines-client` browser-safe re-export package.
+
+**Actually delivered:**
+
+- `feat(engines): Stage 15 — AssessmentEngine contract + LinearEngine` — commit `14cd96b`
+  - `packages/engines/src/contracts.ts` — AssessmentEngine interface (Spec §3.1, with `clock` parameter added to `getTimeRemaining` + `terminate`); supporting types `EngineState`/`LinearEngineState`, `TerminationSignal` + `isTerminationSignal` guard, `TerminationReason` (4 values), `ScoreResult`, `FinalResult`, `EngineResponse`, `SessionContext`, `FrameworkConfig`, `ScoringRules`, `EngineType`. Every state-bearing type paired with a Zod schema for `engine_state_snapshot` round-trip validation.
+  - `packages/engines/src/linear.ts` — `LinearEngine: AssessmentEngine` as a pure-function namespace (per ADR-0022). `scoreWithConfig` + `terminateWithConfig` convenience helpers for config-aware scoring; bare `score()` defaults to identity so it stays config-free per Spec §3.1.
+  - `packages/engines/src/__tests__/linear.test.ts` — 28 tests across 7 describe blocks: initialise (5), getNextItem & navigation (5), recordResponse (4), score & scoreWithConfig (6), getTimeRemaining (3), terminate (3), golden 30-item ICAS session (1), replay determinism (1).
+  - `packages/engines-client/` — new package. peer dep `@mm/engines: workspace:*`; Bundler module resolution; `src/index.ts` re-exports verbatim from `@mm/engines`.
+  - `packages/engines/package.json` — added runtime deps `@mm/types: workspace:*` + `zod: ^3.25.76`.
+  - `packages/engines/src/index.ts` — barrel re-exports `contracts.js` + `linear.js`.
+  - `apps/web/src/lib/engines.ts` — type-only smoke surface verifying end-to-end resolution chain (apps/web → @mm/engines-client → @mm/engines → @mm/types).
+  - `apps/web/package.json` — added `@mm/engines-client: workspace:*` to devDependencies.
+  - `apps/web/next.config.mjs` — added `@mm/engines-client` + `@mm/engines` to `transpilePackages`.
+  - `docs/dev/decisions/0022-engines-pure-function-namespace.md` — ADR-0022 documenting the pure-function namespace pattern (Q-15.2 decision).
+
+**Time spent:** ~3h 30m (single session, including the §2A pre-implementation review + execution + commit).
+
+**Surprises / departures:**
+
+- Spec §3.1 declares `AssessmentEngine` as an `interface` (suggesting an OO implementation), but pure-function namespaces JSON-serialise cleanly into `engine_state_snapshot` jsonb without `toJSON`/hydration plumbing. Filed ADR-0022 to record the choice.
+- `packages/engines-client` already had `tsconfig.json` set to `moduleResolution: Bundler` from prior work in this session (see `@mm/ui` brand commit chain) — kept that for engines-client too. `@mm/engines` retained `NodeNext` from Stage 1 scaffold and worked fine since no subpath imports from CJS-without-exports packages were needed.
+- Spec §3.1 signatures lack a `clock` parameter; we added one to `getTimeRemaining` + `terminate` per Q-15.7 to keep the engine clock-injection-only and replay-deterministic. `EngineState` never stores time-derived values.
+- `score()` returns `ScoreResult` config-free (raw + items_correct + items_answered, scaled defaults to raw / band null) so consumers without a `FrameworkConfig` still get truthful raw counts; `scoreWithConfig`/`terminateWithConfig` apply `scoring_rules` when callers have them.
+- `skills_touched: []` returned from `score()` until Stage 18 (content-svc) introduces skill→item mapping on `ItemDTO`. Documented inline.
+
+**Decisions made (not in stage):**
+
+- ADR-0022: engines as pure-function namespaces (vs. classes) — accepted. See `docs/dev/decisions/0022-engines-pure-function-namespace.md`.
+- Q-15.1 through Q-15.10 binding decisions captured in the stage's pre-implementation review and applied verbatim. None deviated.
+
+**Deviations logged:**
+
+- DEV-20260430-1 (engines-client deferred from Stage 1 to Stage 15) — **resolved** by this stage's `packages/engines-client` package. Status moved from "ongoing" to "Resolved by Stage 15 (commit 14cd96b)".
+
+**Issues opened / closed / questions raised:**
+
+- None. No new issues, no new bugs, no new questions.
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (208/208 unit total: 97 @mm/types + 24 @mm/sdk + 59 @mm/ui + 28 @mm/engines) · Build ✅ (7/7 packages) · RLS n/a (no migrations this stage)
+
+**Tomorrow — first thing:**
+
+Stage 16 §2A pre-implementation review (SkillEngine + DiagnosticEngine per Spec §3.2.3 + §3.2.4). Hygiene: this evening ritual is being run retroactively — Stage 16 has not started yet.
+
 ## Stage 14 — 2026-05-04
 
 **Planned (from DEV_PLAN.md Stage 14):** apps/web scaffold (auth pages, middleware, route groups), Edge Functions (auth-svc + users-svc), seeds (01-06), scripts (validate-content, set-tenant-tier), CI update.

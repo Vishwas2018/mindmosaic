@@ -24,7 +24,7 @@
 - Resolved by: v1.1 migration (when content recalibration engine ships)
 
 ### DEV-20260430-1 — engines-client deferred from Stage 1 to Stage 15
-<!-- Audit Stage 10 (2026-05-03): still ongoing — resolves Stage 15. No action needed. -->
+<!-- Resolved Stage 15 (2026-05-04, commit 14cd96b): packages/engines-client created with peer dep @mm/engines: workspace:*; src/index.ts re-exports contract types verbatim from @mm/engines; apps/web smoke verified via apps/web/src/lib/engines.ts type-only import. -->
 
 - Date: 2026-04-30
 - Stage: 1
@@ -33,5 +33,5 @@
 - What I actually did: Did not create `packages/engines-client`. Created the other 5 packages (`@mm/types`, `@mm/sdk`, `@mm/ui`, `@mm/core`, `@mm/engines`) as specified.
 - Why: `engines-client` is a browser-safe thin re-export of `AssessmentEngine` contract types from `@mm/engines`. Those contracts don't exist until Stage 15. An empty package with no real exports adds dead weight to the build graph for 14 stages. See ADR-0001 for full reasoning.
 - Impact on later stages: Stage 15 must create `packages/engines-client` per its deliverables list (already specified there — no plan change needed).
-- Linked: ADR-0001 (`docs/dev/decisions/0001-engines-client-deferred.md`). Note: DEV_PLAN.md references a legacy ID "DEV-20260426-1" for this same decision from a prior attempt — this entry (DEV-20260430-1) supersedes it with today's date. Do NOT edit DEV_PLAN.md.
-- Resolved by: Stage 15
+- Linked: ADR-0001 (`docs/dev/decisions/0001-engines-client-deferred.md`), ADR-0022 (engines as pure-function namespaces). Note: DEV_PLAN.md references a legacy ID "DEV-20260426-1" for this same decision from a prior attempt — this entry (DEV-20260430-1) supersedes it with today's date. Do NOT edit DEV_PLAN.md.
+- Resolved by: Stage 15 (commit `14cd96b`, 2026-05-04). `packages/engines-client` shipped with peer dep `@mm/engines: workspace:*`, Bundler module resolution, and a verbatim re-export of every export from `@mm/engines`. Smoke check at `apps/web/src/lib/engines.ts` (type-only import) compiles via `apps/web` typecheck and is included in the apps/web Next build.
