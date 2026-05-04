@@ -12,6 +12,7 @@
  * - Started-at: 2026-05-04T10:00:00.000Z.
  */
 import {
+  type AdaptiveRules,
   type EngineItem,
   type EngineResponse,
   type FrameworkConfig,
@@ -113,9 +114,12 @@ export function buildEngineItemPool({
 
 export interface BuildResponseInput {
   item: EngineItem;
-  isCorrect: boolean;
+  /** `null` for writing items (Stage 17, Q-17.5) — accepted but excluded from scoring. */
+  isCorrect: boolean | null;
   offsetMs: number;
   telemetry?: { time_to_answer_ms: number; answer_changes: number };
+  /** Override response_data verbatim (e.g., to capture writing-stage text). */
+  responseData?: Record<string, unknown>;
 }
 
 export function buildResponse({
@@ -123,17 +127,32 @@ export function buildResponse({
   isCorrect,
   offsetMs,
   telemetry,
+  responseData,
 }: BuildResponseInput): EngineResponse {
+  const data = responseData ?? { selected: isCorrect === true ? 'A' : 'B' };
   const base: EngineResponse = {
     item_id: item.item_id,
     is_correct: isCorrect,
-    response_data: { selected: isCorrect ? 'A' : 'B' },
+    response_data: data,
     answered_at: new Date(STARTED_AT_MS + offsetMs).toISOString(),
   };
   if (telemetry !== undefined) {
     base.telemetry = telemetry;
   }
   return base;
+}
+
+/** Build a writing-stage item (is_writing_item: true). */
+export function buildWritingItem(opts: BuildItemInput): EngineItem {
+  return buildEngineItem({
+    ...opts,
+    overrides: {
+      ...opts.overrides,
+      is_writing_item: true,
+      response_type: 'extended_text',
+      response_config: { max_length: 5000 },
+    },
+  });
 }
 
 // ─── Sessions ────────────────────────────────────────────────────────────────
@@ -244,6 +263,129 @@ export function buildDiagnosticConfig(overrides: Partial<FrameworkConfig> = {}):
     engine_type: 'diagnostic',
     back_navigation_enabled: false,
     time_limit_ms: null,
+    ...overrides,
+  });
+}
+
+// ─── Adaptive (Stage 17) ─────────────────────────────────────────────────────
+
+/**
+ * Stage IDs for the canonical 3-stage NAPLAN test fixture (Numeracy domain).
+ */
+export const ADAPTIVE_STAGES = ['s1', 's2', 's3'] as const;
+
+/**
+ * Build a 3-stage NAPLAN routing fixture matching the seed shape.
+ * 5 items per testlet × 7 testlets = 35 items in the pool.
+ *
+ *   s1:                        t1 (5 items at difficulty 0.5)
+ *   s1 → s2 (score 0–2):       t2_easy   (5 items at 0.3)
+ *   s1 → s2 (score 3):         t2_medium (5 items at 0.5)
+ *   s1 → s2 (score 4–5):       t2_hard   (5 items at 0.7)
+ *   s2 → s3 (score 0–2):       t3_easy   (5 items at 0.3)
+ *   s2 → s3 (score 3):         t3_medium (5 items at 0.5)
+ *   s2 → s3 (score 4–5):       t3_hard   (5 items at 0.7)
+ */
+export function buildAdaptiveRules(): AdaptiveRules {
+  return {
+    stages: ['s1', 's2', 's3'],
+    start_testlet_id: 't1',
+    routing_table: [
+      { stage_id: 's1', score_min: 0, score_max: 2, next_testlet_id: 't2_easy' },
+      { stage_id: 's1', score_min: 3, score_max: 3, next_testlet_id: 't2_medium' },
+      { stage_id: 's1', score_min: 4, score_max: 5, next_testlet_id: 't2_hard' },
+      { stage_id: 's2', score_min: 0, score_max: 2, next_testlet_id: 't3_easy' },
+      { stage_id: 's2', score_min: 3, score_max: 3, next_testlet_id: 't3_medium' },
+      { stage_id: 's2', score_min: 4, score_max: 5, next_testlet_id: 't3_hard' },
+    ],
+    testlets: {
+      t1:        { stage_id: 's1', time_limit_ms: 900_000, item_ids: testletItemIds(0, 5) },
+      t2_easy:   { stage_id: 's2', time_limit_ms: 900_000, item_ids: testletItemIds(5, 5) },
+      t2_medium: { stage_id: 's2', time_limit_ms: 900_000, item_ids: testletItemIds(10, 5) },
+      t2_hard:   { stage_id: 's2', time_limit_ms: 900_000, item_ids: testletItemIds(15, 5) },
+      t3_easy:   { stage_id: 's3', time_limit_ms: 600_000, item_ids: testletItemIds(20, 5) },
+      t3_medium: { stage_id: 's3', time_limit_ms: 600_000, item_ids: testletItemIds(25, 5) },
+      t3_hard:   { stage_id: 's3', time_limit_ms: 600_000, item_ids: testletItemIds(30, 5) },
+    },
+  };
+}
+
+function testletItemIds(startIndex: number, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => itemId(startIndex + i));
+}
+
+/** Build EngineItems for one testlet. */
+export function buildTestletItems(opts: {
+  testletId: string;
+  stageId: string;
+  startIndex: number;
+  count: number;
+  difficulty?: number;
+  isWriting?: boolean;
+}): EngineItem[] {
+  return Array.from({ length: opts.count }, (_, i) =>
+    buildEngineItem({
+      index: opts.startIndex + i,
+      difficulty: opts.difficulty ?? 0.5,
+      overrides: {
+        testlet_id: opts.testletId,
+        stage_id: opts.stageId,
+        ...(opts.isWriting === true ? { is_writing_item: true } : {}),
+      },
+    }),
+  );
+}
+
+/** Build the full 35-item pool matching `buildAdaptiveRules()`. */
+export function buildAdaptiveItemPool(): EngineItem[] {
+  const rules = buildAdaptiveRules();
+  const out: EngineItem[] = [];
+  // Map difficulty by testlet suffix (easy/medium/hard) for realistic fixtures.
+  const difficultyByTestletId: Record<string, number> = {
+    t1: 0.5,
+    t2_easy: 0.3,   t2_medium: 0.5,   t2_hard: 0.7,
+    t3_easy: 0.3,   t3_medium: 0.5,   t3_hard: 0.7,
+  };
+  for (const [testletId, def] of Object.entries(rules.testlets)) {
+    const difficulty = difficultyByTestletId[testletId] ?? 0.5;
+    for (const id of def.item_ids) {
+      const idxHex = id.split('-').pop()!;
+      const index = parseInt(idxHex, 10) - 1;
+      out.push(
+        buildEngineItem({
+          index,
+          difficulty,
+          overrides: {
+            testlet_id: testletId,
+            stage_id: def.stage_id,
+          },
+        }),
+      );
+    }
+  }
+  return out;
+}
+
+export function buildAdaptiveSession(overrides: Partial<SessionContext> = {}): SessionContext {
+  return {
+    session_id: SESSION_ID,
+    mode: 'exam',
+    engine_type: 'adaptive',
+    total_items: 15,
+    time_limit_ms: null,
+    started_at: STARTED_AT,
+    planned_items: buildAdaptiveItemPool(),
+    target_skills: [],
+    ...overrides,
+  };
+}
+
+export function buildAdaptiveConfig(overrides: Partial<FrameworkConfig> = {}): FrameworkConfig {
+  return buildLinearConfig({
+    engine_type: 'adaptive',
+    back_navigation_enabled: true, // within testlet
+    time_limit_ms: null,
+    adaptive_rules: buildAdaptiveRules(),
     ...overrides,
   });
 }

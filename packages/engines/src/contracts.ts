@@ -18,11 +18,18 @@
  * - EngineResponse carries optional telemetry for the §9.5 cognitive load
  *   formula.
  *
- * Spec refs: §3.1 (interface), §3.2.2 (LinearEngine), §3.2.3 (SkillEngine),
- * §3.2.4 (DiagnosticEngine), §3.7 (deterministic scoring), §7.5.1 (in-session
- * difficulty rule), §7.5.2 (skill prioritisation), §8.4 (confidence model),
- * §9.5 (cognitive load), §22.7.1 (testability via mock FrameworkConfig +
- * Session).
+ * Stage 17 widens (per ADR-0024):
+ * - EngineState gains a fourth branch: `adaptive` (NAPLAN testlet routing).
+ * - EngineItem grows optional `testlet_id`, `stage_id`, `is_writing_item`
+ *   for AdaptiveEngine consumption. Other engines ignore these.
+ * - EngineResponse.is_correct is nullable to accommodate writing items
+ *   (Spec §4.1: extended-response, no auto-marking in MVP).
+ *
+ * Spec refs: §3.1 (interface), §3.2.1 (AdaptiveEngine), §3.2.2 (LinearEngine),
+ * §3.2.3 (SkillEngine), §3.2.4 (DiagnosticEngine), §3.7 (deterministic scoring),
+ * §4.1 (NAPLAN attributes), §7.5.1 (in-session difficulty rule), §7.5.2 (skill
+ * prioritisation), §8.4 (confidence model), §9.5 (cognitive load), §22.7.1
+ * (testability via mock FrameworkConfig + Session).
  */
 import { z } from 'zod';
 import {
@@ -79,6 +86,11 @@ export const EngineItemSchema = ItemDTOSchema.extend({
   skill_ids: z.array(SkillIdSchema).min(1),
   difficulty: z.number().min(0).max(1),
   discrimination: z.number().min(0).nullable().optional(),
+  // Stage 17 — populated by content-svc for adaptive (NAPLAN) sessions.
+  // Other engines ignore these fields.
+  testlet_id: z.string().optional(),
+  stage_id: z.string().optional(),
+  is_writing_item: z.boolean().optional(),
 });
 export type EngineItem = z.infer<typeof EngineItemSchema>;
 
@@ -120,6 +132,37 @@ export const ScoringRulesSchema = z.object({
 });
 export type ScoringRules = z.infer<typeof ScoringRulesSchema>;
 
+// ─── AdaptiveEngine rules schemas (declared early so FrameworkConfigSchema can
+//     reference AdaptiveRulesSchema directly).
+//
+// Testlet routing model per Spec §3.2.1 + ADR-0024. The seed in
+// supabase/seeds/03_assessment_config.sql carries
+// `framework_config.adaptive_rules` in this exact shape; the engine consumes
+// it verbatim at session-init time.
+
+export const RoutingTableEntrySchema = z.object({
+  stage_id: z.string(),
+  score_min: z.number().int().nonnegative(),
+  score_max: z.number().int().nonnegative(),
+  next_testlet_id: z.string(),
+});
+export type RoutingTableEntry = z.infer<typeof RoutingTableEntrySchema>;
+
+export const TestletDefinitionSchema = z.object({
+  stage_id: z.string(),
+  time_limit_ms: z.number().int().positive(),
+  item_ids: z.array(z.string()),
+});
+export type TestletDefinition = z.infer<typeof TestletDefinitionSchema>;
+
+export const AdaptiveRulesSchema = z.object({
+  stages: z.array(z.string()).min(1),
+  start_testlet_id: z.string(),
+  routing_table: z.array(RoutingTableEntrySchema),
+  testlets: z.record(z.string(), TestletDefinitionSchema),
+});
+export type AdaptiveRules = z.infer<typeof AdaptiveRulesSchema>;
+
 export const FrameworkConfigSchema = z.object({
   engine_type: EngineTypeSchema,
   scoring_rules: ScoringRulesSchema,
@@ -138,6 +181,9 @@ export const FrameworkConfigSchema = z.object({
   max_items: z.number().int().positive().default(20),                // Q-16.8
   confidence_threshold: z.number().min(0).max(1).default(0.7),       // Q-16.7
   diagnostic_start_difficulty: z.number().min(0).max(1).default(0.5), // Q-16.10
+  // ── Stage 17 — AdaptiveEngine (Q-17.1, ADR-0024) ─────────────────────────
+  // Required for engine_type='adaptive'; ignored by other engines.
+  adaptive_rules: AdaptiveRulesSchema.optional(),
 });
 export type FrameworkConfig = z.infer<typeof FrameworkConfigSchema>;
 
@@ -153,7 +199,11 @@ export type EngineResponseTelemetry = z.infer<typeof EngineResponseTelemetrySche
 
 export const EngineResponseSchema = z.object({
   item_id: ItemIdSchema,
-  is_correct: z.boolean(),
+  // Stage 17 — nullable for writing items (Spec §4.1: no auto-marking in MVP).
+  // LinearEngine + SkillEngine + DiagnosticEngine treat null as "not correct"
+  // for scoring/mastery purposes; AdaptiveEngine excludes null from routing
+  // score per Q-17.5.
+  is_correct: z.boolean().nullable(),
   response_data: z.record(z.string(), z.unknown()),
   answered_at: z.string().datetime(),
   telemetry: EngineResponseTelemetrySchema.optional(),
@@ -239,12 +289,56 @@ export const DiagnosticEngineStateSchema = z.object({
 });
 export type DiagnosticEngineState = z.infer<typeof DiagnosticEngineStateSchema>;
 
-// Stage 16 widens EngineState (Q-16.1 / ADR-0023). Stage 17 will add
-// AdaptiveEngineState as a fourth branch.
+// ─── AdaptiveEngine state (Stage 17, ADR-0024) ───────────────────────────────
+// Per-stage state inside AdaptiveEngineState. Items are pre-resolved from the
+// item pool at stage-load time; responses[] tracks answers within that stage.
+export const AdaptiveStageStateSchema = z.object({
+  stage_id: z.string(),
+  testlet_id: z.string(),
+  items: z.array(EngineItemSchema),
+  responses: z.array(EngineResponseSchema),
+  time_limit_ms: z.number().int().positive(),
+  // Server-authoritative timer markers. started_at is set when the engine
+  // first delivers an item from this stage; ended_at is set on stage close.
+  started_at: z.string().datetime().nullable(),
+  ended_at: z.string().datetime().nullable(),
+});
+export type AdaptiveStageState = z.infer<typeof AdaptiveStageStateSchema>;
+
+const RoutingHistoryEntrySchema = z.object({
+  from_stage_id: z.string(),
+  score: z.number().int().nonnegative(),
+  routed_to_testlet_id: z.string(),
+});
+export type RoutingHistoryEntry = z.infer<typeof RoutingHistoryEntrySchema>;
+
+export const AdaptiveEngineStateSchema = z.object({
+  engine_type: z.literal('adaptive'),
+  session_id: SessionIdSchema,
+  mode: SessionModeSchema,
+  started_at: z.string().datetime(),
+  // Top-level session timer (rare for adaptive; per-stage is authoritative).
+  time_limit_ms: z.number().int().positive().nullable(),
+  // Item pool: every EngineItem the session might deliver (across all testlets).
+  // Engine resolves testlet membership via item.testlet_id or testlet.item_ids.
+  item_pool: z.array(EngineItemSchema),
+  // Concrete stage states. The first stage is loaded at init (start_testlet_id);
+  // subsequent stages are appended on routing.
+  stages: z.array(AdaptiveStageStateSchema),
+  current_stage_index: z.number().int().nonnegative(),
+  current_item_index: z.number().int().nonnegative(),
+  routing_history: z.array(RoutingHistoryEntrySchema),
+  adaptive_rules: AdaptiveRulesSchema,
+});
+export type AdaptiveEngineState = z.infer<typeof AdaptiveEngineStateSchema>;
+
+// Stage 17 widens EngineState (Q-17.1 / ADR-0024) to four branches. v1.1 adds
+// the fifth branch (RepairEngineState) per the Spec §3.2.5 deferral.
 export const EngineStateSchema = z.discriminatedUnion('engine_type', [
   LinearEngineStateSchema,
   SkillEngineStateSchema,
   DiagnosticEngineStateSchema,
+  AdaptiveEngineStateSchema,
 ]);
 export type EngineState = z.infer<typeof EngineStateSchema>;
 
@@ -345,6 +439,14 @@ export function assertDiagnosticState(
 ): asserts state is DiagnosticEngineState {
   if (state.engine_type !== 'diagnostic') {
     throw new Error(`DiagnosticEngine: expected EngineState.engine_type='diagnostic', got '${state.engine_type}'`);
+  }
+}
+
+export function assertAdaptiveState(
+  state: EngineState,
+): asserts state is AdaptiveEngineState {
+  if (state.engine_type !== 'adaptive') {
+    throw new Error(`AdaptiveEngine: expected EngineState.engine_type='adaptive', got '${state.engine_type}'`);
   }
 }
 
