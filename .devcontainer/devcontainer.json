@@ -1,0 +1,23 @@
+{
+  "name": "MindMosaic",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers-contrib/features/supabase-cli:1": {}
+  },
+  "postCreateCommand": "corepack enable && pnpm install",
+  "forwardPorts": [3000, 54321, 54322],
+  "portsAttributes": {
+    "3000": { "label": "Next.js" },
+    "54321": { "label": "Supabase API" },
+    "54322": { "label": "Supabase DB" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  }
+}
