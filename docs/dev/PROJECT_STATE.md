@@ -63,34 +63,8 @@ pgTAP/RLS not re-run for Stages 15–18 — Stages 15–17 were pure TypeScript;
 
 ## Notes for next session
 
-**Stage 18 complete (2026-05-07, commit `d3543c5`):**
-
-- 7 read endpoints in `supabase/functions/content-svc/`: `/pathways`, `/pathways/{slug}`, `/assessment-profiles`, `/content/items/{id}`, `/content/select`, `/content/search`, `/skill-graphs/active`.
-- Skill-graph cache in `supabase/functions/_shared/skill-graph-cache.ts` — module-scope singleton, watermark check on every request + 1h TTL ceiling. Pure-function loader interface (`SkillGraphCacheLoader`) for clean test injection.
-- `/content/select` returns `EngineItem[]` (per Q-18.8) with adaptive testlet metadata (testlet_id, stage_id, is_writing_item) for NAPLAN pathways per ADR-0024.
-- 18 contract tests (13 endpoint + 5 cache) with all three DEV_PLAN exit criteria as named tests.
-- New workspace package `@mm/content-svc` — typecheck + test only, Deno-only deploy.
-
-**Established patterns now binding (cumulative through Stage 18):**
-
-- **Edge Function split (Stage 18):** `index.ts` (Deno dispatcher with URL imports) + `handlers.ts` (pure Node-testable logic). Stage 19+ Edge Functions should adopt.
-- **Mock client via callable Proxy** for contract tests. Pattern in `content-svc/__tests__/contract.test.ts:54–82`. Reusable for any Postgrest-chained builder.
-- **Pure-function namespaces only** (ADR-0022) for engines.
-- **`EngineState` discriminated union by `engine_type`** (ADR-0023). 4 arms now (linear, skill, diagnostic, adaptive). Repair adds the 5th in v1.1.
-- **`EngineItem`** is the server-side item shape (ADR-0023, Stage 17 ADR-0024 added testlet metadata). Wire `ItemDTO` stays lean.
-- **Routing-table lookups throw on ambiguous matches** (Q-17.9).
-- **Lex tie-break by `item_id` ASC** for deterministic content selection (Q-18.4).
-- **Cache invalidation = watermark check on every request + 1h TTL ceiling** (Q-18.6).
-
-**Stage 19 pre-cues:**
-
-- Highest risk in Phase 1 ("most complex service" per DEV_PLAN). 2-day budget (Days 23–24).
-- Endpoints: `/sessions/create` (idempotency-keyed, feature-gated, atomic write of `session_record` + first item), `/sessions/{id}/respond` (X-Session-Lock + expected_version + atomic 4-table write via `create_session_response_atomic` RPC), `/sessions/{id}/submit` (terminal + outbox_event + inline sync pipeline; idempotency-keyed), `/sessions/{id}/checkpoint` (upsert-only autosave, never bumps version), `/sessions/{id}/state` (resume), `/sessions/{id}/abandon`, `/sessions/recent`.
-- Calls **content-svc `/content/select`** (Stage 18 service-role endpoint) on session create.
-- Instantiates engines from `@mm/engines` per `pathway.engine_type` and threads `EngineState` through respond/submit cycles. `engine_state_snapshot jsonb` column on `session_record` already exists (arch §5).
-- Adopts Stage 18's handler-split pattern (`index.ts` + `handlers.ts`).
-- First Playwright e2e test of the build: signup → session create → 5 responses → submit → score returned.
-- Exit criteria: version conflict surfaces 409; idempotency replay returns cached response; one-active-session DB-enforced; e2e passes end-to-end.
-- §2A review will likely surface Q-19.N decisions around: idempotency key persistence, lock-token rotation, optimistic-lock failure semantics (retry vs reject), engine state serialization at the assessment-svc boundary.
-
-**Supabase remote project:** https://tohmshcpdhcdfsubvnok.supabase.co (ap-southeast-2)
+Day 19 evening (or earliest available evening): connect mindmosaic
+repo to Claude Design at claude.ai/design. Subdirectories apps/web
++ packages/ui only — NOT the full monorepo. Verify auto-derived
+design system against §1.3 checklist in CLAUDE_DESIGN_PROMPTS.md.
+First prototype use Stage 22 (Session Selection), Day 22.
