@@ -65,6 +65,10 @@ export const RecordResponseResponseSchema = z.object({
     .nullable(),
   progress: ProgressSchema,
   version: z.number().int(),
+  // ADR-0026 (Q-19.4): server rotates the lock_token on every successful
+  // respond. Client echoes the new token via X-Session-Lock on the next
+  // /respond, /checkpoint, or /abandon. Mismatch → 409 LOCK_CONFLICT.
+  lock_token: z.string(),
 });
 export type RecordResponseResponse = z.infer<typeof RecordResponseResponseSchema>;
 

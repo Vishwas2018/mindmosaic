@@ -11,7 +11,8 @@
   "include": [
     "handlers.ts",
     "__tests__/**/*.ts",
-    "../_shared/skill-graph-cache.ts",
+    "../_shared/idempotency.ts",
+    "../_shared/feature-gate.ts",
     "../_test-helpers/mock-supabase.ts"
   ]
 }

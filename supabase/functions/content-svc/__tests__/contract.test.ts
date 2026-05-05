@@ -31,60 +31,17 @@ import {
   getActiveSkillGraph,
   type DbClient,
 } from '../handlers.ts';
+import {
+  createMockSupabase,
+  type MockResponses,
+} from '../../_test-helpers/mock-supabase.ts';
 
-// ─── Mock builders ───────────────────────────────────────────────────────────
+// ─── Mock builder (Stage 19 Q-19.13: hoisted to _test-helpers/mock-supabase.ts) ──
 
-interface QueryStub {
-  data: unknown;
-  error: { message: string } | null;
-}
-
-/**
- * Build a chainable mock that records calls. Every chain method (`.select`,
- * `.eq`, `.in`, …) returns another callable proxy; awaiting the proxy OR
- * invoking `.maybeSingle()`/`.single()` resolves to the configured stub.
- *
- * Proxy target is a function so the proxy itself is callable (so chained
- * method invocations like `.select('cols')` work).
- */
-function mockBuilder(stub: QueryStub): unknown {
-  const target = function () {} as unknown as object;
-  const handler: ProxyHandler<object> = {
-    get(_t, prop) {
-      if (prop === 'then') {
-        return (resolve: (v: QueryStub) => unknown) => resolve(stub);
-      }
-      if (prop === 'maybeSingle' || prop === 'single') {
-        return () => Promise.resolve(stub);
-      }
-      return new Proxy(target, handler);
-    },
-    apply() {
-      return new Proxy(target, handler);
-    },
-  };
-  return new Proxy(target, handler);
-}
-
-/**
- * Build a mock DbClient that returns canned results per (table, callIndex).
- * If only one result is given for a table, it's returned for every call.
- */
 function mockClient(
-  responses: Record<string, QueryStub | QueryStub[]>,
+  responses: MockResponses,
 ): DbClient & { from: ReturnType<typeof vi.fn> } {
-  const counters: Record<string, number> = {};
-  const fromSpy = vi.fn((table: string) => {
-    const i = counters[table] ?? 0;
-    counters[table] = i + 1;
-    const stubs = responses[table];
-    if (stubs === undefined) {
-      throw new Error(`mockClient: unexpected table '${table}'`);
-    }
-    const stub = Array.isArray(stubs) ? (stubs[i] ?? stubs[stubs.length - 1]!) : stubs;
-    return mockBuilder(stub) as never;
-  });
-  return { from: fromSpy } as DbClient & { from: ReturnType<typeof vi.fn> };
+  return createMockSupabase<DbClient>(responses);
 }
 
 afterEach(() => {

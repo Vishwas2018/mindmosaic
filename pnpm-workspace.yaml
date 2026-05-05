@@ -2,3 +2,4 @@ packages:
   - "apps/*"
   - "packages/*"
   - "supabase/functions/content-svc"
+  - "supabase/functions/assessment-svc"
