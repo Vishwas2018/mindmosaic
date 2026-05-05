@@ -5,6 +5,7 @@
 
 ### DEV-20260503-2 — content.recalibration wired as PHASE-2 no-op stub per arch Part XI
 <!-- Audit Stage 10 (2026-05-03): still ongoing — resolves v1.1 when content recalibration engine ships. No action needed. -->
+<!-- Audit Stage 19 (2026-05-08): still ongoing — v1.1 deferral by design (arch Part XI). No Stage 15–19 work touched fn_recalibrate_content() or the cron registration. No action. -->
 
 - Date: 2026-05-03
 - Stage: 9
