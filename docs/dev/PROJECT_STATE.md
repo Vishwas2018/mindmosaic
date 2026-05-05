@@ -5,39 +5,43 @@
 
 ## Position
 
-- Last completed stage: Stage 17 — AdaptiveEngine (NAPLAN testlet routing) (2026-05-06)
-- Next stage: Stage 18 — Content Service (Day 22)
-- Days remaining (target 75): 60
+- Last completed stage: Stage 18 — Content Service + skill-graph cache (2026-05-07)
+- Next stage: Stage 19 — Assessment Service (Days 23–24, 2-day budget)
+- Days remaining (target 75): 59
 - Buffer days consumed in Phase 0 (Stages 1–14): 0 of 3
-- Phase 1 stages closed: 15, 16, 17 (of 13). Phase 1 buffer: 9 days available.
-- **All 4 v1 engines complete:** Linear (§3.2.2), Skill (§3.2.3), Diagnostic (§3.2.4), Adaptive (§3.2.1).
+- Phase 1 stages closed: 15, 16, 17, 18 (of 13). Phase 1 buffer: 9 days available.
+- **All 4 v1 engines complete + content read path operational.** Stage 19 wires assessment-svc to invoke content-svc's `/content/select` and the engines.
 
 ## Test suite
 
 | Suite        | Status   | Count               | Last run   |
 | ------------ | -------- | ------------------- | ---------- |
-| Unit         | ✅ green  | 290/290             | 2026-05-06 |
+| Unit         | ✅ green  | 308/308             | 2026-05-07 |
 | Integration  | n/a      | n/a                 | n/a        |
 | pgTAP        | ✅ green  | 451/451             | 2026-05-03 |
-| Contract     | n/a      | n/a                 | n/a        |
+| Contract     | ✅ green  | 18/18               | 2026-05-07 |
 | RLS          | ✅ green  | 451/451 (53 tables) | 2026-05-03 |
-| E2E          | n/a      | n/a                 | n/a        |
+| E2E          | n/a      | n/a (Stage 19)      | n/a        |
 
-Unit breakdown: 97 (@mm/types) + 24 (@mm/sdk) + 59 (@mm/ui: 27 axe + 32 functional) + **110 (@mm/engines: 28 linear + 27 skill + 22 diagnostic + 33 adaptive)**.
+Unit breakdown: 97 (@mm/types) + 24 (@mm/sdk) + 59 (@mm/ui: 27 axe + 32 functional) + 110 (@mm/engines: 28 linear + 27 skill + 22 diagnostic + 33 adaptive) + **18 (@mm/content-svc: 13 endpoint contract + 5 cache)**.
 
-pgTAP/RLS not re-run for Stages 15/16/17 — pure TypeScript stages, no migration delta. The Stage 17 seed update (`03_assessment_config.sql`) is content-shaped only (replaces `adaptive_rules` JSON value); no schema change.
+Contract tests are a new gate as of Stage 18 — they live inside `@mm/content-svc` and run via `pnpm test`. Stage 19+ Edge Functions should adopt the same handler-split pattern (`index.ts` for Deno dispatcher, `handlers.ts` for pure Node-testable logic).
+
+pgTAP/RLS not re-run for Stages 15–18 — Stages 15–17 were pure TypeScript; Stage 18 added a content-svc Edge Function but no migrations or new tables.
 
 ## Quality gates
 
 | Gate                | Last status                        | Last run   |
 | ------------------- | ---------------------------------- | ---------- |
-| pnpm lint           | ✅ green (7 packages)              | 2026-05-06 |
-| pnpm typecheck      | ✅ green (7 packages)              | 2026-05-06 |
-| pnpm test           | ✅ green (290/290 unit)             | 2026-05-06 |
-| pnpm build          | ✅ green (7 packages)              | 2026-05-06 |
+| pnpm lint           | ✅ green (7 packages)              | 2026-05-07 |
+| pnpm typecheck      | ✅ green (8 packages)              | 2026-05-07 |
+| pnpm test           | ✅ green (308/308 unit)             | 2026-05-07 |
+| pnpm build          | ✅ green (7 packages)              | 2026-05-07 |
 | RLS coverage        | ✅ 53/53 tables enabled + tested   | 2026-05-03 |
 | pnpm audit          | unknown — TODO measure              | n/a        |
 | pnpm test:migration | ✅ green (10 migrations roundtrip) | 2026-05-03 |
+
+`@mm/content-svc` has typecheck + test scripts only — no build/lint (Deno-only deploy path). Workspace count is now 8 (was 7); typecheck runs in 8/8.
 
 ## Performance vs BUILD_CONTRACT §10 budgets
 
@@ -50,7 +54,7 @@ pgTAP/RLS not re-run for Stages 15/16/17 — pure TypeScript stages, no migratio
 
 ## Open items
 
-- ADRs accepted: 24 (ADR-0001 through ADR-0024; ADR-0024 added Stage 17)
+- ADRs accepted: 24 (ADR-0001 through ADR-0024; no new ADRs in Stage 18 per Q-18.11)
 - ADRs proposed: 0
 - Issues critical / high / medium / low: 0/0/0/0
 - Open questions: 0
@@ -59,34 +63,34 @@ pgTAP/RLS not re-run for Stages 15/16/17 — pure TypeScript stages, no migratio
 
 ## Notes for next session
 
-**Stage 17 complete (2026-05-06, commit `3db1234`):**
+**Stage 18 complete (2026-05-07, commit `d3543c5`):**
 
-- AdaptiveEngine ships per Spec §3.2.1 + §4.1 — testlet routing with per-stage timer, stage-bound back-nav (Q-17.6 hard-block), writing-stage text capture (`is_correct: null` accepted, excluded from routing score per Q-17.5).
-- `EngineState` now a 4-arm `z.discriminatedUnion` (linear | skill | diagnostic | adaptive). v1.1 adds the fifth (`repair`).
-- `EngineItem` grew optional `testlet_id`, `stage_id`, `is_writing_item` (Q-17.8). Other engines ignore these.
-- `EngineResponse.is_correct` widened to `boolean | null` (Q-17.5). Backward-compatible: existing tests pass `boolean`, which satisfies `boolean | null`.
-- `TerminationReason` unchanged (Q-17.4 reused `timer_expired`).
-- Q-17.1 resolution: NAPLAN seed `adaptive_rules` rewritten from IRT/CAT placeholder to spec-compliant testlet routing table (ADR-0024). No new migration; testlet membership lives in `framework_config.adaptive_rules.testlets[]` map.
-- Naming convention update: AdaptiveEngine's helpers are engine-prefixed (`scoreAdaptiveWithConfig`, `terminateAdaptiveWithConfig`) to avoid barrel collision with linear's generic `scoreWithConfig`/`terminateWithConfig`. Stage 18+ engines should adopt engine-prefixed names.
+- 7 read endpoints in `supabase/functions/content-svc/`: `/pathways`, `/pathways/{slug}`, `/assessment-profiles`, `/content/items/{id}`, `/content/select`, `/content/search`, `/skill-graphs/active`.
+- Skill-graph cache in `supabase/functions/_shared/skill-graph-cache.ts` — module-scope singleton, watermark check on every request + 1h TTL ceiling. Pure-function loader interface (`SkillGraphCacheLoader`) for clean test injection.
+- `/content/select` returns `EngineItem[]` (per Q-18.8) with adaptive testlet metadata (testlet_id, stage_id, is_writing_item) for NAPLAN pathways per ADR-0024.
+- 18 contract tests (13 endpoint + 5 cache) with all three DEV_PLAN exit criteria as named tests.
+- New workspace package `@mm/content-svc` — typecheck + test only, Deno-only deploy.
 
-**Disciplines now binding (cumulative through Stage 17):**
+**Established patterns now binding (cumulative through Stage 18):**
 
-- Pure-function namespaces only (ADR-0022). No classes for engines.
-- Clock injected per-call to `getTimeRemaining` + `terminate`; never stored in `EngineState`.
-- `EngineState` is JSON-serialisable; persists into `session_record.engine_state_snapshot jsonb`.
-- No `Math.random`, no `Date.now()` inside engine bodies.
-- Each engine method body starts with `assert{X}State(state)` for discriminator narrowing.
-- Engines consume `EngineItem` (with skill_ids + difficulty + optional adaptive metadata); assessment-svc projects to wire `ItemDTO`.
-- Routing-table lookups must throw on ambiguous matches (Q-17.9).
+- **Edge Function split (Stage 18):** `index.ts` (Deno dispatcher with URL imports) + `handlers.ts` (pure Node-testable logic). Stage 19+ Edge Functions should adopt.
+- **Mock client via callable Proxy** for contract tests. Pattern in `content-svc/__tests__/contract.test.ts:54–82`. Reusable for any Postgrest-chained builder.
+- **Pure-function namespaces only** (ADR-0022) for engines.
+- **`EngineState` discriminated union by `engine_type`** (ADR-0023). 4 arms now (linear, skill, diagnostic, adaptive). Repair adds the 5th in v1.1.
+- **`EngineItem`** is the server-side item shape (ADR-0023, Stage 17 ADR-0024 added testlet metadata). Wire `ItemDTO` stays lean.
+- **Routing-table lookups throw on ambiguous matches** (Q-17.9).
+- **Lex tie-break by `item_id` ASC** for deterministic content selection (Q-18.4).
+- **Cache invalidation = watermark check on every request + 1h TTL ceiling** (Q-18.6).
 
-**Stage 18 pre-cues:**
+**Stage 19 pre-cues:**
 
-- First Edge Function stage of Phase 1: `supabase/functions/content-svc/`.
-- Endpoints (per arch §4.2 + DEV_PLAN.md L206): `/pathways` (entitlement-filtered), `/pathways/{slug}`, `/assessment-profiles`, `/content/items/{id}`, `/content/select` (blueprint-driven deterministic ordering), `/content/search`, `/skill-graphs/active`.
-- In-module-scope skill graph cache in `packages/core/src/skill-graph-cache.ts` (Map<skill_id, record> + adjacency map, 1h TTL, watermark check) per arch §5.3.
-- Contract tests required.
-- Exit criteria: `/content/select` returns blueprint-compliant items; cache hit rate 100% after first load; cache invalidates on graph publish.
-- Reuses Stage 14's `_shared/` Edge Function utilities (trace-id, error-envelope, rate-limit, auth, logger).
-- Engines (Stage 15–17) consume what Stage 18 selects — completes the "content → engine → response" loop in preparation for Stage 19's assessment-svc.
+- Highest risk in Phase 1 ("most complex service" per DEV_PLAN). 2-day budget (Days 23–24).
+- Endpoints: `/sessions/create` (idempotency-keyed, feature-gated, atomic write of `session_record` + first item), `/sessions/{id}/respond` (X-Session-Lock + expected_version + atomic 4-table write via `create_session_response_atomic` RPC), `/sessions/{id}/submit` (terminal + outbox_event + inline sync pipeline; idempotency-keyed), `/sessions/{id}/checkpoint` (upsert-only autosave, never bumps version), `/sessions/{id}/state` (resume), `/sessions/{id}/abandon`, `/sessions/recent`.
+- Calls **content-svc `/content/select`** (Stage 18 service-role endpoint) on session create.
+- Instantiates engines from `@mm/engines` per `pathway.engine_type` and threads `EngineState` through respond/submit cycles. `engine_state_snapshot jsonb` column on `session_record` already exists (arch §5).
+- Adopts Stage 18's handler-split pattern (`index.ts` + `handlers.ts`).
+- First Playwright e2e test of the build: signup → session create → 5 responses → submit → score returned.
+- Exit criteria: version conflict surfaces 409; idempotency replay returns cached response; one-active-session DB-enforced; e2e passes end-to-end.
+- §2A review will likely surface Q-19.N decisions around: idempotency key persistence, lock-token rotation, optimistic-lock failure semantics (retry vs reject), engine state serialization at the assessment-svc boundary.
 
 **Supabase remote project:** https://tohmshcpdhcdfsubvnok.supabase.co (ap-southeast-2)

@@ -2,6 +2,58 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 18 — 2026-05-07
+
+**Planned (from DEV_PLAN.md Stage 18):** content-svc Edge Function (7 read endpoints) + in-memory skill-graph cache (1h TTL, watermark invalidation) + contract tests. Exit criteria: `/content/select` returns blueprint-compliant items; cache hit rate 100% after first load; cache invalidates on graph publish.
+
+**Actually delivered:**
+
+- `feat(content-svc): Stage 18 — Content Service + skill graph cache` — commit `d3543c5`
+  - `supabase/functions/_shared/skill-graph-cache.ts` — module-scope cache with watermark + 1h TTL invalidation. Pure-function loader pattern (`SkillGraphCacheLoader` interface): production wraps a Supabase client (`createDbLoader`); tests inject mock loaders directly. Deno-compatible (no Node-only imports). `invalidateSkillGraph()` exported for test isolation.
+  - `supabase/functions/content-svc/handlers.ts` — pure handler functions returning tagged `HandlerResult<T>`. No URL imports — testable from Node Vitest with a mocked Supabase-like client. Implements:
+    - `listPathways(client, callerTenantId)` — entitlement filter via `feature_flag` JOIN-equivalent (two-query pattern: pathways + flags, code-side intersection).
+    - `getPathwayBySlug(client, callerTenantId, slug)` — single pathway with `entitled` + `locked_reason` (`'tier_required'` if not entitled).
+    - `listAssessmentProfiles(client, { exam_family?, year_level? })`.
+    - `getItem(client, itemId)` — reads `v_item_current` view.
+    - `selectItems(client, req)` — `EngineItem[]` selection: adaptive pathways resolve from `framework_config.adaptive_rules.testlets[]` (with `testlet_id` + `stage_id` tagging per ADR-0024); linear pathways use blueprint sections × `framework_config.difficulty_bands` × lex tie-break by `item_id` ASC (Q-18.4).
+    - `searchContent(client, req)` — paginated, admin only (Q-18.1).
+    - `getActiveSkillGraph(loader)` — wraps the cache.
+  - `supabase/functions/content-svc/index.ts` — Deno.serve dispatcher with URL imports for `@supabase/supabase-js` + `_shared/`. Routes 7 endpoints with role gating: Bearer for student-facing; service-role header (`x-mm-service-role`) for `/content/select`; admin (platform_admin or org_admin) for `/content/search`.
+  - `supabase/functions/content-svc/__tests__/contract.test.ts` — 18 Vitest tests across 9 describe blocks. Mock Supabase client built via callable Proxy with chainable methods (`.select`, `.eq`, `.in`, `.or`, `.gte`, `.lte`, `.ilike`, `.overlaps`, `.order`, `.limit`, `.range`) + thenable + `.maybeSingle()`/`.single()` resolvers.
+  - `supabase/functions/content-svc/{package.json, tsconfig.json}` — `@mm/content-svc` workspace package. `typecheck` + `test` scripts only (no build/lint — Deno-only deploy path; ESLint not configured for Edge Function code in v1).
+  - `pnpm-workspace.yaml` — added `supabase/functions/content-svc` workspace entry.
+
+**Time spent:** ~5h (single session, including the §2A pre-implementation review that surfaced 13 Q-18.N decisions + execution + Vitest mock proxy iteration).
+
+**Surprises / departures:**
+
+- **First Edge Function tests in the repo** — auth-svc and users-svc (Stage 14) shipped without tests. Stage 18 establishes the pattern: split Edge Functions into `index.ts` (Deno dispatcher with URL imports) + `handlers.ts` (pure functions, Node-testable). Future Edge Function stages should adopt this split.
+- **Mock Supabase client via callable Proxy.** Chainable Postgrest builder methods are difficult to mock directly with `vi.fn()`. Settled on a Proxy with a function target + `apply` trap so `client.from('t').select('cols').eq('col', 'val')` chains arbitrarily and resolves either via `.maybeSingle()`/`.single()` or via the `then` accessor (thenable).
+- **Cache lives in `_shared/`, not `packages/core`** per Q-18.2.C. `packages/core` is still a single `export {}` stub — no test config added. Avoided cross-runtime (Deno↔Node) module-resolution gymnastics. No ADR-0025 (Q-18.11 default applied).
+- **Spec section drift confirmed harmless.** DEV_PLAN cited "Arch §4.2, §5.3" but the actual content-svc surface is **§4.3** and the cache constraint sits in **§5.2 line 1690**. Doc-numbering only; content matches.
+- **`@mm/content-svc` package has no build/lint scripts.** Edge Functions deploy via `supabase functions deploy` (manual, post-CI). The TS compiler runs typecheck via `tsconfig.allowImportingTsExtensions: true` so the `.ts`-suffixed imports the Deno code uses pass tsc.
+
+**Decisions made (not in stage):**
+
+- Q-18.1 through Q-18.13: all 13 §2A defaults applied verbatim. None deviated.
+- No new ADRs (Q-18.11 default applied). Q-18.2.C resolution was straightforward enough to skip ADR-0025.
+
+**Deviations logged:**
+
+- none.
+
+**Issues opened / closed / questions raised:**
+
+- none.
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (308/308 unit total: 97 @mm/types + 24 @mm/sdk + 59 @mm/ui + 110 @mm/engines + 18 @mm/content-svc) · Build ✅ (7/7 packages — content-svc has no build script, Deno-only deploy) · RLS n/a (no migrations).
+
+**Tomorrow — first thing:**
+
+Stage 19 — Assessment Service (Days 23–24, 2-day budget). Highest risk in Phase 1 ("most complex service" per DEV_PLAN §2 line 216). Endpoints: `/sessions/create`, `/sessions/{id}/respond` (with X-Session-Lock + expected_version), `/sessions/{id}/submit` (writes outbox_event + invokes inline sync pipeline), `/sessions/{id}/checkpoint` (autosave, never bumps version), `/sessions/{id}/state`, `/sessions/{id}/abandon`, `/sessions/recent`. Calls into content-svc `/content/select` (Stage 18) and the engines (Stages 15–17). First Playwright e2e test of the build (signup → session create → 5 responses → submit → score returned). Reuses Stage 18 handler-split pattern.
+
 ## Stage 17 — 2026-05-06
 
 **Planned (from DEV_PLAN.md Stage 17):** AdaptiveEngine for NAPLAN — testlet routing per `framework_config.adaptive_rules`, server-authoritative per-stage timer, stage-bound back-nav, writing-stage text capture (no auto-marking). Exit criterion: 3-stage NAPLAN session through harness routes correctly per the seed's routing table.
