@@ -2,6 +2,75 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 19 — 2026-05-08
+
+**Planned (from DEV_PLAN.md Stage 19):** assessment-svc Edge Function with the full session lifecycle (`/sessions/create`, `/respond`, `/submit`, `/checkpoint`, `/state`, `/abandon`, `/recent`, `/{id}`) — feature-gated create, idempotency-keyed POSTs, X-Session-Lock + expected_version on respond, `create_session_response_atomic` invocation, outbox_event on submit, contract tests, first Playwright e2e. Exit criteria: version conflict → 409; idempotency replay returns cached; one-active-session DB-enforced; e2e passes end-to-end.
+
+**Actually delivered:**
+
+- `feat(assessment-svc): Stage 19 — session lifecycle + e2e setup` — commit `7677e77`
+  - `supabase/migrations/0012_assessment_svc_rpc_widen.sql` (+ down) — widens `create_session_response_atomic` to take `p_engine_state jsonb` as the 11th parameter; UPDATE writes `engine_state_snapshot` atomically with the version bump (Q-19.1). Restores Stage 4 10-arg signature on rollback. SECURITY DEFINER + double-REVOKE/GRANT preserved.
+  - `supabase/functions/_shared/idempotency.ts` — pure-function `withIdempotency()` middleware implementing arch §7.3 verbatim: hash → SELECT → INSERT processing → run handler → UPDATE completed; 422 IDEMPOTENCY_MISMATCH on hash mismatch; 409 IDEMPOTENCY_IN_FLIGHT on processing duplicate; failed-row reprocess. Reusable for assignments-svc (Stage 27+) and billing-svc (Stage 42+). Web Crypto SHA-256 for cross-runtime hashing.
+  - `supabase/functions/_shared/feature-gate.ts` — `checkFeatureFlag(client, tenantId, featureKey)` mirroring content-svc's entitlement merge (tenant-scoped flag wins, platform default fallback). Returns 402 FEATURE_GATED with `feature_key` in `details`.
+  - `supabase/functions/_test-helpers/mock-supabase.ts` — hoisted callable-Proxy harness from content-svc per Q-19.13. Adds an `_rpc` slot keyed by RPC name. content-svc's contract test now imports from here (no behaviour change; 18/18 still pass).
+  - `supabase/functions/assessment-svc/handlers.ts` — 8 pure handlers returning tagged `HandlerResult<T>`:
+    - `createSession` — feature-gate → INSERT session_record(status=created) → HTTP fetch to content-svc /content/select with `x-mm-service-role` (Q-19.7) → engine.initialise → engine.getNextItem → UPDATE status=active + engine_state_snapshot. Idempotency-key + `idx_session_one_active` partial unique index are the safety net (Q-19.8).
+    - `respondToSession` — load session → validate `X-Session-Lock` (ADR-0026) → version match → parse engine_state via Zod (Q-19.6) → `engine.recordResponse` → widened RPC → rotate lock_token → return `RecordResponseResponse` with new `lock_token`. Returns 409 LOCK_CONFLICT on stale token; 409 CONFLICT on version mismatch (Q-19.5).
+    - `submitSession` — `engine.terminate('user_submitted', ...)` via `linearTerminateWithConfig`/`terminateAdaptiveWithConfig` (engine-prefixed) → UPDATE session_record terminal columns → INSERT outbox_event with `aggregate_type='session_record'`, `event_type='session.submitted'`. Returns `pipeline_status='pending'` per Q-19.2.
+    - `checkpointSession` — UPSERT `session_checkpoint` (`onConflict: session_id`); never bumps version per ADR-C3.
+    - `resumeSession` — interrupted/active → active + new lock_token; returns `SessionStateDTO`.
+    - `abandonSession` — terminal transition; no outbox.
+    - `listRecentSessions`, `getSessionSummary` — `SessionSummaryDTO[]` for Stage 22+ dashboard tile.
+    - Effects injection (`now`, `uuid`, `ms`) keeps handlers deterministic for replay testing.
+  - `supabase/functions/assessment-svc/index.ts` — Deno.serve dispatcher with URL imports for `@supabase/supabase-js`. Routes 8 endpoints with auth → rate-limit → idempotency → handler composition; per-endpoint rate limits per arch §4.13 (`sessions.create`=5/min, `sessions.respond`=120/min, `sessions.checkpoint`=240/min, default=100/min). content-svc HTTP fetcher closes over `SUPABASE_SERVICE_ROLE_KEY`.
+  - `supabase/functions/assessment-svc/__tests__/contract.test.ts` — 26 Vitest tests across 9 describe blocks: createSession (5), respondToSession (6), submitSession (4), checkpointSession (3), resumeSession (2), abandonSession (1), listRecentSessions (2), idempotency middleware (3). Three DEV_PLAN exit criteria as **named tests**:
+    - `'one-active-session DB-enforced (DEV_PLAN exit criterion)'`
+    - `'version conflict surfaces 409 (DEV_PLAN exit criterion)'`
+    - `'idempotency replay returns cached response (DEV_PLAN exit criterion)'`
+  - `supabase/functions/assessment-svc/{package.json, tsconfig.json}` — `@mm/assessment-svc` workspace package; typecheck + test scripts only per Q-19.12 (Deno-only deploy path). Declares workspace deps on `@mm/engines` + `@mm/types`.
+  - `pnpm-workspace.yaml` — added `supabase/functions/assessment-svc`. Workspace count: 9 (was 8).
+  - `packages/types/src/session.ts` — widened `RecordResponseResponseSchema` to include `lock_token: z.string()` per ADR-0026 follow-up. Existing 97 @mm/types tests unaffected (no test asserts the absence of the field; the schema simply gained a required string).
+  - `apps/web/playwright.config.ts` + `apps/web/playwright/e2e/session-flow.spec.ts` — first Playwright spec of the build. Happy path: signup → /sessions/create → 5× /respond → /submit → assert score returned + outbox row with `event_type='session.submitted'` and `processed_at IS NULL`. Spec is `test.skip()`-guarded on `E2E_BASE_URL` / `E2E_TEST_PATHWAY_ID` / `E2E_SUPABASE_ANON` — opt-in until local Supabase + Edge Functions are running.
+  - `apps/web/vitest.config.ts` (NEW) — Vitest exclude list for `playwright/**` so the unit-test runner doesn't try to load Playwright's `test.skip()` API at file evaluation. Two runners stay cleanly separated.
+  - `apps/web/package.json` — `@playwright/test` devDep + `e2e` script.
+
+**Time spent:** ~5h (single session — §2A pre-implementation review earlier in the morning surfaced 13 Q-19.N decisions + ADR-0026, then prep commit, then implementation + lint/test cleanup).
+
+**Surprises / departures:**
+
+- **Vitest tried to load the Playwright spec on the unit pass.** `apps/web/test` runs `vitest run --passWithNoTests` and the default Vitest glob picked up `playwright/e2e/*.spec.ts`. Vitest then evaluated `test.skip(condition, message)` (Playwright's signature) at module load and rejected it ("can only be called inside test, describe block or fixture"). Resolved by adding `apps/web/vitest.config.ts` with `exclude: ['playwright/**', ...]`. No effect on coverage; Vitest reports "No test files found" (passes via `--passWithNoTests`).
+- **Branded-type casts at handler↔DTO boundaries.** `@mm/types` brands UUID strings (`SessionId`, `ItemId`, `SkillId` are `string & { readonly _SessionId: never }`). DB columns and `crypto.randomUUID()` return plain `string`, so assignments into `SessionContext`, `EngineResponse`, `CreateSessionResponse`, `SessionStateDTO`, `SessionSummaryDTO` need explicit casts (e.g. `session_id: sessionId as SessionId`). Stage 16/17 engine code already used the same pattern internally; assessment-svc just added it at the HTTP boundary. Documented inline.
+- **Test fixture UUIDs.** Initial `buildItem(idx)` used `item-${idx}-...` strings which fail `z.string().uuid()` validation, masking 5 test failures behind "engine_state_snapshot invalid". Fixed by encoding `idx` as the last 12 hex chars of a v4-shaped UUID (`aaaaaaaa-aaaa-4aaa-8aaa-${idx_hex_12}`).
+- **TerminateWithConfig signature** is `(state, reason, clock, config)` not `(state, reason, config, clock)` — caught at typecheck. Stage 17 introduced both `terminateWithConfig` (linear) and `terminateAdaptiveWithConfig` with the same arg order; my submit handler had the last two flipped. Reordered.
+- **content-svc package has zero deps in package.json.** Stage 18 deliberately inlined DTO shapes to avoid a workspace-dep edge during pnpm hoisting. assessment-svc imports `@mm/engines` + `@mm/types` directly, so its package.json declares both as `workspace:*`. Both patterns are valid; the second is cleaner when the handler depends on engine logic.
+- **MockResponses union type widened** to accept the `_rpc` key alongside `[table: string]`. The existing content-svc test syntax stays identical because `_rpc` is optional.
+
+**Caveats (env-bound; deferred to user's local environment):**
+
+- **`pnpm test:migration` not executed in this sandbox.** The roundtrip script requires Docker + the `supabase_db_mindmosaic` container, neither available here. Migration 0012 + its down migration follow Stage 4 (`create_session_response_atomic`) and Stage 11 (`fn_check_rate_limit`) patterns verbatim — `DROP FUNCTION` (signature-matched) → `CREATE OR REPLACE FUNCTION` with the new arg list, double-REVOKE + GRANT. **User should run `pnpm test:migration` locally before any deploy.**
+- **Playwright e2e is opt-in.** Spec calls `test.skip()` when `E2E_BASE_URL` / `E2E_TEST_PATHWAY_ID` / `E2E_SUPABASE_ANON` are unset (and additionally short-circuits the outbox assertion when `E2E_TEST_SERVICE_ROLE` / `E2E_SUPABASE_URL` are unset). Browser install via `pnpm exec playwright install chromium`. CI integration deferred to Stage 26 per Q-19.9.
+
+**Decisions made (not in stage):**
+
+- Q-19.1 through Q-19.13: all 13 §2A defaults applied verbatim. None deviated.
+- ADR-0026 (lock-token rotation per respond) was accepted in the morning §2A review and filed in the prep commit `918bbaa` ahead of this implementation. Codifies the service pattern for assignments-svc (Stage 27+) and billing-svc (Stage 42+).
+
+**Deviations logged:**
+
+- none.
+
+**Issues opened / closed / questions raised:**
+
+- none. No new ambiguities surfaced during implementation; all 13 §2A defaults held.
+
+**Quality gates at close:**
+
+- Lint ✅ (7/7 packages — assessment-svc has no lint script per Q-19.12) · Typecheck ✅ (9/9 packages) · Tests ✅ (334/334 unit + contract: 97 @mm/types + 24 @mm/sdk + 59 @mm/ui + 110 @mm/engines + 18 @mm/content-svc + **26 @mm/assessment-svc**) · Build ✅ (7/7 packages — assessment-svc no build, Deno-only deploy) · RLS / pgTAP not re-run (no schema-defining migration; RPC widening covered by future migration roundtrip).
+
+**Tomorrow — first thing:**
+
+Stage 20 — Intelligence Service Sync (L1 + L2 + L3a). Day 25 (1-day budget). Highest replay-determinism risk in Phase 1. `supabase/functions/intelligence-svc/` with `/intelligence/process-session/{id}` (service-role; called inline from assessment-svc /submit) — L1 Foundation (batch UPSERT `skill_mastery`, recompute `learning_velocity` over 14-day window, write `intelligence_audit_log` with `algorithm_version`); L2 Behaviour (per-response `guess_probability` in `learning_event.metadata`, fatigue, persistence; UPDATE `behaviour_profile` with defaults-blend per Spec §9.6); L3a Causal-scoped (touched skills + depth-1 prerequisites only; misconception from `distractor_rationale`; UPSERT `student_misconception`). Stage 19's outbox row + `pipeline_status='pending'` flips to `'sync_complete'` once the inline sync HTTP call lands. Replay determinism is the gate: byte-identical `skill_mastery` rows on re-run, no `Math.random`, no `Date.now()` as inputs. Also (separate evening task): Day 19 evening Claude Design repo connection per ADR-0025.
+
 ## Stage 18 — 2026-05-07
 
 **Planned (from DEV_PLAN.md Stage 18):** content-svc Edge Function (7 read endpoints) + in-memory skill-graph cache (1h TTL, watermark invalidation) + contract tests. Exit criteria: `/content/select` returns blueprint-compliant items; cache hit rate 100% after first load; cache invalidates on graph publish.
