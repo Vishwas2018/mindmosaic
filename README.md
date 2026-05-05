@@ -6,13 +6,14 @@ Adaptive learning platform for NAPLAN + ICAS pathways. Solo-built v1 MVP, 75-day
 
 ## Document set (v1.0)
 
-The repo's `*.md` documents are organised by purpose. **All eight are part of the canonical v1.0 set.** Anything else is either generated, transient, or out of date.
+The repo's `*.md` documents are organised by purpose. **All nine are part of the canonical v1.0 set.** Anything else is either generated, transient, or out of date.
 
 | Doc | Purpose | When you read it |
 |---|---|---|
 | `README.md` | Entry point, prerequisites, doc map | Now |
 | `CLAUDE.md` | Operating manual + dev journal templates | Every Claude Code session |
 | `CLAUDE_PROMPTS.md` | Claude Code prompt catalogue (morning, stage runner, evening, audit, scope cut, hotfix, retro, cold start) | Every Claude Code session |
+| `CLAUDE_DESIGN_PROMPTS.md` | Claude Design prompt catalogue (design-system setup, per-screen prototypes, handoff to Claude Code) | Frontend stages (22+) — prototype 2–4 days before implementation |
 | `BUILD_CONTRACT.md` | Engineering rules, scope, conventions, git workflow | Before every commit |
 | `DEV_PLAN.md` | 75-day stage roadmap + post-launch backlog | Daily — stage of the day |
 | `OWNERS.md` | Service ownership matrix (writers, endpoints) | When adding a table or endpoint |

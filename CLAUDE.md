@@ -16,6 +16,7 @@ Locked sources of truth (do not edit silently):
 - `DEV_PLAN.md` — 75-day stage plan
 - `BUILD_CONTRACT.md` — engineering rules
 - `CLAUDE_PROMPTS.md` — full prompt catalogue (morning / stage / evening / audit / scope-cut / hotfix / retro / cold-start). The morning + evening rituals quoted below are the daily-use subset; the full catalogue lives there.
+- `CLAUDE_DESIGN_PROMPTS.md` — Claude Design prompt catalogue (design-system setup + per-screen prototypes for Stage 22+ UI work). Prototypes are visual reference only per `UI_CONTRACT.md §1.1`.
 - `mindmosaic-spec-v4_4.md` Part III.5 + arch v2.0 Part XI — G1–G6 ambiguity resolutions
 - `UI_CONTRACT.md` + `SCREEN_SPECS.md` — frontend authority
 - `OWNERS.md` — service ownership
