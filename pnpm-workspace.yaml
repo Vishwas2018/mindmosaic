@@ -3,3 +3,4 @@ packages:
   - "packages/*"
   - "supabase/functions/content-svc"
   - "supabase/functions/assessment-svc"
+  - "supabase/functions/intelligence-svc"

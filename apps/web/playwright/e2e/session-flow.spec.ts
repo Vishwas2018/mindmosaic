@@ -134,7 +134,10 @@ test('session lifecycle — signup → 5 responses → submit → score returned
   const submitData = sb?.data ?? sb;
   expect(submitData.status).toBe('submitted');
   expect(submitData.score).toBeDefined();
-  expect(submitData.pipeline_status).toBe('pending');
+  // Stage 20 (Q-20.1, ADR-0027): when intelligence-svc is reachable inline,
+  // pipeline_status flips to 'sync_complete'; on timeout / error it stays
+  // 'pending' (soft-fallback per Q-20.15). Both are valid e2e outcomes.
+  expect(['sync_complete', 'pending']).toContain(submitData.pipeline_status);
 
   // ── 5. Outbox assertion (Q-19.2) ─────────────────────────────────────────
   // Requires service-role key. Skip if not provided — the contract test

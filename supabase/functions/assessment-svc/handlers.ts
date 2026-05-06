@@ -508,10 +508,31 @@ export async function respondToSession(
 
 // ─── submitSession ──────────────────────────────────────────────────────────
 
+/**
+ * Inline call surface for intelligence-svc /process-session/{id} (Q-20.1).
+ * Injected so tests can stub without going through Deno's fetch + the
+ * Stage 20 ADR-0027 4-second timeout.
+ *
+ * On success the caller flips `pipeline_status` to `'sync_complete'`. On
+ * timeout / 4xx / 5xx / network error the caller leaves `'pending'` and
+ * surfaces a structured warn log — never fails the user-facing submit.
+ */
+export type ProcessIntelligenceFetcher = (input: {
+  sessionId: string;
+  traceId: string;
+}) => Promise<
+  | { ok: true; status: 'processed' | 'already_processed' }
+  | { ok: false; reason: 'timeout' | 'error'; status?: number; message: string }
+>;
+
 export interface SubmitInput {
   client: DbClient;
   sessionId: string;
   studentId: string;
+  /** Q-20.14: trace_id flowing through to intelligence-svc. Optional in tests. */
+  traceId?: string;
+  /** Q-20.1: inline intelligence-svc HTTP. Optional — null skips sync (legacy/Stage 19 path). */
+  fetchProcessIntelligence?: ProcessIntelligenceFetcher | null;
   effects?: Partial<Effects>;
 }
 
@@ -520,6 +541,7 @@ export async function submitSession(
 ): Promise<HandlerResult<SubmitSessionResponse>> {
   const eff = { ...DEFAULT_EFFECTS, ...input.effects };
   const { client, sessionId, studentId } = input;
+  const traceId = input.traceId ?? eff.uuid();
 
   const rowRes = await client
     .from('session_record')
@@ -588,8 +610,9 @@ export async function submitSession(
     .eq('id', sessionId);
   if (upd.error !== null) return err(500, 'INTERNAL_ERROR', upd.error.message);
 
-  // Q-19.2: write outbox_event for Stage 20 sync pipeline. Stage 19 stops here;
-  // pipeline_status stays 'pending' until intelligence-svc lands.
+  // Q-19.2: write outbox_event regardless of whether the inline sync call
+  // below succeeds — outbox is the audit trail + the Stage 28 worker retry
+  // path if the inline call timed out / errored.
   const outboxRes = await client.from('outbox_event').insert({
     aggregate_type: 'session_record',
     aggregate_id: sessionId,
@@ -602,6 +625,46 @@ export async function submitSession(
     },
   });
   if (outboxRes.error !== null) return err(500, 'INTERNAL_ERROR', outboxRes.error.message);
+
+  // Q-20.1 + ADR-0027: call intelligence-svc /process-session/{id} inline.
+  // 4s timeout + soft-fail (Q-20.15): on timeout / 4xx / 5xx / network error
+  // we leave pipeline_status='pending' and rely on the outbox + Stage 28
+  // worker to retry. Never fail the user-facing submit.
+  let pipelineStatus: 'pending' | 'sync_complete' = 'pending';
+  if (input.fetchProcessIntelligence !== undefined && input.fetchProcessIntelligence !== null) {
+    const intel = await input.fetchProcessIntelligence({ sessionId, traceId });
+    if (intel.ok) {
+      pipelineStatus = 'sync_complete';
+      const flip = await client
+        .from('session_record')
+        .update({ pipeline_status: 'sync_complete' })
+        .eq('id', sessionId);
+      if (flip.error !== null) {
+        // Treat a flip failure as soft — the data is in intelligence-svc;
+        // the row label is stale and Stage 28 will rectify.
+        console.warn(JSON.stringify({
+          level: 'warn',
+          service: 'assessment-svc',
+          trace_id: traceId,
+          event: 'pipeline_status_flip_failed',
+          session_id: sessionId,
+          error: flip.error.message,
+        }));
+        pipelineStatus = 'pending';
+      }
+    } else {
+      console.warn(JSON.stringify({
+        level: 'warn',
+        service: 'assessment-svc',
+        trace_id: traceId,
+        event: 'intelligence_svc_inline_failed',
+        session_id: sessionId,
+        reason: intel.reason,
+        status: intel.status ?? null,
+        message: intel.message,
+      }));
+    }
+  }
 
   return ok<SubmitSessionResponse>({
     session_id: sessionId as SessionId,
@@ -618,7 +681,7 @@ export async function submitSession(
       active_duration_ms: final.score.duration_ms,
       skills_touched: final.score.skills_touched,
     },
-    pipeline_status: 'pending',
+    pipeline_status: pipelineStatus,
   });
 }
 

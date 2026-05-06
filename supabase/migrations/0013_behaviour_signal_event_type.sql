@@ -1,0 +1,21 @@
+-- Migration 0013 — extend learning_event_type enum with 'behaviour_signal'
+--
+-- Stage 20, Q-20.12=A: intelligence-svc L2 Behaviour writes per-response
+-- guess_probability / fatigue_score / cognitive_load signals as new
+-- learning_event rows (not by UPDATE — preserves the immutability invariant
+-- declared in OWNERS.md for `learning_event`).
+--
+-- Spec refs: §7.6 (per-response signals embedded in metadata); §9.2/§9.3/§9.5
+-- (formula definitions); ADR-0027.
+--
+-- ALTER TYPE ... ADD VALUE is a one-way operation — PostgreSQL has no
+-- ALTER TYPE ... DROP VALUE. The down migration is a documented no-op (an
+-- enum value, once added, is permanent unless the entire type is dropped
+-- and recreated, which would cascade-delete every learning_event row).
+-- Rolling forward is safe; rolling back is not. v1.1+ may add additional
+-- L2 event_type values without further enum migrations.
+
+-- ALTER TYPE ... ADD VALUE IF NOT EXISTS is idempotent across PG ≥ 9.6.
+-- This permits the migration to be re-applied without error on environments
+-- where it has already been run.
+ALTER TYPE learning_event_type ADD VALUE IF NOT EXISTS 'behaviour_signal';

@@ -259,6 +259,15 @@ importers:
 
   supabase/functions/content-svc: {}
 
+  supabase/functions/intelligence-svc:
+    dependencies:
+      '@mm/engines':
+        specifier: workspace:*
+        version: link:../../../packages/engines
+      '@mm/types':
+        specifier: workspace:*
+        version: link:../../../packages/types
+
 packages:
 
   '@adobe/css-tools@4.4.4':

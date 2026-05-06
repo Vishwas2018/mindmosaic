@@ -40,6 +40,7 @@ import {
   getSessionSummary,
   type DbClient as HandlerDbClient,
   type ContentSelectFetcher,
+  type ProcessIntelligenceFetcher,
   type HandlerResult,
 } from './handlers.ts';
 import type {
@@ -52,6 +53,10 @@ import type {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const CONTENT_SVC_URL = Deno.env.get('CONTENT_SVC_URL') ?? `${SUPABASE_URL}/functions/v1/content-svc`;
+const INTELLIGENCE_SVC_URL =
+  Deno.env.get('INTELLIGENCE_SVC_URL') ?? `${SUPABASE_URL}/functions/v1/intelligence-svc`;
+/** Q-20.15: 4s under /submit's 5s p95 budget. */
+const INTELLIGENCE_TIMEOUT_MS = 4000;
 
 function serviceClient() {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -68,6 +73,42 @@ async function callerTenantId(
     .maybeSingle();
   return (data as { tenant_id?: string } | null)?.tenant_id ?? null;
 }
+
+/**
+ * Q-20.1 + ADR-0027 + Q-20.15: inline call to intelligence-svc /process-session/{id}
+ * with a 4-second timeout. Soft-fails to 'pending' on timeout / 4xx / 5xx /
+ * network error; never throws.
+ */
+const fetchProcessIntelligence: ProcessIntelligenceFetcher = async ({ sessionId, traceId }) => {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), INTELLIGENCE_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${INTELLIGENCE_SVC_URL}/intelligence/process-session/${sessionId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-mm-service-role': SERVICE_ROLE_KEY,
+        'x-mm-trace-id': traceId,
+      },
+      body: JSON.stringify({}),
+      signal: ctl.signal,
+    });
+    clearTimeout(t);
+    if (!res.ok) {
+      return { ok: false, reason: 'error', status: res.status, message: `intelligence-svc ${res.status}` };
+    }
+    const body = (await res.json()) as { data?: { status?: 'processed' | 'already_processed' } } | undefined;
+    const status = body?.data?.status ?? 'processed';
+    return { ok: true, status };
+  } catch (caught) {
+    clearTimeout(t);
+    const msg = caught instanceof Error ? caught.message : String(caught);
+    if (caught instanceof Error && caught.name === 'AbortError') {
+      return { ok: false, reason: 'timeout', message: 'intelligence-svc inline call timed out (4000ms)' };
+    }
+    return { ok: false, reason: 'error', message: msg };
+  }
+};
 
 const fetchContentSelect: ContentSelectFetcher = async (input) => {
   const res = await fetch(`${CONTENT_SVC_URL}/content/select`, {
@@ -244,6 +285,8 @@ Deno.serve(async (req: Request) => {
         client: handlerClient,
         sessionId,
         studentId: userId,
+        traceId,
+        fetchProcessIntelligence,
       });
       status = result.status;
       return settle(traceId, result);

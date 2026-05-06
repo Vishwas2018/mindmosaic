@@ -561,6 +561,98 @@ describe('assessment-svc — submitSession', () => {
       expect(result.data.pipeline_status).toBe('pending');
     }
   });
+
+  // ── Stage 20: inline intelligence-svc call (Q-20.1, ADR-0027) ──────────────
+
+  it('flips pipeline_status to sync_complete on intelligence-svc 200 (Q-20.1)', async () => {
+    const db = client({
+      session_record: { data: buildSessionRow(), error: null },
+      pathway: { data: { framework_config_id: FC_ID }, error: null },
+      framework_config: { data: buildFrameworkConfigRow(), error: null },
+      outbox_event: { data: null, error: null },
+    });
+    const result = await submitSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      traceId: 'trace-1',
+      fetchProcessIntelligence: async () => ({ ok: true, status: 'processed' }),
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.pipeline_status).toBe('sync_complete');
+    }
+  });
+
+  it('soft-fails to pending on intelligence-svc timeout (Q-20.15)', async () => {
+    const db = client({
+      session_record: { data: buildSessionRow(), error: null },
+      pathway: { data: { framework_config_id: FC_ID }, error: null },
+      framework_config: { data: buildFrameworkConfigRow(), error: null },
+      outbox_event: { data: null, error: null },
+    });
+    const result = await submitSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      traceId: 'trace-1',
+      fetchProcessIntelligence: async () => ({
+        ok: false, reason: 'timeout', message: 'timed out at 4000ms',
+      }),
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.pipeline_status).toBe('pending');
+      // Submit response itself is still 200/success — never fail the user.
+      expect(result.status).toBe(200);
+    }
+  });
+
+  it('soft-fails to pending on intelligence-svc 5xx (Q-20.15)', async () => {
+    const db = client({
+      session_record: { data: buildSessionRow(), error: null },
+      pathway: { data: { framework_config_id: FC_ID }, error: null },
+      framework_config: { data: buildFrameworkConfigRow(), error: null },
+      outbox_event: { data: null, error: null },
+    });
+    const result = await submitSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      traceId: 'trace-1',
+      fetchProcessIntelligence: async () => ({
+        ok: false, reason: 'error', status: 500, message: 'intelligence-svc 500',
+      }),
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.pipeline_status).toBe('pending');
+    }
+  });
+
+  it('treats intelligence-svc already_processed as sync_complete (Q-20.7)', async () => {
+    const db = client({
+      session_record: { data: buildSessionRow(), error: null },
+      pathway: { data: { framework_config_id: FC_ID }, error: null },
+      framework_config: { data: buildFrameworkConfigRow(), error: null },
+      outbox_event: { data: null, error: null },
+    });
+    const result = await submitSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      traceId: 'trace-1',
+      fetchProcessIntelligence: async () => ({ ok: true, status: 'already_processed' }),
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.pipeline_status).toBe('sync_complete');
+    }
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────
