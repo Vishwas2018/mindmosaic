@@ -5,7 +5,40 @@
 
 ## Open
 
-_(none)_
+### ISSUE-0005 — `apps/web/.env.local.example` populated with real Supabase URL + anon JWT
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-08 (Stage 19 audit close)
+- Area: infra / dx
+- Tags: hygiene · footgun · secrets-policy
+
+**Summary.** `apps/web/.env.local.example` is unstaged-modified to contain a real
+project URL (`https://tohmshcpdhcdfsubvnok.supabase.co`) and a real anon JWT
+(`role=anon`, `iat=2026-04-29`, `exp=2036-04-26`). Anon keys are *intentionally*
+browser-exposed by Supabase's RLS-first model — this is **not a security
+incident** in the credentials-leak sense. It is a hygiene/footgun issue:
+
+1. `*.example` files are conventionally placeholders (`your-project.supabase.co`
+   / `your-anon-key`). The current state nudges every new clone toward a
+   single shared dev project.
+2. Any future rotation of the anon key (e.g. tenant-isolation issue, RLS
+   policy bug requiring revocation) must update this file too — easy to forget.
+3. If anyone later confuses "anon key looks safe to commit" with "service role
+   key looks safe to commit", the precedent is set in the wrong direction.
+
+**Reproduction.** `git diff apps/web/.env.local.example` on `main` post-Stage 19.
+
+**Recommended fix.** Either (a) restore placeholders and instruct local devs
+to copy → `.env.local`; or (b) keep populated but rename to `.env.dev.shared`
++ add comment "anon key, RLS-protected, safe to commit; do NOT mirror this for
+service-role".
+
+**Why not in Stage 20.** Stage 20 is the highest-risk Phase 1 stage (replay
+determinism). Hygiene cleanups don't belong in the same atomic commit. File
+as a separate small chore commit at next audit (Stage 24) or sooner.
+
+
 
 ## Resolved
 

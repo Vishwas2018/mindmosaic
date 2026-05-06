@@ -9,6 +9,315 @@
 
 ## Resolved
 
+### Q-20.15 — Sync HTTP timeout + error fallback semantics
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: BUILD_CONTRACT §10 (5s p95 budget on `/submit`); arch §5.2 (3-attempt
+  retry policy on pipeline.run_sync); spec §7.2 line 1020
+  ("session remains in `submitted` state and a retry is scheduled immediately")
+- Question: What HTTP timeout for the inline intelligence-svc call from
+  `/submit`, and what error categories trigger soft-fallback vs propagate?
+- Why ambiguous: §7.2 says "retry scheduled immediately" but §5.2 retry policy
+  is owned by the worker (Stage 28+); Stage 20 has no worker yet.
+- Blocking? no
+- Code affected: `supabase/functions/assessment-svc/handlers.ts` submitSession
+- Status: resolved
+- Resolution (2026-05-08): 4000 ms HTTP timeout (1s safety margin under the
+  5s `/submit` p95 budget). On timeout / 4xx / 5xx / network error → return
+  submit success with `pipeline_status='pending'` + log warn; never fail the
+  user-facing submit. The Stage 10 outbox-dispatcher cron's queued
+  `pipeline.run_sync` job becomes the retry path (worker exists Stage 28+).
+  Documented in **ADR-0027**.
+
+### Q-20.14 — `trace_id` propagation header
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: arch §7.4 audit-log requirements; existing
+  `supabase/functions/_shared/trace-id.ts` (basic UUID gen)
+- Question: Header name + propagation strategy from assessment-svc to
+  intelligence-svc?
+- Why ambiguous: First inter-service HTTP call requiring trace_id
+  propagation (Stage 18 content-svc was service-role-keyed only, no trace
+  flow).
+- Blocking? no
+- Code affected: `supabase/functions/_shared/trace-id.ts`,
+  `supabase/functions/assessment-svc/handlers.ts`,
+  `supabase/functions/intelligence-svc/index.ts`
+- Status: resolved
+- Resolution (2026-05-08): `x-mm-trace-id` HTTP header. assessment-svc
+  generates if absent; passes via header to intelligence-svc;
+  intelligence-svc writes the same `trace_id` to all `intelligence_audit_log`
+  rows + `pipeline_event` rows in this run. Standard observability pattern.
+  No ADR needed.
+
+### Q-20.13 — `intelligence_audit_log.input_snapshot` scope
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §7.4.2 (audit-log replay safety); ADR-0013 (column projection)
+- Question: Full session_response payload or per-skill aggregates?
+- Why ambiguous: Replay determinism wants smallest possible deterministic
+  input; debuggability wants the full payload.
+- Blocking? no
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Per-skill aggregates only —
+  `{ skills: [{ skill_id, attempts, correct, mastery_before, mastery_after,
+  ... }] }` sorted by `skill_id ASC`, canonicalised via the
+  `_shared/intelligence-helpers.ts:canonicalize()` helper. Hash-friendly,
+  bounded, deterministic. Documented in **ADR-0027**.
+
+### Q-20.12 — `guess_probability` storage location
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: product owner
+- Source: DEV_PLAN Stage 20 deliverables ("per-response `guess_probability`
+  in `learning_event.metadata`"); spec §7.6 schema embedding
+  `guess_probability` in answer event metadata; OWNERS.md `assessment-svc`
+  WRITE row marking `learning_event` as immutable
+- Question: Per-response storage path: (A) new `learning_event_type` enum
+  value `'behaviour_signal'` + INSERT new rows, (B) relax `learning_event`
+  mutability and UPDATE answer-row metadata, or (C) aggregate-only in v1?
+- Why ambiguous: Spec §7.6 schema describes per-response storage *as if* the
+  field is set at response time; §9.2 formula needs session-end
+  `recent_responses` for `pattern_factor` (so it must be computed
+  post-session); OWNERS.md immutability invariant blocks the UPDATE path.
+- Blocking? yes
+- Code affected: `supabase/migrations/0013_behaviour_signal_event_type.sql`
+  (NEW, if A); `supabase/functions/intelligence-svc/handlers.ts`;
+  `supabase/migrations/0001_enums_tenancy_auth.sql` (enum extended)
+- Status: resolved
+- Resolution (2026-05-08): **A**. Migration 0013 ALTERs `learning_event_type`
+  enum to add `'behaviour_signal'`; intelligence-svc INSERTs one new
+  `learning_event` row per answer response carrying L2 per-response signals
+  in `metadata`. Preserves immutability invariant (new rows, no UPDATEs).
+  One enum value covers all current and future L2 per-response signals
+  without further migrations. Migration 0013 must be tested via
+  `pnpm test:migration` locally before deploy (sandbox lacks Docker — same
+  caveat as 0012). Documented in **ADR-0027**.
+
+### Q-20.11 — `distractor_rationale` JSON shape
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: `supabase/migrations/0002_content_skill_graph.sql:195`
+  (`distractor_rationale jsonb` column on `item_version`); spec §10
+  ("misconception from `distractor_rationale`"); seed
+  `supabase/seeds/02_content.sql:357–364`
+- Question: Codified shape for L3a misconception lookup?
+- Why ambiguous: Schema column is `jsonb`; no spec table specifies the shape.
+- Blocking? no
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Adopt the seed-de-facto shape:
+  `{ [choice_id: string]: { misconception_id: string } }` with absent entries
+  for untagged choices (seeds use `jsonb_strip_nulls`). For each incorrect
+  response, look up `distractor_rationale[response.choice_id]?.misconception_id`;
+  if present → UPSERT `student_misconception`. Documented in **ADR-0027**.
+
+### Q-20.10 — L3a depth-1 prerequisite walk
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §7.2 ("L3a is bounded: touched_skills × 1 prerequisite
+  layer"); spec §10.2 `find_root_causes` recursive helper
+- Question: Inline a depth-1 walk in Stage 20, or wait for Stage 28's
+  full `traverse_upstream`?
+- Why ambiguous: DRY argues for one helper; YAGNI argues for the bounded
+  version now.
+- Blocking? no
+- Code affected: `supabase/functions/_shared/intelligence-helpers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Inline `walkPrereqsDepth1(skillIds, skillEdges)`
+  in `_shared/intelligence-helpers.ts` returning `Set<skill_id>` (sorted
+  output). Reads from existing `_shared/skill-graph-cache.ts`. Stage 28's
+  full traversal is a separate function. Spec §7.2's depth=1 bound is a
+  performance contract — Stage 20 must enforce it; deferring to a generic
+  helper risks accidental depth bleed.
+
+### Q-20.9 — Year-level-aware behaviour defaults
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §9.6 defaults table (Y1–3 → 15min, Y4–6 → 20min, Y7–9 →
+  30min, Y10–12 → 40min for `avg_fatigue_onset_minutes`); migration 0005
+  hardcoded defaults of 20/20
+- Question: Read `user_profile.year_level` and apply year-keyed defaults,
+  or accept the migration's Y4–6 defaults for all students?
+- Why ambiguous: v1 only targets Y5 (NAPLAN) and Y5–6 (ICAS Math C);
+  defaults work for the target audience. But student data outside that
+  window will silently mis-default.
+- Blocking? no
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`,
+  `supabase/functions/_shared/intelligence-helpers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Read `user_profile.year_level` and apply the
+  spec §9.6 map. `_shared/intelligence-helpers.ts:yearLevelDefaults(year)`
+  returns the right default per band. Cheap to do right once; no
+  hard-to-find drift later.
+
+### Q-20.8 — `pipeline_event` rows for sync steps 1/2/3
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §7.2.1 (`pipeline_event` schema described as "step: int —
+  4–9"); migration 0006 schema (`step int CHECK (step BETWEEN 1 AND 9)`);
+  DEV_PLAN Stage 20 deliverables ("per-step `pipeline_event` rows")
+- Question: Write `pipeline_event` rows for sync steps 1/2/3 too, or
+  only the documented async 4–9?
+- Why ambiguous: Spec prose says async-only; schema CHECK permits 1–9;
+  DEV_PLAN says per-step.
+- Blocking? no
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Yes — write `pipeline_event` rows for sync steps
+  1, 2, 3 (foundation, behaviour, causal-scoped). Status transitions
+  `pending → processing → completed/failed` per row. DEV_PLAN literal +
+  schema permits + better observability for the sync path. Spec §7.2.1
+  prose is descriptive of the async case; the schema is the contract.
+
+### Q-20.7 — Re-processing idempotency (Stage 28 worker pickup)
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: existing migration 0010 (Stage 10 outbox-dispatcher cron enqueues
+  `pipeline.run_sync` job per submit); jobs-worker not built until Stage 28;
+  arch §5.2 idempotency keys
+- Question: How does intelligence-svc avoid re-processing when Stage 28's
+  worker eventually picks up the orphan `pipeline.run_sync` jobs queued
+  during Stages 20–27?
+- Why ambiguous: Without a guard, the worker would re-execute against
+  intelligence-svc; if `algorithm_version` had bumped in between, the
+  second run could diverge from the first → replay determinism fails.
+- Blocking? yes
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Audit-log dedup at handler entry on
+  `(session_id, algorithm_version)`. intelligence-svc selects
+  `intelligence_audit_log` for prior `event_type='session.processed'`
+  rows; if any → return 200 `already_processed` without writing.
+  Plus all writes UPSERT (skill_mastery, learning_velocity,
+  behaviour_profile, student_misconception). Stage 28 worker call =
+  no-op. Documented in **ADR-0027**.
+
+### Q-20.6 — §21.0.2 vs §7.2 reconciliation
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §21.0.2 line 2877 ("No synchronous inter-service HTTP
+  calls"); spec §7.2 line 997 (sync portion "must complete before submit
+  response is returned"); arch §4.5 (intelligence-svc endpoint)
+- Question: How does Stage 20 reconcile §21.0.2's prohibition with §7.2's
+  mandate for inline-before-submit?
+- Why ambiguous: Two locked spec sections appear to contradict.
+- Blocking? yes
+- Code affected: ADR + future inter-service-HTTP decisions
+- Status: resolved
+- Resolution (2026-05-08): §7.2 wins as the more-specific section. Treat
+  the submit→intelligence-svc call as the *one* officially-blessed sync
+  inter-service HTTP exception. §21.0.2's prohibition continues to bind
+  every other inter-service call. Future stages adding inline HTTP must
+  extend or supersede ADR-0027 — not silently broaden the door.
+  Documented in **ADR-0027**.
+
+### Q-20.5 — `processing_time_ms` measurement strategy
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: arch §7.4 audit-log requirements (`processing_time_ms` field);
+  spec §7.2 (3s SLA)
+- Question: One timer at handler entry/exit, or per-layer timers?
+- Why ambiguous: Per-layer would help debug L1/L2/L3a contributions to
+  the 3s budget.
+- Blocking? no
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Single `performance.now()` at handler entry,
+  single delta at exit, written once to
+  `intelligence_audit_log.output.processing_time_ms`. Per-layer breakdown
+  is captured in `pipeline_event.started_at`/`completed_at` for steps 1, 2,
+  3 (Q-20.8) — observability split is clean without sprinkling timers in
+  the handler body.
+
+### Q-20.4 — Replay-determinism floor
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §7.4.2 (algorithm_version stamped for replay safety);
+  DEV_PLAN Stage 20 risk row ("No `Math.random`, no floats summed in
+  non-deterministic order, no timestamps as inputs")
+- Question: What concrete code-level rules?
+- Why ambiguous: DEV_PLAN sketches the rules; the floor needs to be
+  enforceable.
+- Blocking? no
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`,
+  `supabase/functions/_shared/intelligence-helpers.ts`
+- Status: resolved
+- Resolution (2026-05-08): Forbid: `Math.random()`, `Date.now()` as
+  algorithm input, `Set`/`Map` iteration order assumptions, default
+  `JSON.stringify` on objects with non-deterministic key order. Use
+  sorted-key serialisation in `_shared/intelligence-helpers.ts:canonicalize(obj)`
+  for any hash input. ORDER BY on every aggregate (`skill_id ASC`,
+  `response_id ASC`). Timestamps are write-only metadata, not formula
+  inputs.
+
+### Q-20.3 — `algorithm_version` format
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §7.4.2; `intelligence_audit_log.algorithm_version text NOT
+  NULL` column at migration 0005:120
+- Question: Format string?
+- Why ambiguous: Spec column requires text, no format codified.
+- Blocking? no
+- Code affected: `supabase/functions/_shared/intelligence-helpers.ts`
+- Status: resolved
+- Resolution (2026-05-08): `intelligence-vN.M.P` semver. Initial
+  `intelligence-v1.0.0`. Major bumps on output-shape changes (audit-log
+  schema migration), minor on formula changes (e.g., adjusting weights
+  in mastery formula §8.1), patch on bugfix (e.g., off-by-one in 14-day
+  velocity window). Stored as exported constant `ALGORITHM_VERSION` in
+  `_shared/intelligence-helpers.ts`. Documented in **ADR-0027**.
+
+### Q-20.2 — `pipeline_status` enum has `'sync_complete'`
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: `supabase/migrations/0001_enums_tenancy_auth.sql:71–73`
+- Question: Does the existing `pipeline_status` enum include
+  `'sync_complete'`, or does Stage 20 need a new migration?
+- Why ambiguous: Quick verification before writing the handler.
+- Blocking? no
+- Code affected: n/a
+- Status: resolved
+- Resolution (2026-05-08): Yes —
+  `pipeline_status AS ENUM ('pending', 'sync_complete', 'async_complete',
+  'async_partial', 'async_failed')` already exists from Stage 2.
+  No migration needed for the enum.
+
+### Q-20.1 — Sync trigger model
+
+- Date raised: 2026-05-08 (Stage 20 §2A)
+- Asked of: self
+- Source: spec §7.2 line 997; arch §5.1 trigger flow; DEV_PLAN Stage 20
+  ("called inline from submit"); Q-19.2 resolution
+- Question: assessment-svc `/submit` calls intelligence-svc inline (HTTP),
+  or does the trigger flow stay outbox-mediated?
+- Why ambiguous: §7.2 says inline; arch §5.1 trigger flow shows outbox-
+  mediated; §21.0.2 forbids sync inter-service HTTP categorically.
+- Blocking? yes
+- Code affected: `supabase/functions/assessment-svc/handlers.ts`
+  submitSession; `supabase/functions/intelligence-svc/index.ts`
+- Status: resolved
+- Resolution (2026-05-08): Inline HTTP from `/submit`. On 200 →
+  `pipeline_status='sync_complete'`; on timeout/error → keeps
+  `'pending'`. Outbox row + dispatcher's `pipeline.run_sync` job remain
+  the retry path. §7.2 line 997 is decisive ("must complete before
+  submit response is returned"); §21.0.2 reconciled per Q-20.6.
+  Documented in **ADR-0027**.
+
 ### Q-19.13 — Mock-Supabase Proxy reuse strategy
 
 - Date raised: 2026-05-08 (Stage 19 §2A)
