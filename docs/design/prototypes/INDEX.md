@@ -62,6 +62,61 @@ reference. Stage 24 code must use `packages/ui` primitives + locked
 entry in `DAILY_LOG.md` at Stage 24 close documenting any divergence
 between rendered code and the prototype, and the reason.
 
+## External references
+
+References dropped from sources outside the Claude Design tooling pipeline.
+Same UI_CONTRACT §1.1 rule as Claude Design prototypes — visual reference
+only, never implementation source.
+
+### portal-codebase-2026-05-06 — full portal visual reference
+
+Source: separate Claude session (not Claude Design)
+Format: 19 files, plain React .jsx + framer-motion +
+lucide-react, ~280KB
+Path: docs/design/prototypes/external/portal-codebase-2026-05-06/
+Authority: VISUAL REFERENCE ONLY per UI_CONTRACT §1.1
+Coverage: shell + 17 screens (Auth, Landing, 7 student
+screens, ExamEngine, 2 parent, 4 teacher, 1 admin)
+
+**Architecture divergences — do NOT integrate as code:**
+- Plain React .jsx vs Next.js 14 App Router (apps/web)
+- No TypeScript / no Zod (violates CLAUDE.md strict-types
+  rule)
+- Custom <AppShell> vs 5 locked shells in UI_CONTRACT §1.1
+- Single 30KB+ god-files per page vs packages/ui primitives
+- Inline dummy data via props vs @mm/types DTOs + @mm/sdk
+- framer-motion (not in locked tech stack — would require
+  ADR; conflicts with UI_CONTRACT §2.5 motion budget)
+
+**Token divergences vs packages/ui/src/tokens.css:**
+- Royal purple: #5B21B6 (violet-700) vs locked #5D3FD3
+- Royal orange: #EA580C (orange-600) vs locked #ef6843
+- Tone tables (TONE_BADGE, TONE_TEXT, TONE_BAR_BG,
+  TONE_ICON_BG) defined in shell.jsx — not adopted
+
+**Author-acknowledged gaps (from external README):**
+- No routing, no auth, no persistence, no tests, no i18n
+- Exam timer is plain setInterval — trivially defeatable
+  (server-authoritative assessment-svc supersedes per
+  backend-arch §4.4)
+- Inert export/share/PDF buttons in StudentResults.jsx
+- "Demo state switcher" — must NEVER ship to production
+
+**Permitted uses for this reference:**
+- Visual layout study for Stage 22+ implementation
+- Microcopy candidates (must be reviewed against
+  UI_CONTRACT §9.1 before adding to apps/web/src/lib/copy.ts)
+- Composition patterns (sidebar contextual sections,
+  recent-items lists, StudentHome kid-friendly variant)
+
+**Forbidden uses:**
+- DO NOT copy .jsx into apps/web/
+- DO NOT adopt token values into tokens.css
+- DO NOT add framer-motion or lucide-react (if not
+  already present) without an ADR
+- DO NOT use the AppShell API — Next.js layouts and the
+  5 locked shells in UI_CONTRACT §1.1 are authoritative
+
 ## Re-sync triggers
 
 Re-sync the Claude Design repo connection whenever any of these change materially:
