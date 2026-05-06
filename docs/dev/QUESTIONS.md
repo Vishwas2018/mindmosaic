@@ -9,6 +9,36 @@
 
 ## Resolved
 
+### Q-22.4 — Session Selection: include a recent-sessions row?
+
+- Date raised: 2026-05-12 (Stage 22b morning, §2A walkthrough vs SCREEN_SPECS)
+- Asked of: self
+- Source: SCREEN_SPECS.md §8 v1 content (lines 458-461) lists Heading +
+  Subject chips + Pathway cards + Locked pathways — no recent-sessions
+  row. The original Stage 22 C-C-D-V (and the Q-22.1 SDK hook
+  `useListRecentSessions` shipped in Stage 22a) called for a "Recent
+  sessions row from useListRecentSessions() (top 5)" on
+  `/session-selection`. SCREEN_SPECS §12 (Learning Hub) is the screen
+  that lists "Recent activity — last 5 sessions"; Screen 14 (Student
+  Dashboard) is the natural consumer too.
+- Question: Drop the recent-sessions row from `/session-selection` per
+  SCREEN_SPECS §8 authority, keep it as an in-scope augmentation, or
+  redirect into a stub `/learn` page in Stage 22b?
+- Why ambiguous: Spec authority vs already-shipped Stage 22a SDK hook
+  motivated by Q-22.1 ("Used by Session Selection screen (Stage 22)").
+- Blocking? **yes** — Stage 22b screen layout decision.
+- Code affected: `apps/web/src/app/(student)/session-selection/page.tsx`,
+  `docs/prompts/2026-05-12_stage-22b.md`.
+- Status: resolved
+- Resolution (2026-05-12): **A — drop the recent-sessions row from
+  `/session-selection`** per SCREEN_SPECS §8 authority. `useListRecentSessions`
+  stays in the SDK unused this stage; first consumer becomes Screen 12
+  (Learning Hub) or Screen 14 (Student Dashboard) when those ship. The
+  saved C-C-D-V (`docs/prompts/2026-05-12_stage-22b.md`) Deliverable §1
+  edited in-place to strike the row + add a one-line resolution note;
+  edit bundled into the Stage 22b implementation commit, not a fresh
+  prep commit.
+
 ### Q-22.3 — `MmClient` baseUrl strategy across multiple Edge Functions
 
 - Date raised: 2026-05-11 (Stage 22 implementation start)
