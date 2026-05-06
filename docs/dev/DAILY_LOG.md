@@ -2,6 +2,74 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 20 — 2026-05-09
+
+**Planned (from DEV_PLAN.md Stage 20):** `supabase/functions/intelligence-svc/` with `/intelligence/process-session/{id}` (service-role; called inline from assessment-svc /submit) — L1 Foundation (batch UPSERT `skill_mastery`, recompute `learning_velocity` over 14-day window, write `intelligence_audit_log` with `algorithm_version`); L2 Behaviour (per-response `guess_probability` in `learning_event.metadata`, fatigue, persistence; UPDATE `behaviour_profile` with defaults-blend per Spec §9.6); L3a Causal-scoped (touched skills + depth-1 prerequisites only; misconception from `distractor_rationale`; UPSERT `student_misconception`); per-step `pipeline_event` rows; replay-determinism integration test. Exit criteria: byte-identical output on re-run with fixed inputs; algorithm_version recorded; sync p95 < 3s under 50 concurrent (Stage 26 verifies the load aspect).
+
+**Actually delivered:**
+
+- `feat(intelligence-svc): Stage 20 — sync L1+L2+L3a + replay determinism` — commit `095811d`. 14 files changed, +2073 / -4.
+  - `supabase/migrations/0013_behaviour_signal_event_type.sql` (+ down) — `ALTER TYPE learning_event_type ADD VALUE IF NOT EXISTS 'behaviour_signal'` (Q-20.12=A). Forward is idempotent across PG ≥ 9.6; down is documented no-op (PG has no `DROP VALUE`; ADR-0027 accepts the asymmetry).
+  - `supabase/functions/_shared/intelligence-helpers.ts` — pure helpers used by handlers + tests:
+    - `ALGORITHM_VERSION = 'intelligence-v1.0.0'` (Q-20.3)
+    - `canonicalize(obj)` — sorted-key recursive serialisation for hash inputs (Q-20.4 floor)
+    - `sortBySkillId(rows)` — deterministic ordering
+    - `walkPrereqsDepth1(skills, adjacency)` — bounded depth-1 prereq walk; sorted output (Q-20.10; does NOT call Stage 28 traverse_upstream)
+    - `yearLevelDefaults(yearLevel)` — Spec §9.6 map (Q-20.9): Y1–3 → 15min, Y4–6 → 20min, Y7–9 → 30min, Y10–12 → 40min; null → Y4–6 conservative fallback
+    - `blendBehaviour(computed, defaults, dataPoints)` — Spec §9.6 blend formula
+    - `recencyWeightedAccuracy`, `masteryFormula` — Spec §8.1 mastery
+    - `guessProbability` — Spec §9.2; `fatigueScore` — §9.3; `cognitiveLoad` — §9.5
+  - `supabase/functions/intelligence-svc/{handlers.ts, index.ts, package.json, tsconfig.json}` — Edge Function with one endpoint `POST /intelligence/process-session/{id}`. `handlers.ts` is Vitest-testable in Node; `index.ts` is the Deno dispatcher (URL imports for `@supabase/supabase-js` + service-role auth via `x-mm-service-role`). `processSession({ client, sessionId, traceId, effects? })` sequence:
+    - **Audit-log dedup** (Q-20.7): SELECT `intelligence_audit_log` for `(session_id, algorithm_version='intelligence-v1.0.0', event_type='session.processed')`. If found → return 200 `{ status: 'already_processed' }` without writes. Stage 28 worker re-pickup of orphan `pipeline.run_sync` jobs is therefore a no-op.
+    - **L1 Foundation**: read `session_response` ORDER BY sequence_number, JOIN `item.skill_ids`, group by skill (ORDER BY skill_id ASC), compute mastery via `masteryFormula({recent_accuracy, difficulty_adjusted, consistency, behaviour_penalty=0})`, batch UPSERT `skill_mastery` + `learning_velocity` (14-day window). Streak tracking (`streak_current`/`streak_best`) carried from prior `skill_mastery` rows. Write per-skill aggregates to `intelligence_audit_log` (Q-20.13 — sorted by skill_id, canonicalised).
+    - **L2 Behaviour**: per response → `guessProbability(time, expected_time, is_correct, answer_changes)`; INSERT one new `learning_event` row per response with `event_type='behaviour_signal'` and `metadata.guess_probability` (Q-20.12=A — preserves immutability invariant via new rows, NOT UPDATE). Aggregate fatigue / cognitive load / blended `behaviour_profile` via Spec §9.6 (year-level defaults from `user_profile.year_level`); UPSERT `behaviour_profile` with `data_points` incremented.
+    - **L3a Causal-scoped**: query `skill_edge.to_node_id IN (touched skills)` (depth-1 ONLY); `walkPrereqsDepth1` over touched + edges; for each incorrect response read `item_version.distractor_rationale[response_data.choice_id]?.misconception_id` (Q-20.11 shape: `{ [choice_id]: { misconception_id } }`); UPSERT `student_misconception` (`onConflict: student_id,misconception_id`) with `status='suspected'`, `confidence=0.6`.
+    - **Pipeline event rows** (Q-20.8): one `pipeline_event` row per sync step (1, 2, 3) with `pending → processing → completed/failed` transitions per step.
+    - **Audit-log summary** (Q-20.13): final `intelligence_audit_log` row with `event_type='session.processed'`, `layer='all'`, canonicalised input/output, `algorithm_version`, `trace_id`, `processing_time_ms` (Q-20.5 — single `performance.now()` delta).
+    - `Effects` injection (`now`, `uuid`, `perfNow`) keeps the handler pure for replay testing; `perfNow` is write-only metadata.
+  - `supabase/functions/intelligence-svc/__tests__/contract.test.ts` — **28 Vitest tests** across 7 describe blocks: helpers (9), dedup (1), L1 (4), L2 (5), L3a (3), audit-log (2), replay determinism (1), error paths (3). Two named DEV_PLAN exit-criterion tests:
+    - `'replay determinism: byte-identical UPSERT payloads across two runs (DEV_PLAN exit criterion)'` — runs the handler twice with identical fixture + identical `Effects`; canonicalises every UPSERT/INSERT payload; asserts byte equality.
+    - `'audit-log dedup short-circuits re-processing (Q-20.7)'` — first run writes; second run finds the prior row and returns `already_processed` with zero further writes (asserted via `client.calls` filter showing 0 `skill_mastery` upserts on the second pass).
+  - `supabase/functions/assessment-svc/handlers.ts` — `submitSession` patched: optional `fetchProcessIntelligence` + `traceId` inputs; on 200 → UPDATE `pipeline_status='sync_complete'` and flip the response field; on timeout / 4xx / 5xx / network error → leave `'pending'` and emit a structured `console.warn` (`event: 'intelligence_svc_inline_failed'`). Outbox row write happens BEFORE the inline call, so the audit trail + Stage 28 retry path are preserved either way.
+  - `supabase/functions/assessment-svc/index.ts` — `fetchProcessIntelligence` fetcher implementation: 4000ms `AbortController` timeout (Q-20.15 — 1s safety margin under `/submit`'s 5s p95 budget); headers include `x-mm-service-role: $SUPABASE_SERVICE_ROLE_KEY` + `x-mm-trace-id: <traceId>` (Q-20.14). Wired into the `POST /sessions/{id}/submit` route alongside the existing fetcher.
+  - `supabase/functions/assessment-svc/__tests__/contract.test.ts` — **+4 tests** (26 → 30): sync_complete branch on 200; pending fallback on timeout; pending fallback on 5xx; `already_processed` → `sync_complete` (Stage 28 retry safety).
+  - `apps/web/playwright/e2e/session-flow.spec.ts` — submit assertion widened: `expect(['sync_complete', 'pending']).toContain(submitData.pipeline_status)`. Both outcomes valid in e2e (sync_complete when intelligence-svc reachable; pending under the soft-fallback path). Spec stays `test.skip()`-guarded on env vars; CI integration still deferred to Stage 26.
+  - `pnpm-workspace.yaml` — added `supabase/functions/intelligence-svc`. Workspace count: 9 → **10**.
+
+**Time spent:** ~5h (single session — implementation + 28-test contract suite + 4-test assessment-svc extension + e2e widen + lint/test cleanup; §2A pre-implementation review and ADR-0027 already filed in commit `21dbb4e` ahead of this stage).
+
+**Surprises / departures:**
+
+- none. All 15 Q-20.* §2A defaults held — no Q-20.16+ filed during implementation. The only mid-implementation diversion was a regression in mojibake normalisation on Track 2 (separate Track 2 work, unrelated to Stage 20 — already pushed in `f18ed1d`).
+
+**Caveats (env-bound; deferred to user's local environment):**
+
+- **Migration 0013 not run via `pnpm test:migration` in this sandbox.** No Docker available. The migration is `ALTER TYPE learning_event_type ADD VALUE IF NOT EXISTS 'behaviour_signal'` — idempotent forward (PG ≥ 9.6); down migration is a documented no-op (PostgreSQL has no `ALTER TYPE ... DROP VALUE`; removing the value would require dropping/recreating the type and would cascade-delete every `learning_event` row). ADR-0027 accepts this asymmetry. **User must run `pnpm test:migration` locally before deploy.** This stacks with the deferred 0012 roundtrip from Stage 19 — both should be run together.
+- **`supabase db reset && pnpm test:rls` not run in sandbox.** No Docker. Stage 20 introduces no new RLS-bearing tables; all six write tables (`skill_mastery`, `learning_velocity`, `behaviour_profile`, `student_misconception`, `intelligence_audit_log`, `pipeline_event`) carry Pattern A policies established in Stage 6, and the new `learning_event` rows for `event_type='behaviour_signal'` inherit the same Stage 4 Pattern A policy. **User must run `pnpm test:rls` locally before deploy.**
+
+**Decisions made (not in stage):**
+
+- ADR-0027 (algorithm_version format + §21.0.2 sync exception + re-processing idempotency + distractor shape + audit-log scope + timeout fallback + Q-20.12=A behaviour_signal decision) was accepted in the morning §2A review and filed in prep commit `21dbb4e` ahead of this implementation. Migration 0013 ships this stage per Q-20.12=A.
+- Q-20.1 through Q-20.15: all 15 §2A defaults applied verbatim. None deviated. None blocked.
+
+**Deviations logged:**
+
+- none.
+
+**Issues opened / closed / questions raised:**
+
+- none. No new ambiguities during implementation. ISSUE-0005 (env.local.example hygiene) remains open as filed at Stage 19 audit close.
+
+**Quality gates at close:**
+
+- Lint ✅ (7/7 packages — `@mm/intelligence-svc` has no lint script per Q-19.12 precedent; `typecheck` + `test` only — Deno-only deploy path) · Typecheck ✅ (10/10 packages) · Tests ✅ (366/366 unit + contract: 97 @mm/types + 24 @mm/sdk + 59 @mm/ui + 110 @mm/engines + 18 @mm/content-svc + 30 @mm/assessment-svc + **28 @mm/intelligence-svc**) · Build ✅ (7/7 packages — `@mm/intelligence-svc` no build, Deno-only) · RLS / pgTAP / migration roundtrip not re-run (sandbox lacks Docker; see Caveats).
+
+**Replay-determinism integration test (DEV_PLAN exit criterion):** ✅ passes. Two runs of an identical 3-response fixture produce byte-identical UPSERT/INSERT payloads when `Effects` (now/uuid/perfNow) are pinned. Asserted via `canonicalize()` over the captured call list. The 50-session extension is gated for Stage 26 load test per DEV_PLAN.
+
+**Tomorrow — first thing:**
+
+Stage 21 — Skill Graph Cache Production Hardening (Day 26, 1-day budget). Cold-start cache load + 1h TTL + version watermark check; integration test asserting first request cold-loads, 1000 subsequent requests skip DB, cache invalidates on graph publish. Watermark check cost < 5ms per request. Pre-deploy gate: run `pnpm test:migration` for both 0012 (Stage 19 deferred) AND 0013 (Stage 20) locally against Docker before any deploy. Same for `pnpm test:rls`.
+
 ## Stage 19 — 2026-05-08
 
 **Planned (from DEV_PLAN.md Stage 19):** assessment-svc Edge Function with the full session lifecycle (`/sessions/create`, `/respond`, `/submit`, `/checkpoint`, `/state`, `/abandon`, `/recent`, `/{id}`) — feature-gated create, idempotency-keyed POSTs, X-Session-Lock + expected_version on respond, `create_session_response_atomic` invocation, outbox_event on submit, contract tests, first Playwright e2e. Exit criteria: version conflict → 409; idempotency replay returns cached; one-active-session DB-enforced; e2e passes end-to-end.
