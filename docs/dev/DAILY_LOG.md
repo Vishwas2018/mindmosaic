@@ -2,6 +2,62 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 21 — 2026-05-10
+
+**Planned (from DEV_PLAN.md Stage 21):** Skill Graph Cache Production Hardening (Day 26, 1-day budget). Cold-start cache load + 1h TTL + version watermark check; integration test — first request cold-loads, 1000 subsequent requests skip DB, cache invalidates on publish. Exit criterion: watermark check cost < 5ms per request.
+
+**Actually delivered:**
+
+- `feat(content-svc): Stage 21 — skill-graph cache production hardening` — commit `71dc979`. 2 files changed, +223 / −9. **In-place hardening of the existing Stage 18 cache module**, not greenfield.
+  - `supabase/functions/_shared/skill-graph-cache.ts`:
+    - **Q-21.3 in-flight Promise sentinel** — module-scope `let loadingPromise: Promise<SkillGraphCache | null> | null = null`. When `getSkillGraph` enters the load path with `cache === null` (or watermark mismatch / TTL expiry) it observes the in-flight promise and `await`s it instead of issuing a parallel `loadGraphData` call. Cleared in `finally`, so a rejected cold load does NOT permanently wedge the cache — the next caller sees `loadingPromise === null` and retries.
+    - **Q-21.4 stale-while-revalidate** — when `loadActiveVersion()` returns a new watermark and `loadGraphData()` rejects but a prior `cache` exists, the prior cache is retained and a structured `console.warn` is emitted (`event:'skill_graph_stale_revalidate_failed'`, `error`, `watermark_old`, `watermark_new`, optional `trace_id`). Future calls re-attempt; cache catches up on the next successful load. **Floor preserved**: when no prior cache exists (first cold load), the rejection propagates as before — no silent corruption of an empty cache.
+    - **Optional `traceId?: string | null` parameter** on `getSkillGraph()` plumbed through to the warn payload. Existing call sites (`content-svc/handlers.ts:getActiveSkillGraph`) unchanged — defaults to `null`.
+    - **`invalidateSkillGraph()`** now also clears `loadingPromise` (test hygiene).
+  - `supabase/functions/content-svc/__tests__/contract.test.ts`:
+    - **6 new tests** (was 18, now 24) — 2 hardening + 2 floor + 1000-request scaling + watermark synthetic cost.
+    - Top-of-file constants per Q-21.5: `const REQUEST_COUNT = 1000`, `const WATERMARK_COST_ITERATIONS = 100`, `const WATERMARK_COST_MEAN_MS_GATE = 50`.
+    - Two named DEV_PLAN exit-criterion tests:
+      - `'1000 subsequent requests skip DB (DEV_PLAN exit criterion)'` — cold load + 1000 warm reads → `dataCalls === 1`, `activeCalls === 1001`.
+      - `'watermark check cost < 50ms per iteration synthetic (DEV_PLAN exit criterion 10x margin)'` — mean `elapsedMs / 100` over 100 warm calls. **Pinned to mean, not max** (Q-21.2) so a single GC pause won't fail the suite. Real <5 ms gate moves to Stage 26 load test against a warm Postgres pool.
+    - Hardening tests: `'concurrent cold-start: two parallel calls share one DB load (Q-21.3)'` — `Promise.all([getSkillGraph(loader), getSkillGraph(loader)])` with a slow `loadGraphData` (10 ms timeout) asserts `dataCalls === 1` and that both promises resolve to the same cache instance. `'stale-while-revalidate: loadGraphData failure retains prior cache + warns (Q-21.4)'` — populates cache, then forces watermark change + reject; asserts prior cache returned, `console.warn` fires once with the structured payload including `trace_id`.
+    - Floor tests (extras vs the 4 the §2A plan called for): `'stale-while-revalidate does NOT swallow first-ever cold-load failure (Q-21.4 floor)'` and `'in-flight sentinel cleared on rejection so subsequent calls retry (Q-21.3 floor)'`. Bounded-cost insurance against the watch-item regressions the user flagged in the green-light prompt.
+
+**Time spent:** ~3h (single session — cache module patch + 6-test extension + lint/test cleanup; ADR-0028 + Q-21.1..5 + ISSUE-0006 already filed in prep commit `2e528cf` ahead of this stage).
+
+**Surprises / departures:**
+
+- **none.** All 5 Q-21.* §2A defaults held — no Q-21.6+ filed during implementation. No spec/arch ambiguity surfaced.
+- **6 tests added vs 4-minimum the §2A plan specified.** The 2 extras are floor tests for the watch items called out in the green-light prompt (sentinel clears on rejection; first-cold-load failure propagates). Cheap to add now; expensive to debug as a regression later.
+
+**Caveats (env-bound; deferred to user's local environment):**
+
+- **No new migrations and no new RLS surfaces this stage** — `pnpm test:migration` and `pnpm test:rls` are not applicable to Stage 21.
+- **Pre-deploy gate from Stages 19+20 still pending**: migrations 0012 (Stage 19 RPC widening) and 0013 (Stage 20 `behaviour_signal` enum) must run via `pnpm test:migration` locally on Docker before any deploy. Same for `pnpm test:rls`. The pre-deploy gate is unchanged by Stage 21 — it neither stacks on top nor clears it.
+
+**Decisions made (not in stage):**
+
+- ADR-0028 (in-flight sentinel + stale-while-revalidate) was accepted in the morning §2A review and filed in prep commit `2e528cf` ahead of this implementation.
+- Q-21.1 through Q-21.5: all 5 §2A defaults applied verbatim. Q-21.1 = NO (intelligence-svc L3a cache migration deferred — ISSUE-0006).
+
+**Deviations logged:**
+
+- none.
+
+**Issues opened / closed / questions raised:**
+
+- none new. ISSUE-0005 (Stage 19 audit close, `apps/web/.env.local.example` hygiene, medium) and ISSUE-0006 (Stage 21 §2A, intelligence-svc L3a cache bypass, medium) both remain open.
+
+**Quality gates at close:**
+
+- Lint ✅ (7/7 packages — `@mm/intelligence-svc`, `@mm/content-svc`, `@mm/assessment-svc` have no lint script per Q-19.12 precedent) · Typecheck ✅ (10/10 packages) · Tests ✅ (372/372 unit + contract: 97 @mm/types + 24 @mm/sdk + 59 @mm/ui + 110 @mm/engines + **24 @mm/content-svc** + 30 @mm/assessment-svc + 28 @mm/intelligence-svc) · Build ✅ (7/7 packages) · RLS / pgTAP / migration roundtrip n/a this stage (no schema changes).
+
+**Stage 20 replay-determinism named test verified still byte-identical** at Stage 21 close: `pnpm -C supabase/functions/intelligence-svc test` reports 28/28 green. Cache hardening did not regress the Stage 20 floor.
+
+**Tomorrow — first thing:**
+
+Stage 22 — Session Selection + Practice screens. First UI stage since Stage 14; opens the Phase 1 UI cluster (Stages 22–25). Pre-deploy gate from Stages 19+20 (migrations 0012 + 0013 via `pnpm test:migration`, RLS via `pnpm test:rls`) still pending against local Docker before any deploy — Stage 22 is a frontend stage and won't add new migrations, but the gate stays open.
+
 ## Stage 20 — 2026-05-09
 
 **Planned (from DEV_PLAN.md Stage 20):** `supabase/functions/intelligence-svc/` with `/intelligence/process-session/{id}` (service-role; called inline from assessment-svc /submit) — L1 Foundation (batch UPSERT `skill_mastery`, recompute `learning_velocity` over 14-day window, write `intelligence_audit_log` with `algorithm_version`); L2 Behaviour (per-response `guess_probability` in `learning_event.metadata`, fatigue, persistence; UPDATE `behaviour_profile` with defaults-blend per Spec §9.6); L3a Causal-scoped (touched skills + depth-1 prerequisites only; misconception from `distractor_rationale`; UPSERT `student_misconception`); per-step `pipeline_event` rows; replay-determinism integration test. Exit criteria: byte-identical output on re-run with fixed inputs; algorithm_version recorded; sync p95 < 3s under 50 concurrent (Stage 26 verifies the load aspect).
