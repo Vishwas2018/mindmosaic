@@ -3,6 +3,44 @@
 > Every deviation from DEV_PLAN.md, in writing.
 > Newest at TOP. Use the template from CLAUDE.md §Templates.
 
+### DEV-20260511-1 — Stage 22 splits into 22a (infrastructure) + 22b (screens)
+
+- Date: 2026-05-11
+- Stage: 22
+- Type: scope-reduction (today) + carry-forward
+- What the stage said: DEV_PLAN.md Stage 22 (Day 27, 1-day budget)
+  ships Session Selection + Practice screens, with Playwright e2e.
+- What I actually did: Stage 22 split into **22a (today)** and
+  **22b (tomorrow)**. Stage 22a delivers the SDK infrastructure
+  needed to consume real Edge Functions — service-prefix routing
+  per ADR-0029, full SDK→dispatcher path reconciliation per Q-22.2,
+  `MmClientProvider` mounted in `apps/web` `Providers.tsx`. Stage
+  22b carries forward the visual screens (Session Selection +
+  Practice + Playwright e2e).
+- Why: §2A walkthrough at implementation start surfaced two
+  pre-existing architectural gaps that block real route
+  consumption: (1) `MmClient`'s single `baseUrl` config does not
+  map to the per-service Edge Function URL shape
+  (`${SUPABASE_URL}/functions/v1/<svc>/<path>`); (2) several SDK
+  hooks call paths that do not match their dispatcher's actual
+  route. Both surfaced exactly as the green-light prompt warned
+  ("first stage to wire SDK hooks into apps/web routes; watch for
+  SDK hook gaps surfaced by real route consumption"). Building
+  the screens against broken SDK plumbing would compound the gap;
+  fixing both correctly is a discrete chunk of work that is the
+  honest content of "today's stage" given the surface area.
+- Impact on later stages: Stage 22b ships tomorrow against the
+  reconciled SDK. **−1 day on the Phase 1 buffer.** Phase 1
+  buffer balance: was 9 days available, +2 banked from Stages
+  17 + 19 = 11 effective; now 10 effective after this −1.
+  Stages 23–25 (Exam Engine, Results, Student Dashboard)
+  unaffected — they consume the same SDK shape Stage 22a now
+  fixes.
+- Linked: ADR-0029 (single-client + service-prefix-in-hook
+  pattern), Q-22.2 (mechanical SDK path correction), Q-22.3
+  (baseUrl strategy decision).
+- Resolved by: Stage 22b (carry-forward).
+
 ### DEV-20260503-2 — content.recalibration wired as PHASE-2 no-op stub per arch Part XI
 <!-- Audit Stage 10 (2026-05-03): still ongoing — resolves v1.1 when content recalibration engine ships. No action needed. -->
 <!-- Audit Stage 19 (2026-05-08): still ongoing — v1.1 deferral by design (arch Part XI). No Stage 15–19 work touched fn_recalibrate_content() or the cron registration. No action. -->

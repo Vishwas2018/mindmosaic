@@ -9,6 +9,66 @@
 
 ## Resolved
 
+### Q-22.3 — `MmClient` baseUrl strategy across multiple Edge Functions
+
+- Date raised: 2026-05-11 (Stage 22 implementation start)
+- Asked of: self
+- Source: `packages/sdk/src/client.ts` single `baseUrl` config vs
+  Edge Functions deployed at
+  `${SUPABASE_URL}/functions/v1/<svc-name>/<path>`
+  (`supabase/functions/{assessment-svc,content-svc,intelligence-svc}/index.ts`
+  dispatchers strip per-service prefix).
+- Question: How does `MmClient` resolve a hook call to the correct
+  Edge Function URL when each function lives under its own
+  per-service path segment?
+- Why ambiguous: Stage 14 (SDK) was written before Edge Functions
+  existed. No prior ADR pins the public-edge URL shape. Five
+  plausible resolutions surfaced: routing table inside `MmClient`,
+  per-service providers, SDK gateway proxy, Next.js `/api` route
+  handler, single client + service-prefix-in-hook.
+- Blocking? **yes** — Stage 22 cannot wire `useCreateSession()`
+  without this decision.
+- Code affected: `packages/sdk/src/client.ts`,
+  `packages/sdk/src/hooks/*.ts`,
+  `apps/web/src/providers/Providers.tsx`.
+- Status: resolved
+- Resolution (2026-05-11): **Single `MmClient` at
+  `${NEXT_PUBLIC_SUPABASE_URL}/functions/v1`; each hook prepends its
+  service prefix in the path** (e.g.
+  `client.get('/assessment-svc/sessions/recent', ...)`). No mapping
+  table. No proxy layer. No per-service providers. Recorded in
+  **ADR-0029**. See ADR for option-set and rationale.
+
+### Q-22.2 — SDK hook paths diverge from Edge Function dispatcher routes
+
+- Date raised: 2026-05-11 (Stage 22 implementation start)
+- Asked of: self
+- Source: SDK Stage 14 was wired against a path contract that
+  Stage 18/19/20 dispatchers ultimately did not adopt verbatim.
+  Spot-grep showed at least two confirmed divergences before
+  full audit (`useCreateSession` calls `POST /sessions` but
+  `assessment-svc/index.ts:217` serves `POST /sessions/create`;
+  `useSessionSummary` calls `GET /sessions/{id}/summary` but
+  `assessment-svc/index.ts:352` serves `GET /sessions/{id}`).
+- Question: How are SDK paths reconciled with Edge Function
+  dispatcher routes — patch SDK to match dispatchers, patch
+  dispatchers to match SDK, or some hybrid?
+- Why ambiguous: Stage 14 SDK and Stages 18/19/20 dispatchers were
+  developed against the spec at different times; the spec doesn't
+  fully constrain the path shape (only the operation surface).
+- Blocking? **yes** — Stage 22 hooks must reach real endpoints.
+- Code affected: `packages/sdk/src/hooks/*.ts`, possibly
+  `packages/sdk/src/__tests__/hooks.test.ts`.
+- Status: resolved
+- Resolution (2026-05-11): **Dispatcher paths win.** SDK paths are
+  patched to match the route each dispatcher actually serves.
+  Implemented in Stage 22a (single mechanical sweep): each hook
+  prepends its service prefix per Q-22.3 / ADR-0029, and any path
+  that doesn't match the dispatcher's route is corrected against
+  the dispatcher source. Full audit grep run before edits to
+  surface the complete set, not just the two found in the
+  blocker report.
+
 ### Q-22.1 — `useListRecentSessions` hook: endpoint path
 
 - Date raised: 2026-05-11 (Stage 22 §2A)
