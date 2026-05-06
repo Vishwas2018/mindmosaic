@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindMosaic · Results</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #EFEDF6;
+      font-family: 'Roboto', system-ui, sans-serif;
+      color: #1E1B4B;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    a { color: inherit; }
+    button { font-family: inherit; }
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="results.jsx"></script>
+
+  <script type="text/babel">
+    const { DesignCanvas, DCSection, DCArtboard } = window;
+    const ResultsScreen = window.ResultsScreen;
+
+    // Desktop frame fits within an artboard of 1280; height is intrinsic.
+    // We'll wrap in a fixed-width div to lock layout.
+    const Desktop = () => (
+      <div data-screen-label="Desktop · Results" style={{ width: 1280 }}>
+        <ResultsScreen width={1280} />
+      </div>
+    );
+
+    const Mobile = () => (
+      <div data-screen-label="Mobile · Results" style={{ width: 768 }}>
+        <ResultsScreen width={768} />
+      </div>
+    );
+
+    // We need explicit artboard heights — so we measure naturally; estimate generous.
+    function App() {
+      return (
+        <DesignCanvas title="MindMosaic · Results screen" subtitle="Royal premium · v1 flagship">
+          <DCSection id="frames" title="Results" subtitle="Desktop 1280 · Mobile 768">
+            <DCArtboard id="desktop" label="Desktop · 1280" width={1280} height={2450}>
+              <Desktop />
+            </DCArtboard>
+            <DCArtboard id="mobile" label="Mobile · 768" width={768} height={3600}>
+              <Mobile />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
