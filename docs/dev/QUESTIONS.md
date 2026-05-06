@@ -9,6 +9,118 @@
 
 ## Resolved
 
+### Q-21.5 — 1000-request scaling test: literal vs constant
+
+- Date raised: 2026-05-09 (Stage 21 §2A)
+- Asked of: self
+- Source: DEV_PLAN.md Stage 21 deliverables ("first request cold-loads,
+  1000 subsequent requests skip DB")
+- Question: Hard-code `1000` in the test loop, or a `const REQUEST_COUNT = 1000`
+  binding?
+- Why ambiguous: Stylistic. Hard-code is concise; constant is grep-able and
+  tunable.
+- Blocking? no
+- Code affected: `supabase/functions/content-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution (2026-05-09): Constant-driven — `const REQUEST_COUNT = 1000`.
+  Grep-able if Stage 26 load-test reveals the test floor needs raising;
+  matches the existing fixture-builder style elsewhere in the contract
+  tests.
+
+### Q-21.4 — Stale-while-revalidate on `loadGraphData` failure
+
+- Date raised: 2026-05-09 (Stage 21 §2A)
+- Asked of: self
+- Source: arch §9.3 (cache strategy) + arch §5.3 (degraded mode); current
+  `_shared/skill-graph-cache.ts:getSkillGraph()` throws on partial failure
+- Question: When `loadActiveVersion()` succeeds with a new watermark but
+  `loadGraphData()` fails, retain the prior cache or fail fast?
+- Why ambiguous: arch §9.3 names the cache as the single read path but
+  doesn't pin the partial-failure semantics. Fail-fast is current; stale-
+  while-revalidate is a small change with real production benefit.
+- Blocking? no
+- Code affected: `supabase/functions/_shared/skill-graph-cache.ts`,
+  `supabase/functions/content-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution (2026-05-09): YES — stale-while-revalidate. Retain prior
+  cache + emit structured `console.warn` (`event:'skill_graph_stale_revalidate_failed'`,
+  `error`, `watermark_old`, `watermark_new`, optional `trace_id`). Future
+  calls re-attempt; cache catches up on first successful load. If NO prior
+  cache exists, behaviour is unchanged (throw). Documented in **ADR-0028**.
+  Contract test: prior cache + new watermark + `loadGraphData` failure →
+  returns prior data, `console.warn` fires.
+
+### Q-21.3 — Concurrent cold-start de-duplication
+
+- Date raised: 2026-05-09 (Stage 21 §2A)
+- Asked of: self
+- Source: arch §9.3; production-hardening §2A review
+- Question: Two requests hit a fresh worker simultaneously, both observe
+  `cache === null`, both call `loadGraphData()`. In-flight Promise sentinel,
+  or accept the redundant load as a v1 approximation?
+- Why ambiguous: Cost is bounded (one extra round-trip per worker per cold
+  start); under autoscale events the multiplier can grow. The fix is small
+  but adds module-scope state.
+- Blocking? no
+- Code affected: `supabase/functions/_shared/skill-graph-cache.ts`,
+  `supabase/functions/content-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution (2026-05-09): YES — in-flight Promise sentinel. When
+  `getSkillGraph` enters the load path with `cache === null`, store the
+  load promise in a module-scope `loadingPromise` slot; concurrent callers
+  observe the sentinel and `await` it; cleared on resolve/reject.
+  Documented in **ADR-0028**. Contract test: two concurrent
+  `getSkillGraph()` calls on a cold cache → `dataCalls() === 1`.
+
+### Q-21.2 — Synthetic timing test for the <5ms exit criterion
+
+- Date raised: 2026-05-09 (Stage 21 §2A)
+- Asked of: self
+- Source: DEV_PLAN.md Stage 21 exit criterion ("Watermark check cost < 5ms
+  per request"); BUILD_CONTRACT §10 (latency budgets measured at Stage 26
+  load test)
+- Question: How to gate the <5 ms exit criterion in a contract test that
+  runs in CI on a cold Vitest process with a mocked DB?
+- Why ambiguous: 5 ms is a real-DB warm-pool number; CI cold-process
+  Vitest with a mocked DB can be 10× slower for unrelated reasons (V8
+  warm-up, stub-overhead, GC). Using 5 ms in CI would be flaky.
+- Blocking? no
+- Code affected: `supabase/functions/content-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution (2026-05-09): Synthetic test with **10× margin** — assert
+  mean cost / iteration < 50 ms over 100 warm watermark checks against the
+  mocked loader. Named as DEV_PLAN exit criterion test
+  (`'watermark check cost < 50ms per iteration synthetic (DEV_PLAN exit
+  criterion 10× margin)'`). Real <5 ms gate at Stage 26 load test against
+  warm Postgres pool.
+
+### Q-21.1 — intelligence-svc L3a migration to skill-graph cache
+
+- Date raised: 2026-05-09 (Stage 21 §2A)
+- Asked of: self
+- Source: arch §9.3 (cache as single read path);
+  `supabase/functions/intelligence-svc/handlers.ts` (Stage 20) queries
+  `skill_edge` directly bypassing the cache
+- Question: Does Stage 21 migrate intelligence-svc L3a to use
+  `getSkillGraph()` instead of querying `skill_edge` directly?
+- Why ambiguous: arch §9.3 implies the cache is THE read path; Stage 20
+  (Q-20.10) chose direct query as a depth-1 helper to avoid coupling
+  intelligence-svc to the cache module. Migration tightens the
+  architecture but expands Stage 21 scope and risks regressing the
+  Stage 20 replay-determinism named test.
+- Blocking? potentially (would change implementation strategy)
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`,
+  `supabase/functions/intelligence-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution (2026-05-09): **NO** for Stage 21 — scope discipline. Stage
+  21 is *cache hardening* (in-flight dedup + stale-while-revalidate per
+  ADR-0028), not *cache adoption*. Pulling in a new caller would double-
+  scope the stage and risk replay-determinism regression in Stage 20's
+  named exit-criterion test. **Filed as ISSUE-0006** (medium severity,
+  architectural-consistency vs arch §9.3): address pre-launch in a small
+  dedicated stage OR roll into Stage 28 (jobs-worker) when
+  orchestration-svc + analytics-svc readers also adopt the cache.
+
 ### Q-20.15 — Sync HTTP timeout + error fallback semantics
 
 - Date raised: 2026-05-08 (Stage 20 §2A)
