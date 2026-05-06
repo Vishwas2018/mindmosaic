@@ -2,6 +2,66 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 22a — 2026-05-11
+
+**Planned (from DEV_PLAN.md Stage 22 + DEV-20260511-1 split):** Stage 22 (Day 27, 1-day budget) was scoped as Session Selection + Practice screens. §2A walkthrough at implementation start surfaced two pre-existing architectural gaps that block real route consumption: (1) `MmClient`'s single `baseUrl` config does not map to the per-service Edge Function URL shape `${SUPABASE_URL}/functions/v1/<svc>/<path>`; (2) several SDK hooks call paths that do not match their dispatcher's actual route. Stage 22 split into **22a (today, infrastructure)** + **22b (tomorrow, screens)** per DEV-20260511-1, costing −1 Phase 1 buffer day. **Stage 22a delivers:** ADR-0029 implementation (single `MmClient` rooted at `${SUPABASE_URL}/functions/v1`; each hook prepends its service prefix per OWNERS.md ownership) + full SDK→dispatcher path reconciliation per Q-22.2 + `MmClientProvider` mounted in `apps/web` `Providers.tsx`.
+
+**Actually delivered:**
+
+- `feat(sdk,web): Stage 22a — SDK service-prefix routing + MmClientProvider wired` — commit `6cbe882`. **10 files changed, +208 / −28**.
+  - `packages/sdk/src/keys.ts` — `mmKeys.sessions.recent()` factory added (Q-22.1 carry-forward from earlier today).
+  - `packages/sdk/src/client.ts` — `MmClientConfig.baseUrl` JSDoc documents the ADR-0029 contract: `${SUPABASE_URL}/functions/v1` (no trailing slash, no service segment); each hook prepends its service prefix; the path the hook writes is the path the network sees with `${baseUrl}` simply prepended.
+  - `packages/sdk/src/hooks/identity.ts` — `// hooks/identity.ts → users-svc` header. `useMe` path → `/users-svc/users/me`. `useTenant` prefixed + PHASE-2 marker (no v1 dispatcher; UTA ownership preserves prefix shape for future).
+  - `packages/sdk/src/hooks/content.ts` — `// hooks/content.ts → content-svc` header. `usePathways` → `/content-svc/pathways`. `useAssessmentProfile` prefixed + PHASE-2 marker (per-id endpoint not in v1; content-svc only ships the list at OWNERS.md:153).
+  - `packages/sdk/src/hooks/session.ts` — `// hooks/session.ts → assessment-svc` header. **2 body fixes per Q-22.2:** `useCreateSession` `/sessions` → `/sessions/create` (assessment-svc/index.ts:217); `useSessionSummary` `/sessions/{id}/summary` → `/sessions/{id}` (assessment-svc/index.ts:353). Plus `/assessment-svc/` prefix on all 7 session hooks. Q-22.1 `useListRecentSessions` carry-forward (correctly prefixed and path matches dispatcher).
+  - `packages/sdk/src/hooks/intelligence.ts` — `// hooks/intelligence.ts → intelligence-svc` header. All 3 hooks prefixed + Stage 28+ markers (dispatcher not in v1; OWNERS.md:122-123 spell future paths with `/{student_id}` segment — body fixes deferred to Stage 28+).
+  - `packages/sdk/src/hooks/orchestration.ts` — `// hooks/orchestration.ts → orchestration-svc` header. `useLearningPlan` + `usePlanOverride` → `/orchestration-svc/...` with Stage 31+ markers. **`usePathwayReadiness` cross-service correction:** OWNERS.md:173 routes pathway-readiness to **analytics-svc**, not orchestration-svc. Hook still lives in orchestration.ts (file reorg deferred to v1.1) but path is `/analytics-svc/orchestration/readiness/${slug}` with a Stage 32+ cross-service marker.
+  - `packages/sdk/src/__tests__/keys.test.ts` — +1 test for `sessions.recent()` (Q-22.1 carry-forward).
+  - `packages/sdk/src/__tests__/hooks.test.ts` — +2 tests for `useListRecentSessions` (Q-22.1 carry-forward); URL assertion regex updated to expect `/assessment-svc/sessions/recent$` (post-prefix).
+  - `apps/web/src/providers/Providers.tsx` — `MmClientWiring` component mounted between `AuthProvider` and `EntitlementsProvider`. Builds baseUrl from `NEXT_PUBLIC_SUPABASE_URL` + `/functions/v1`. Refresh-safe `getToken` resolver — asks the Supabase browser client for the current session at fetch time rather than closing over a stale `access_token` from `useAuth()`. `MmClient` instance memoised across renders for stable React Query key behaviour.
+
+**Sanity grep at close:** all 17 SDK hook calls have a service prefix (1 users-svc + 2 content-svc + 7 assessment-svc + 3 intelligence-svc + 3 orchestration-svc + 1 analytics-svc = 17). Remaining `/.../` strings in `packages/sdk/src/hooks/` are inside marker comments only.
+
+**Time spent:** ~4h (single session — full grep audit before edits + 5 hook-file sweeps + test corrections + Provider wiring + lint/test cleanup. Prep commits `6a3b0d1` (ADR-0029 + Q-22.2/22.3 + DEV-20260511-1 + 22a C-C-D-V) and `2509247` (Q-22.1) earlier today).
+
+**Surprises / departures:**
+
+- **Blocker report's 2-line estimate was wrong by an order of magnitude.** The morning report flagged 2 confirmed mismatches (`useCreateSession`, `useSessionSummary`). The full grep audit, run before any edits per stage discipline, surfaced **17 hooks needing service prefixes** + **2 body fixes** + **6 orphan markers**. Specifically:
+  - 9 hooks against shipped services (users-svc, content-svc, assessment-svc) with the 2 body fixes among them.
+  - 6 hooks against not-yet-shipped services (intelligence-svc post-Stage-28 endpoints, orchestration-svc post-Stage-31, analytics-svc post-Stage-32) marked with their target stage.
+  - 2 PHASE-2 hooks not in v1 OWNERS.md (`useTenant`, `useAssessmentProfile`).
+- **`usePathwayReadiness` cross-service correction.** Hook is in `orchestration.ts` and was wired to `/orchestration/readiness/${slug}`, but OWNERS.md:173 routes pathway-readiness to **analytics-svc**, not orchestration-svc. Prefix corrected to `/analytics-svc/...`; hook stays in the orchestration file (SDK file reorg is a v1.1 concern). Cross-service marker comment notes the discrepancy.
+- **No third path-divergence class surfaced** beyond the two Q-22.2 body fixes and the orphan markers. Q-22.4 not needed.
+
+**Caveats (env-bound; deferred to user's local environment):**
+
+- **No new migrations and no new RLS surfaces this stage** — `pnpm test:migration` and `pnpm test:rls` are not applicable to Stage 22a.
+- **Pre-deploy gate from Stages 19+20 still pending**: migrations 0012 (Stage 19 RPC widening) and 0013 (Stage 20 `behaviour_signal` enum) must run via `pnpm test:migration` locally on Docker before any deploy. Same for `pnpm test:rls`. Stage 22a is a frontend/SDK stage and adds nothing to the gate; the gate stays open.
+
+**Decisions made (not in stage):**
+
+- **ADR-0029** (single MmClient + per-hook service prefix) was accepted in the morning §2A review and filed in prep commit `6a3b0d1` ahead of this implementation. No further ADRs filed at 22a close.
+- **Q-22.1** (Q-22.1: `useListRecentSessions` calls `GET /sessions/recent`), **Q-22.2** (dispatcher paths win), **Q-22.3** (single client + per-hook prefix) — all 3 questions resolved earlier today and applied verbatim during 22a implementation.
+- **DEV-20260511-1** — Stage 22 splits into 22a (today, infrastructure) + 22b (tomorrow, screens); −1 Phase 1 buffer day. Filed in prep commit `6a3b0d1` ahead of this implementation.
+
+**Deviations logged:**
+
+- **DEV-20260511-1** (filed in prep commit `6a3b0d1`) — Stage 22 splits into 22a/22b. Type: scope-reduction (today) + carry-forward. Resolved by: Stage 22b.
+
+**Issues opened / closed / questions raised:**
+
+- none new. ISSUE-0005 (apps/web/.env.local.example hygiene, medium) and ISSUE-0006 (intelligence-svc L3a cache bypass, medium, pre-launch) both remain open.
+
+**Quality gates at close:**
+
+- Lint ✅ (7/7 packages — workspace count unchanged at 10) · Typecheck ✅ (10/10 packages) · Tests ✅ (**375/375** unit + contract: 97 @mm/types + **27 @mm/sdk** + 59 @mm/ui + 110 @mm/engines + 24 @mm/content-svc + 30 @mm/assessment-svc + 28 @mm/intelligence-svc — was 372 baseline; +3 SDK from Q-22.1 carry-forward) · Build ✅ (7/7 packages) · RLS / pgTAP / migration roundtrip n/a this stage (no schema changes, no Edge Function code changes — Stage 22a is SDK + apps/web only).
+
+**Stage 21 cache hardening verified still byte-identical** at 22a close: `pnpm -C supabase/functions/content-svc test` reports 24/24 green. Stage 20 replay-determinism unchanged: `pnpm -C supabase/functions/intelligence-svc test` reports 28/28 green.
+
+**Tomorrow — first thing:**
+
+Stage 22b — Session Selection + Practice screens. Carry-forward from DEV-20260511-1. MmClient + provider now wired; SDK hooks resolve service paths correctly. Deliverables: `apps/web/src/app/(student)/session-selection/page.tsx` (`student-parent` shell), `apps/web/src/app/(student)/session/[id]/layout.tsx` (route guard), `apps/web/src/app/(student)/session/[id]/practice/page.tsx` (`focus` shell), `apps/web/playwright/e2e/practice-flow.spec.ts` (env-guarded). Visual references unchanged from Stage 22 plan: SCREEN_SPECS §8 + §10, UI_CONTRACT, `docs/mockups/05-student-home.html` + `08-practice.html`, `stage-24_results-flagship`, external portal-codebase (visual reference only per INDEX.md prohibition list). `tokens.css` wins divergences; `UI-DIVERGENCE` entries in DAILY_LOG at close. Pre-deploy gate (0012 + 0013 + RLS) remains pending local Docker run.
+
 ## Stage 21 — 2026-05-10
 
 **Planned (from DEV_PLAN.md Stage 21):** Skill Graph Cache Production Hardening (Day 26, 1-day budget). Cold-start cache load + 1h TTL + version watermark check; integration test — first request cold-loads, 1000 subsequent requests skip DB, cache invalidates on publish. Exit criterion: watermark check cost < 5ms per request.
