@@ -9,6 +9,130 @@
 
 ## Resolved
 
+### Q-28.6 — L3b traversal depth and cycle-detection contract
+
+- Date raised: 2026-05-18 (Stage 28 §2A)
+- Asked of: self
+- Source: spec §5.1.3 (`traverse_upstream`) + §5.1.4 (`traverse_downstream`);
+  DEV_PLAN Stage 28 ("full traverse_upstream + traverse_downstream from spec §5.1.3/4");
+  no explicit cycle-cap or structured-warn contract in spec.
+- Question: (a) Read spec §5.1.3/4 before coding or derive from L3a? (b) Is cycle
+  detection mandatory? (c) What safety cap and on-cap behaviour?
+- Why ambiguous: Spec §5.1.3/4 semantics may differ from the L3a depth-1 walk; cycle
+  detection is required but the cap and on-cap behaviour (throw vs warn + partial) are
+  not pinned by spec.
+- Blocking? yes — determines L3b traversal shape.
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`,
+  `supabase/functions/_shared/intelligence-helpers.ts`.
+- Status: resolved
+- Resolution (2026-05-18): **Read spec §5.1.3/4 before coding** (not derived from
+  L3a). Cycle detection is **non-negotiable** (content graph may contain cycles from
+  authoring). Safety cap = **50 nodes per direction**. On cap hit: log structured warn
+  `{ event: 'skill_graph_cycle_cap_hit', skill_id, direction, visited_count }` and
+  return the **partial set** — do NOT throw. Throwing would drop the entire pipeline
+  step on a content-authoring error; returning a partial set degrades gracefully and
+  is detectable via the warn log.
+
+### Q-28.5 — jobs-worker test pattern: Vitest-with-mock vs real-Postgres
+
+- Date raised: 2026-05-18 (Stage 28 §2A)
+- Asked of: self
+- Source: DEV_PLAN Stage 28 exit criteria ("500 jobs enqueued, all processed, zero
+  duplicates"); BUILD_CONTRACT §9 (Vitest for unit/contract; no Docker in sandbox);
+  Q-28.5 pre-implementation review.
+- Question: Named 500-jobs test — Vitest-with-mock (no Docker), opt-in real-Postgres,
+  or both?
+- Why ambiguous: Exact-once pickup with `FOR UPDATE SKIP LOCKED` is a DB-level
+  guarantee; a mock can assert call count but cannot verify the lock behaviour.
+- Blocking? yes — determines test architecture.
+- Code affected: `supabase/functions/jobs-worker/__tests__/contract.test.ts`.
+- Status: resolved
+- Resolution (2026-05-18): **Both.** (1) Vitest-with-mock: mock the Supabase client;
+  assert 500 `UPDATE` calls and zero duplicates — verifies the worker loop logic.
+  Named: `'500 jobs enqueued, all processed, zero duplicates'`. (2) Opt-in
+  real-Postgres integration test guarded with
+  `test.skip(process.env.DOCKER_AVAILABLE !== '1', ...)` — verifies the actual
+  `FOR UPDATE SKIP LOCKED` guarantee when Docker is available. Both tests ship in
+  the same `contract.test.ts`; CI skips the integration test in the sandbox.
+
+### Q-28.4 — job_queue schema additions: which columns?
+
+- Date raised: 2026-05-18 (Stage 28 §2A)
+- Asked of: self
+- Source: Stage 9 migration (outbox-dispatcher + job_queue); DEV_PLAN Stage 28
+  ("retry + dead-letter state in jobs-worker"); ADR-0031 (retry ownership).
+- Question: Which columns need to be added to `job_queue` if absent from Stage 9
+  migration: `status`, `dead_lettered_at`, `failure_reason`, `next_attempt_at`,
+  `attempt_count`?
+- Why ambiguous: Stage 9 may have shipped `attempt_count` and `max_attempts` without
+  the richer dead-letter fields. Reading the migration before deciding is required.
+- Blocking? yes — determines whether a new ALTER TABLE migration is needed.
+- Code affected: `supabase/migrations/` (new migration if columns absent).
+- Status: resolved
+- Resolution (2026-05-18): **Default column set approved — add via migration if
+  absent.** Required columns: `status` text (`pending` | `processing` | `completed` |
+  `failed` | `dead_lettered`), `dead_lettered_at timestamptz`, `failure_reason text`.
+  `attempt_count int` and `max_attempts int` presumed present from Stage 9. Read the
+  Stage 9 migration first (Q-28.3 discipline); write ALTER TABLE migration for any
+  missing column.
+
+### Q-28.3 — job_queue schema: read migration before coding
+
+- Date raised: 2026-05-18 (Stage 28 §2A)
+- Asked of: self
+- Source: DEV_PLAN Stage 28 deliverables; Stage 9 migration (cron + job_queue schema).
+- Question: Can we assume the Stage 9 migration already has the columns jobs-worker
+  needs (`attempt_count`, `max_attempts`, `next_attempt_at`, `status`, etc.) or must
+  we read it first?
+- Why ambiguous: Stage 9 was built before jobs-worker was designed; the exact column
+  set is not quoted in any later ADR.
+- Blocking? yes — determines migration scope.
+- Code affected: `supabase/migrations/`, `supabase/functions/jobs-worker/handlers.ts`.
+- Status: resolved
+- Resolution (2026-05-18): **Read the Stage 9 migration first** — never assume. If
+  required columns are absent, write an ALTER TABLE migration (next sequential number).
+  Do not write worker code against columns that may not exist; grep the migration SQL
+  for each column name before referencing it.
+
+### Q-28.2 — jobs-worker HTTP architecture: inline logic vs HTTP dispatch
+
+- Date raised: 2026-05-18 (Stage 28 §2A)
+- Asked of: product owner
+- Source: DEV_PLAN Stage 28 ("generic job worker"); OWNERS.md (intelligence-svc owns
+  pipeline steps); ADR-0027 (intelligence-svc replay determinism boundary).
+- Question: Does jobs-worker contain L3b logic inline, or dispatch to intelligence-svc
+  via HTTP per job_type?
+- Why ambiguous: Inline is simpler; HTTP dispatch preserves OWNERS.md ownership model
+  and ADR-0027 determinism boundary but adds an internal HTTP hop in the async path.
+- Blocking? yes — determines fundamental architecture.
+- Code affected: `supabase/functions/jobs-worker/`, `supabase/functions/intelligence-svc/`.
+- Status: resolved
+- Resolution (2026-05-18): **HTTP dispatch per ADR-0031.** jobs-worker = generic
+  runtime only. Each `job_type` maps to an owning service URL. `pipeline.causal.
+  evaluate_full` → `POST /intelligence/pipeline/causal-full` (service-role key +
+  `x-mm-trace-id` propagated). Retry + backoff state owned by jobs-worker. Domain
+  logic + replay determinism boundary stay in intelligence-svc. ADR-0031 accepted.
+
+### Q-28.1 — ISSUE-0006 (L3a bypasses skill-graph-cache): in scope for Stage 28?
+
+- Date raised: 2026-05-18 (Stage 28 §2A)
+- Asked of: product owner
+- Source: ISSUE-0006 (intelligence-svc L3a bypasses skill-graph-cache — filed Stage 21
+  as architectural-consistency gap vs arch §9.3); ADR-0028 (skill-graph-cache as sole
+  read path); DEV_PLAN Stage 28 (L3b full traversal also needs skill graph).
+- Question: Fix ISSUE-0006 in Stage 28 (replace L3a direct `skill_edge` query with
+  `getSkillGraph()`) or defer further?
+- Why ambiguous: ISSUE-0006 was deferred from Stage 21; Stage 28 introduces L3b which
+  ALSO reads the skill graph, making a unified `getSkillGraph()` call path the natural
+  consolidation point.
+- Blocking? no (ISSUE-0006 does not block L3b correctness, only architectural consistency).
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts` (L3a section).
+- Status: resolved
+- Resolution (2026-05-18): **YES — fix in Stage 28.** Replace direct `skill_edge`
+  query in L3a with `getSkillGraph()` call. L3b also reads via `getSkillGraph()`.
+  After this stage, `grep -n 'skill_edge' supabase/functions/intelligence-svc/handlers.ts`
+  must return 0 hits. ISSUE-0006 closed at Stage 28 evening.
+
 ### Q-26.5 — CI migration dry-run: wire Supabase CLI action or keep placeholder?
 
 - Date raised: 2026-05-16 (Stage 26 §2A)
