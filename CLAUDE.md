@@ -211,7 +211,9 @@ docs/dev/
 
 **Anti-patterns:**
 
-1. Editing `DEV_PLAN.md` mid-build — file a deviation instead.
+1. Editing `DEV_PLAN.md` **active stage definitions** (Phase 0–4 stage lists, exit criteria, day budgets) mid-build — file a deviation instead. The §5 post-launch backlog is the exception: it is additive documentation tracking v1.1+ work and may be edited directly to record new backlog items traceable to existing issues/deviations.
+
+   Precedent: Q-25.1 / DEV-20260515-1 (route-target divergence → filed as deviation) vs Stage 27 §5 additions P1.6/P1.7/P2.10 (post-launch backlog → edited directly).
 2. Deleting log entries — append a dated correction.
 3. Vague entries ("fixed bug") — every entry must be useful 6 months later.
 4. ADRs for trivial choices — ADRs are for decisions a senior reviewer would reasonably challenge.
