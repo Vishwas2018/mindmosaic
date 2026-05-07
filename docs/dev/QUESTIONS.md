@@ -9,6 +9,124 @@
 
 ## Resolved
 
+### Q-23.5 — Timer-expiry auto-submit semantics
+
+- Date raised: 2026-05-13 (Stage 23 §2A)
+- Asked of: self
+- Source: UI_CONTRACT §5.1 ("At 0:00: client calls `/submit`
+  automatically; if offline, queues submit").
+- Question: When `progress.time_remaining_ms` reaches 0 client-side,
+  what is the exact submit + recovery contract — including offline
+  behaviour and the case where `/submit` returns 409 because the
+  server already terminated the session?
+- Why ambiguous: UI_CONTRACT pins the auto-submit but doesn't
+  enumerate the offline + 409 follow-on paths.
+- Blocking? no (default is reasonable).
+- Code affected:
+  `apps/web/src/app/(student)/session/[id]/exam/page.tsx`.
+- Status: resolved
+- Resolution (2026-05-13): **default**. Client triggers `/submit`
+  at `time_remaining_ms === 0`. If offline, queue the submit via
+  the same `useResponseQueue` (ADR-0030 / Q-23.2) and replay on
+  `online` event. If `/submit` returns 409 (session already
+  terminated by the server), redirect to `/results/{id}` (which
+  ships at Stage 24; the navigation is correct as written, even
+  though the page is still being built).
+
+### Q-23.4 — Adaptive section-boundary signal
+
+- Date raised: 2026-05-13 (Stage 23 §2A)
+- Asked of: self
+- Source: UI_CONTRACT §5.1 + SCREEN_SPECS §9 mention an "adaptive
+  section boundary banner" + "adaptive blocks cross-stage" rule on
+  the question map. Neither `SessionStateDTO` nor
+  `RecordResponseResponse` carries an explicit testlet boundary
+  field. ADR-0024 (adaptive testlet routing) defines the routing
+  model server-side but doesn't pin the client surface.
+- Question: How does the Exam Engine page detect testlet boundaries
+  for the banner + the question-map jump rule?
+- Why ambiguous: DTO surface is silent; ADR-0024 is server-side.
+- Blocking? no.
+- Code affected: `packages/types/src/session.ts`,
+  `supabase/functions/assessment-svc/handlers.ts`,
+  `apps/web/src/app/(student)/session/[id]/exam/page.tsx`.
+- Status: resolved
+- Resolution (2026-05-13): **defer the adaptive section banner**
+  to v1.1. For Stage 23, the question map enforces a **forward-nav
+  block** based on `target.sequence_number > current_question_index`
+  — strictly correct for both linear and adaptive (linear users can
+  re-jump after answering forward; adaptive users cannot re-enter
+  past testlets). The banner is omitted in v1. **ISSUE-0010** records
+  the deferred work + the DTO additions required (new
+  `current_testlet_id: string | null` field on `SessionStateDTO` +
+  `RecordResponseResponse`).
+
+### Q-23.3 — Service worker registration in v1?
+
+- Date raised: 2026-05-13 (Stage 23 §2A)
+- Asked of: self
+- Source: UI_CONTRACT §5.1 ("Service worker caches the session
+  shell"). Tied to Q-23.2.
+- Question: Register a service worker in v1 (offline shell cache)
+  or defer entirely?
+- Why ambiguous: UI_CONTRACT calls for it; DEV_PLAN risk-cushion
+  permits simplification.
+- Blocking? no.
+- Code affected: `apps/web/next.config.js`,
+  `apps/web/public/sw.js` (would-be), `apps/web/src/app/layout.tsx`.
+- Status: resolved
+- Resolution (2026-05-13): **no service worker in v1**. Bundled into
+  **ISSUE-0009** alongside the IndexedDB upgrade for v1.1. Consistent
+  with Q-23.2 = B (in-memory queue, no persistence layer).
+
+### Q-23.2 — Offline persistence shape (ADR-0030)
+
+- Date raised: 2026-05-13 (Stage 23 §2A)
+- Asked of: self
+- Source: UI_CONTRACT §5.1 (IndexedDB queue + service worker shell
+  cache); DEV_PLAN.md Stage 23 risk note ("simplify offline queue if
+  slipping, but DO NOT compromise a11y gate").
+- Question: Full IndexedDB + SW shape (option A), in-memory queue +
+  online/offline events (option B), or no queue at all (option C)?
+- Why ambiguous: spec calls for A; risk-cushion permits B; C
+  violates "do not block the user from answering while offline".
+- Blocking? no (B is the obvious risk-cushion default).
+- Code affected: `apps/web/src/components/exam/`.
+- Status: resolved
+- Resolution (2026-05-13): **B — in-memory queue + `online` /
+  `offline` event listeners + replay on reconnect with
+  idempotency-key dedup. No IndexedDB. No service worker.**
+  Recorded in **ADR-0030**. Page-reload during offline = lost queue
+  (acceptable per DEV_PLAN risk note + autosave-every-30s cadence).
+  IndexedDB + SW upgrade tracked as **ISSUE-0009** for v1.1.
+
+### Q-23.1 — `useCheckpoint` as the autosave hook?
+
+- Date raised: 2026-05-13 (Stage 23 §2A)
+- Asked of: self
+- Source: UI_CONTRACT §5.1 ("autosave every 30s + on blur,
+  fire-and-forget"); SDK `useCheckpoint(sessionId)` exists from
+  Stage 19; `CheckpointRequest { checkpoint_number,
+  current_question_index, answers, client_timestamp }` shape.
+- Question: Confirm `useCheckpoint` is the autosave path; cumulative
+  answers list each tick; idempotency-keyed.
+- Why ambiguous: hook hasn't been exercised yet — Stage 22b didn't
+  use it. The CheckpointRequest schema's `answers` field shape is
+  cumulative, not delta, but UI_CONTRACT doesn't spell that out.
+- Blocking? no (default is the obvious read).
+- Code affected:
+  `apps/web/src/app/(student)/session/[id]/exam/page.tsx`.
+- Status: resolved
+- Resolution (2026-05-13): **default**. `useCheckpoint` is the
+  autosave hook. Client builds a cumulative `answers` list each
+  tick (the full working set, including unanswered placeholders if
+  any), with `client_timestamp` set to the current `Date.now()` ISO
+  string. **Idempotency key per `checkpoint_number`** — Stage 19's
+  X3 contract supports passing a stable key, so each checkpoint
+  number is its own retry boundary. Failures log to console with
+  `trace_id` and do not surface to the user (UI_CONTRACT §5.1
+  "fire-and-forget").
+
 ### Q-22.4 — Session Selection: include a recent-sessions row?
 
 - Date raised: 2026-05-12 (Stage 22b morning, §2A walkthrough vs SCREEN_SPECS)

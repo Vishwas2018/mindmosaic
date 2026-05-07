@@ -5,6 +5,121 @@
 
 ## Open
 
+### ISSUE-0010 — adaptive section-boundary banner pending server-authoritative `current_testlet_id` in `SessionStateDTO` + `RecordResponseResponse`
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-13 (Stage 23 §2A)
+- Area: types (`@mm/types`) + backend (assessment-svc) + frontend (apps/web Exam Engine)
+- Tags: adaptive · dto-discipline · v1.1
+
+**Summary.** UI_CONTRACT §5.1 + SCREEN_SPECS §9 call for two
+adaptive-engine-aware behaviours on the Exam Engine page:
+1. A "section boundary banner" that appears as the student crosses
+   from one adaptive testlet to the next.
+2. A `QuestionMap` jump rule that **blocks cross-testlet navigation**
+   for adaptive sessions while permitting free jumping for linear.
+
+Neither `SessionStateDTO` nor `RecordResponseResponse` currently
+carries an explicit testlet identifier. ADR-0024 (adaptive testlet
+routing) defines the routing model server-side, but the boundary
+signal is not exposed in the public DTO surface.
+
+**Effect.** Stage 23 ships a **forward-only** jump rule based on
+`sequence_number > current_question_index` (per Q-23.4 resolution).
+This is conservative — strictly correct for both linear and adaptive
+(linear users can simply re-jump after answering forward) but loses
+the linear-mode affordance of free back-jumping until the boundary
+field exists. The "section boundary banner" is **deferred entirely**
+in v1.
+
+**Why not in Stage 23.** The fix needs a DTO change (new optional
+field), an assessment-svc handler change to populate it from the
+adaptive engine state, and a contract test. That's a backend +
+types + handler sweep that doesn't fit the Stage 23 budget and risks
+the a11y gate (the merge-blocker). Q-23.4 = defer.
+
+**Recommended fix (v1.1 or earlier if a backend stage gets there
+first).** Two parts:
+1. **DTO**: add `current_testlet_id: string | null` to
+   `SessionStateDTOSchema` and `RecordResponseResponseSchema` in
+   `packages/types/src/session.ts` (nullable so linear sessions
+   continue to round-trip cleanly).
+2. **assessment-svc**: populate the field from the engine state
+   row (linear → null; adaptive → current testlet id).
+3. **Frontend**: replace the forward-only sequence-number check
+   with `currentItem.testlet_id === target.testlet_id` for
+   adaptive; render the "Section N" banner on transition.
+
+Add a contract test: assert the field is present in 200 responses
+from `/sessions/{id}/state` and `/sessions/{id}/respond` for both
+modes.
+
+**Reproduction.**
+```bash
+grep -nE "testlet|section" packages/types/src/session.ts
+# Returns: zero hits.
+grep -nE "current_testlet_id" supabase/functions/assessment-svc/handlers.ts
+# Returns: zero hits.
+```
+
+### ISSUE-0009 — upgrade offline persistence to IndexedDB queue + service-worker shell cache in v1.1
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-13 (Stage 23 §2A)
+- Area: frontend (apps/web Exam Engine)
+- Tags: offline · pwa · v1.1
+
+**Summary.** ADR-0030 (Stage 23) ships an **in-memory**
+`useResponseQueue` for offline `/respond` queuing — the minimum
+shape that satisfies UI_CONTRACT §5.1's "do not block the user
+from answering while offline" rule and the DEV_PLAN exit criterion
+("answer 3 offline items, replay on reconnect"). Two pieces of
+the original UI_CONTRACT §5.1 contract are **deferred to v1.1**:
+
+1. **IndexedDB persistence**: queue survives page reload during
+   offline. v1 stores in-memory only; reload during offline = lost
+   queue. Mitigated by 30s autosave cadence; documented in
+   `OfflineBanner` microcopy ("Don't reload this page until
+   reconnected").
+2. **Service worker shell cache**: pre-cache the Exam Engine route
+   shell so a cold-start during offline still shows the shell
+   chrome. v1 has none; first load offline is unsupported (and not
+   a real exam-taker scenario in v1).
+
+**Effect.** v1 students who go offline mid-session and reload the
+page will see the resume flow (cold cache, refetch state on
+reconnect) instead of an instant restore. The session is not
+corrupted — assessment-svc state machine + autosave cadence carry
+the worst-case loss to < 30s of in-flight respond writes. ISSUE-0009
+is therefore a **degraded UX, not a correctness issue**.
+
+**Why not in v1.** ADR-0030 documents the rationale: spending
+half the Stage 23 budget on offline plumbing inverts the priority
+DEV_PLAN sets (a11y > offline-resilience > offline-persistence).
+Stage 23 buys the resilience; persistence waits.
+
+**Recommended fix (v1.1).** Replace `useResponseQueue`'s in-memory
+storage with an IndexedDB-backed `idb-keyval` (or similar) layer
+behind the same hook API (`enqueue` / `flush` / `pendingCount`).
+Add a service worker registration via `next-pwa` (or a hand-rolled
+`sw.ts`) with a runtime caching strategy for the Exam Engine route
+shell. Add Playwright e2e: queue persists across page reload during
+offline; cold-start during offline shows the shell.
+
+Affects: `apps/web/src/components/exam/useResponseQueue.ts`,
+`apps/web/src/components/exam/OfflineBanner.tsx`,
+`apps/web/next.config.js` (or `next-pwa.config.js`),
+`apps/web/public/sw.js` (new),
+`apps/web/playwright/e2e/exam-flow-offline.spec.ts` (new).
+
+**Reproduction.**
+```bash
+grep -rn "IndexedDB\|idb-keyval\|next-pwa\|sw\.js\|serviceWorker" apps/web/
+# Returns: zero hits in source (only references in node_modules).
+```
+
 ### ISSUE-0008 — assessment-svc dispatcher emits `CONFLICT` / `LOCK_CONFLICT` codes not in `@mm/types` `ErrorCodeSchema`
 
 - Status: open
