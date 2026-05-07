@@ -17,6 +17,10 @@ export { ErrorBoundary } from './ErrorBoundary/ErrorBoundary.js';
 export { LoadingState } from './LoadingState/LoadingState.js';
 export type { LoadingStateProps, LoadingStateVariant } from './LoadingState/LoadingState.js';
 
+// Focus chrome
+export { FocusHeader } from './FocusHeader/FocusHeader.js';
+export type { FocusHeaderProps } from './FocusHeader/FocusHeader.js';
+
 // Navigation
 export { NavLink } from './NavLink/NavLink.js';
 export type { NavLinkProps } from './NavLink/NavLink.js';

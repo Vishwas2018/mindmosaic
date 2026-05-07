@@ -3,12 +3,10 @@ import { use, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AppShell,
-  Brand,
   Button,
   Card,
-  IconButton,
+  FocusHeader,
   PageHeader,
-  TopBar,
   useToast,
 } from '@mm/ui'
 import {
@@ -19,8 +17,7 @@ import {
 import type { ItemDTO, RecordResponseResponse, SessionStateDTO } from '@mm/types'
 
 // SCREEN_SPECS §10 — Practice. Shell: focus (less restriction than exam).
-// UI-DIVERGENCE: Practice chrome composed from TopBar + Brand + IconButton;
-// FocusHeader is exam-only per UI_CONTRACT §5.1.
+// FocusHeader lifted to @mm/ui (Stage 24 side-task — clears UI-DIVERGENCE (e)).
 
 type ModalKind = 'version-conflict' | 'lock-expired' | 'session-abandoned' | null
 
@@ -335,9 +332,7 @@ export default function PracticePage({
   if (sessionState.isPending) {
     return (
       <AppShell variant="focus">
-        <TopBar>
-          <Brand logoSrc="/logo.svg" size="sm" />
-        </TopBar>
+        <FocusHeader onExit={() => router.push('/dashboard')} />
         <main className="max-w-3xl mx-auto px-6 py-8">
           <div
             role="status"
@@ -352,9 +347,7 @@ export default function PracticePage({
   if (sessionState.isError || currentItem === null) {
     return (
       <AppShell variant="focus">
-        <TopBar>
-          <Brand logoSrc="/logo.svg" size="sm" />
-        </TopBar>
+        <FocusHeader onExit={() => router.push('/dashboard')} />
         <main className="max-w-3xl mx-auto px-6 py-8">
           <Card>
             <PageHeader
@@ -374,16 +367,7 @@ export default function PracticePage({
 
   return (
     <AppShell variant="focus">
-      <TopBar>
-        <Brand logoSrc="/logo.svg" size="sm" />
-        <div className="ml-auto">
-          <IconButton
-            label="Exit session"
-            icon={<span aria-hidden="true">×</span>}
-            onClick={() => router.push('/dashboard')}
-          />
-        </div>
-      </TopBar>
+      <FocusHeader onExit={() => router.push('/dashboard')} />
 
       <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
         <div className="text-xs text-[var(--muted)]">

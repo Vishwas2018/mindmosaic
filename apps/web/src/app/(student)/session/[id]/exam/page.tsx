@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Dialog,
+  FocusHeader,
   QuestionMap,
   useToast,
 } from '@mm/ui'
@@ -17,7 +18,6 @@ import {
   useSubmitSession,
 } from '@mm/sdk'
 import type { ItemDTO, RecordResponseRequest, RecordResponseResponse } from '@mm/types'
-import { FocusHeader } from '@/components/exam/FocusHeader'
 import { OfflineBanner } from '@/components/exam/OfflineBanner'
 import { SavedPill } from '@/components/exam/SavedPill'
 import { Timer } from '@/components/exam/Timer'
