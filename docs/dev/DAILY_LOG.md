@@ -2,6 +2,51 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 27 — 2026-05-17
+
+**Planned (from DEV_PLAN.md Stage 27):** Phase 1 gate (1-day budget, Day 35). Read spec §4 + §23, map Phase 1 exit criteria to current state, write Phase 1 Exit Report, verify DEV_PLAN §5 completeness, append deferred issues, overwrite PROJECT_STATE.md, append DAILY_LOG, git tag `v1-phase-1`.
+
+**Actually delivered:**
+
+- `docs/dev/phase-1-exit-report.md` (new, ~200 lines) — Phase 1 Exit Report. Criterion-by-criterion check of spec §4.1 NAPLAN + §4.2 ICAS framework attributes (all ✅), spec §23 Phase 1 deliverables table (engines/intelligence/student dashboard ✅; parent/admin dashboards + Stripe + deploy ⚠️ deferred/pending per DEV_PLAN), quality-gate table (399/399 unit + 58/58 replay + 451/451 pgTAP + RLS ✅; `pnpm audit` unknown; migration ⚠️ no Docker; performance all n/a), 3-consecutive-commit CI check (✅ 676fadb/75984c6/ae7f922), 8-ADR inventory (ADR-0022–0030), open issues table (4 medium, all v1.1), pre-deploy checklist, Phase 1 statistics. Verdict: **Conditional Go** — Go for Phase 2; No-Go for production deploy until pre-deploy gate + performance validation cleared.
+- `DEV_PLAN.md` §5 — appended P1.6 (IndexedDB + SW shell cache — ISSUE-0009/ADR-0030, 2 days), P1.7 (adaptive section-boundary banner + `current_testlet_id` DTO — ISSUE-0010/Q-23.4, 2 days), P2.10 (Results/Dashboard deferred content blocks — ISSUE-0011a–f, 5 days). DEV-20260503-2 already covered by existing P2.2.
+- `docs/dev/PROJECT_STATE.md` — overwritten for Stage 27 close. Stage 28 next, 40 days remaining.
+- `docs/dev/DAILY_LOG.md` — this entry prepended.
+- `docs/prompts/2026-05-17_stage-27.md` — C-C-D-V prompt saved.
+- Git tag `v1-phase-1` created locally. Push pending approval.
+
+**Time spent:** ~2h.
+
+**Surprises / departures:**
+
+- **spec §4 is "Assessment Framework Specifications"**, not a Phase 1 exit-criteria checklist per se. DEV_PLAN's "All Phase 1 exit criteria green (spec §4)" interpreted as: all assessment-framework attributes in §4.1 (NAPLAN) and §4.2 (ICAS) are implemented. §4.3–§4.5 are P3 icebox. All §4.1 + §4.2 rows verified ✅.
+- **spec §23 "Student, parent, and admin dashboards" as Phase 1 deliverable**: spec §23's "Phase 1" maps to the full v1 MVP, not just DEV_PLAN's internal Phase 1 (Stages 15–27). Parent/admin dashboards are explicitly scheduled for DEV_PLAN Stages 36–37. Noted honestly in exit report with ⚠️ and context.
+
+**Decisions made (not in stage):**
+
+- Exit report path = `docs/dev/phase-1-exit-report.md` (confirmed in morning ritual Q&A; stage spec was silent on path). No ADR filed — trivial choice.
+- No other ADRs filed — all choices are derivable from existing ADRs or stage deliverables.
+
+**Deviations logged:**
+
+- none.
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0009/0010/0011 added to DEV_PLAN §5 as P1.6, P1.7, P2.10 respectively.
+- ISSUE-0006 noted in exit report pre-deploy checklist as "fold into Stage 28"; not a §5 post-launch backlog item.
+- No new issues opened. No new questions raised.
+
+**Quality gates at close:**
+
+- Lint ✅ (no code changes) · Typecheck ✅ (no code changes) · Tests ✅ (399/399 — unchanged) · Build ✅ (no code changes) · RLS ✅ (no schema changes).
+
+**Tomorrow — first thing:**
+
+Stage 28 — Job Worker + L3b Causal Full (Days 40–41, 2-day budget). Refer `DEV_PLAN.md` Stage 28 for deliverables. Pre-deploy gate (migrations 0012+0013+RLS, Docker required) still pending.
+
+---
+
 ## Stage 26 — 2026-05-16
 
 **Planned (from DEV_PLAN.md Stage 26 + docs/prompts/2026-05-16_stage-26.md):** 2-day budget (Day 34–35). Phase 1 audit / load-test / CI strip. 8 deliverables: D1 k6 load test + nightly workflow, D2 pure-function replay harness (ADR-0027), D3 turbo.json outputs fix, D4 migration dry-run CI job, D5 .env.local.example restore, D6 SDK X-Session-Lock plumbing (ISSUE-0007), D7 error-code reconciliation (ISSUE-0008), D8 E2E CI job.

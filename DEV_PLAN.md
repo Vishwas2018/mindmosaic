@@ -570,6 +570,12 @@ Origin: Spec §25.7, §25.9. Why deferred: Stripe's default retry handles most c
 **P1.5 Full Observability v2** _(3 days)_
 Origin: Arch §7.1; v1 caveat. Why deferred: Supabase logs + Vercel errors adequate at launch scale. Why P1: per-trace debugging without OTel becomes painful past ~1k MAU. Scope: OpenTelemetry SDK in every Edge Function (W3C TraceContext); export to Honeycomb or Grafana Tempo; Sentry on frontend (errors + web vitals) + Edge Functions (5xx); per-endpoint latency / per-service error / pipeline-health dashboards; Slack/PagerDuty alerts.
 
+**P1.6 Offline Persistence Upgrade (IndexedDB + Service Worker)** _(2 days)_
+Origin: UI_CONTRACT §5.1; ADR-0030 (Stage 23); ISSUE-0009. Why deferred: ADR-0030 prioritises a11y gate > offline-resilience > offline-persistence per Stage 23 budget; in-memory queue satisfies "do not block the user" rule; page-reload during offline loses queue, mitigated by 30s autosave + `OfflineBanner` microcopy. Why P1: core exam-resilience promise; IndexedDB queue survives reload; SW shell cache supports cold-start offline. Scope: Replace `useResponseQueue`'s in-memory store with an IndexedDB-backed `idb-keyval` layer behind the same `enqueue`/`flush`/`pendingCount` API; register service worker via `next-pwa` (or hand-rolled `sw.ts`) with runtime-caching strategy for the Exam Engine route shell; add Playwright e2e: queue persists across page reload during offline; cold-start offline shows shell. Affects: `apps/web/src/components/exam/useResponseQueue.ts`, `apps/web/src/components/exam/OfflineBanner.tsx`, `apps/web/next.config.js`, `apps/web/public/sw.js` (new), `apps/web/playwright/e2e/exam-flow-offline.spec.ts` (new).
+
+**P1.7 Adaptive Section-Boundary Banner + `current_testlet_id` DTO** _(2 days)_
+Origin: UI_CONTRACT §5.1; SCREEN_SPECS §9; ISSUE-0010; Q-23.4 (Stage 23). Why deferred: requires DTO change + assessment-svc handler change + contract test — exceeded Stage 23 budget while a11y gate was merge-blocker; v1 forward-only navigation is strictly correct for both linear and adaptive. Why P1: removes the linear-session navigation restriction; adds adaptive section-boundary visual for cross-testlet transitions. Scope: (1) Add `current_testlet_id: string | null` to `SessionStateDTOSchema` + `RecordResponseResponseSchema` in `packages/types/src/session.ts`; (2) populate in assessment-svc: adaptive → current testlet id from engine state, linear → null; (3) frontend: replace forward-only sequence-number check with `currentItem.testlet_id === target.testlet_id` for adaptive; render "Section N" banner on testlet transition; (4) add 1 contract test asserting field presence in `/state` + `/respond` 200 responses.
+
 ### 5.2 P2 — v1.2 (quarter 2)
 
 | ID   | Item                                                                                                                       | Origin          | Estimate |
@@ -583,6 +589,7 @@ Origin: Arch §7.1; v1 caveat. Why deferred: Supabase logs + Vercel errors adequ
 | P2.7 | Override Plan Item — full (`override_plan_item` type)                                                                      | Spec §16.6.1    | 2 days   |
 | P2.8 | Admin Jobs + Feature Flags UI (dead-letter retry, poison markers)                                                          | Arch §4.12      | 3 days   |
 | P2.9 | Contract Test Staging Environment                                                                                          | —               | 2 days   |
+| P2.10 | Results screen deferred content blocks + Dashboard mastery snapshot (ISSUE-0011a–f): topic breakdown, performance insights, question review, mastery delta card, diagnostic proficiency map, learner profile | SCREEN_SPECS §11; Screen 7; ISSUE-0011 | 5 days |
 
 ### 5.3 P3 — Icebox (consider after v1.2 based on customer signal)
 
