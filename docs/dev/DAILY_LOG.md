@@ -2,6 +2,58 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 31 — 2026-05-21
+
+**Planned (from DEV_PLAN.md Stage 31):** L9 Orchestration Weekly Plan — `pipeline.orchestration_replan` handler with idempotency + priority queue; supersedes prev plan + plan_revision + audit log; plan_override honoured; `GET /orchestration/plan/{student_id}/current` + `POST /orchestration/generate-plan/{student_id}`. 1-day budget (Day 44).
+
+**Actually delivered:**
+
+- `supabase/functions/orchestration-svc/` (new — 13th workspace): `handlers.ts` (`processOrchestratorReplan` L9 handler: parallel signal loads, 6-step priority queue per spec §16.2, override filters, domain interleave, guardrails, SUPERSEDE+INSERT, pipeline_event step 9, dual audit_log writes; `getCurrentPlan`; `generatePlan`), `index.ts` (3 routes), `package.json`, `tsconfig.json`, `__tests__/contract.test.ts` (9 tests).
+- `supabase/functions/jobs-worker/index.ts`: `ORCHESTRATION_SVC_URL` env + `pipeline.orchestration_replan → orchestration-svc /orchestration/pipeline/orchestration-replan` route entry.
+- `pnpm-workspace.yaml`: `supabase/functions/orchestration-svc` added.
+- `docs/dev/QUESTIONS.md`: Q-31.5, Q-31.6, Q-31.7 filed and resolved (prep commit had Q-31.1–Q-31.4).
+- Prep commit (c528893): Q-31.1–Q-31.4 resolved; ADR-0031 third amendment; ISSUE-0018 extended + ISSUE-0020 filed; C-C-D-V saved.
+
+**Time spent:** ~1 day (on 1-day budget)
+
+**Surprises / departures:**
+
+1. **Q-31.5 (enjoyment guardrail mastery threshold)**: spec §16.6 mandates ≥20% of plan TIME as enjoyment but doesn't pin the mastery threshold for "skills the student is good at". Defaulted to `mastery > 0.7` (Q-31.5); resolved non-blocking.
+2. **Q-31.6 (recommendation_key hash)**: spec says "deterministic hash of (skill_id, mode, rationale_class)" but names no hash function. Defaulted to colon-separated composite string `${skill_id}:${mode}:${rationale_class}` (Q-31.6).
+3. **Q-31.7 (SELECT FOR UPDATE unavailable)**: Supabase JS client cannot issue FOR UPDATE locks via `.from()`. Concurrency guard implemented as: audit_log dedup (primary idempotency) + optimistic UPDATE WHERE status='active' + `idx_plan_active` unique partial index (DB-level) (Q-31.7).
+4. **pipeline.l9.* grep check in docs**: C-C-D-V expected 0 hits from `grep -rn 'pipeline\.l9\.\*' docs/` but historical amendment notes in ADR-0031/ADR-0033/QUESTIONS.md reference the old wildcard in archival context. These are immutable ADR records; actual routing table and jobs-worker code use the concrete `pipeline.orchestration_replan`. Grep intent satisfied at code level.
+
+**Decisions made (not in stage):**
+
+- Q-31.5 resolved: enjoyment mastery threshold = 0.7 (inline default, no ADR)
+- Q-31.6 resolved: recommendation_key = colon-separated composite string (inline default)
+- Q-31.7 resolved: optimistic UPDATE + idx_plan_active as concurrency guard (Q replaces ADR)
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- Q-31.5, Q-31.6, Q-31.7 opened and resolved (implementation commit)
+- ISSUE-0020 (filed in prep commit)
+- ISSUE-0018 extended (prep commit)
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ (13 packages) · Tests ✅ (447 passed / 1 skipped) · Build n/a · RLS ✅ (no new migrations)
+
+**Process retro:**
+
+- (a) **T3 honored cleanly.** Q-31.5/6/7 surfaced during pre-implementation analysis before any handler code was written, filed in QUESTIONS.md in the implementation commit per T2. First stage since T3 entered force where all three timing conditions were met without exception.
+- (b) **Test-name-vs-implementation drift caught at pre-push verification.** Q-31.7 changed the concurrency mechanism (Supabase JS client lacks FOR UPDATE; idx_plan_active + optimistic UPDATE substituted), but contract test 6 held the obsolete claim in its name. Caught by the grep check `SELECT FOR UPDATE` in contract.test.ts. Renamed in both `contract.test.ts` (it block + JSDoc header) and the saved C-C-D-V (`docs/prompts/2026-05-21_stage-31.md`) in the same implementation commit. **Pattern to watch:** when a Q resolution changes implementation shape, check downstream artefacts (test names, doc comments, C-C-D-V Verification section) for stale claims before push.
+- (c) **Pre-read discipline (T1) executed correctly.** All six required reads landed with verbatim file:line citations before code. `idx_plan_active` at migration 0005:281 and `retentionHalfLifeDays` half-life values cited before implementation began. First clean T1 pre-read since the discipline entered force.
+- (d) **Two-session split (implementation Day 44 → docs Day 45) acceptable but guarded.** Pre-flight `git status --short` confirmed exactly `DAILY_LOG.md + PROJECT_STATE.md` in working tree, nothing else. No incident.
+
+**Tomorrow — first thing:**
+
+Stage 32 — read DEV_PLAN Stage 32; morning ritual.
+
 ## Stage 30 — 2026-05-20
 
 **Planned (from DEV_PLAN.md Stage 30):** L7 Teacher Intervention Intelligence — `pipeline.teacher_refresh` async handler, auto-grouping (k-means), 5 of 6 §14.2 alert trigger types, GET read endpoints. 1-day budget (Day 43).
