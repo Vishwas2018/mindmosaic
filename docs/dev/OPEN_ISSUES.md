@@ -5,6 +5,34 @@
 
 ## Open
 
+### ISSUE-0022 — GET /intelligence/audit-log pagination: v1 returns LIMIT 200 + truncated flag
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-22 (Stage 32 pre-implementation, surfaced at morning ritual)
+- Area: backend (intelligence-svc)
+- Tags: intelligence-svc · pagination · v1.1 · audit-log
+
+**Summary.** `GET /intelligence/audit-log/{student_id}?layer=&from=&to=` returns a maximum of 200 rows (ORDER BY created_at DESC) with a `truncated: boolean` flag in the response envelope when the result count equals 200. No cursor or offset pagination is implemented in v1. For students with dense audit histories (heavy usage across many algorithm versions), 200 rows covers the most recent ~2–4 weeks of intelligence activity which is sufficient for v1 dashboard use cases.
+
+**Fix (v1.1).** Cursor-based pagination via `created_at` watermark: `?before=<ISO8601 timestamp>` query param; response includes `next_cursor: string | null`. Removes LIMIT 200 ceiling.
+
+**Tracking pointer.** Stage 32 implementation. Inline comment at query site: `// ISSUE-0022: v1 LIMIT 200 + truncated flag; cursor pagination deferred to v1.1.`
+
+### ISSUE-0021 — GET /analytics/auto-groups route shape mismatch with arch §4.7
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-22 (Stage 32 morning ritual pre-read; deviation surfaced from Stage 30)
+- Area: backend (analytics-svc)
+- Tags: analytics-svc · routing · arch-drift · v1.1
+
+**Summary.** Stage 30 shipped `GET /analytics/auto-groups?class_id=&skill_id=` (query params). Arch §4.7 (line 1567) specifies `GET /analytics/auto-groups/{class_id}/{skill_id}` (path params). No consumer existed at Stage 30 time, so the deviation had zero runtime impact. First real consumer is Stage 37 (Teacher Dashboard). Perpetuating the query-param shape to Stage 37 would require coordinating a later breaking change against an established consumer.
+
+**Fix (v1.1 / Stage 37 coordinator).** Migrate analytics-svc route to `/analytics/auto-groups/{class_id}/{skill_id}` path params in the same commit that implements the Stage 37 Teacher Dashboard consumer. Zero-downtime: no external consumers until that stage.
+
+**Tracking pointer.** DEV-20260522-1. All new Stage 32 endpoints implement arch path-param shape — deviation not perpetuated.
+
 ### ISSUE-0020 — POST /orchestration/generate-plan synchronous in v1; async upgrade deferred
 
 - Status: open

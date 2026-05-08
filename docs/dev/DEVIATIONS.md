@@ -3,6 +3,18 @@
 > Every deviation from DEV_PLAN.md, in writing.
 > Newest at TOP. Use the template from CLAUDE.md §Templates.
 
+### DEV-20260522-1 — GET /analytics/auto-groups shipped with query params; arch §4.7 specifies path params
+
+- Date: 2026-05-22
+- Stage: 32 (discovered at morning ritual pre-read)
+- Type: substitution (v1.1 fix)
+- What the stage said: Arch §4.7 (line 1567): `GET /analytics/auto-groups/{class_id}/{skill_id}` — path parameters.
+- What I actually did: Stage 30 shipped `GET /analytics/auto-groups?class_id=&skill_id=` (query parameters). analytics-svc/index.ts line 58–60 matches `path === '/analytics/auto-groups'` and reads `url.searchParams.get('class_id')` / `url.searchParams.get('skill_id')`. No consumer existed at Stage 30; the deviation was not caught until Stage 32 pre-read.
+- Why: Simpler routing pattern at Stage 30; no existing consumer to break. Mid-Phase-2 reshuffle has no measured benefit (zero consumers before Stage 37 Teacher Dashboard). Path param variant would require breaking change to shipped route + contract test rewrite.
+- Impact on later stages: Stage 37 (Teacher Dashboard) will integrate `/analytics/auto-groups`. Coordinate path-param migration in the same commit that adds the first real consumer. New Stage 32 endpoints MUST match arch path-param shape — deviation not perpetuated.
+- Linked: ISSUE-0021
+- Resolved by: v1.1 (when Stage 37+ teacher dashboard integrates)
+
 ### DEV-20260519-1 — Spec §12.1 predict_exam_readiness: exam_date column deferred
 
 - Date: 2026-05-19

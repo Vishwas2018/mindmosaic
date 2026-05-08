@@ -9,6 +9,43 @@
 
 ## Resolved
 
+### Q-32.2 — GET /analytics/cohort/{group_id}: no named CohortDTO in arch §6; response shape?
+
+- Date raised: 2026-05-22 (Stage 32 morning ritual)
+- Asked of: self
+- Source: Arch §4.7 (line 1565): `GET /analytics/cohort/{group_id} | Teacher/Admin | Cohort aggregate`. No matching DTO in arch §6.
+- Question: (A) Return cohort_metric_cache row directly as named CohortDTO shaped from stored data; (B) define a distinct analytics DTO analogous to the auto-groups response.
+- Why ambiguous: Arch §6 defines no `CohortDTO`. cohort_metric_cache stores k-means output with `groups: jsonb`. The most natural read assembles from the stored structure but the DTO needs a name for TypeScript strict-mode compliance.
+- Blocking? no
+- Assumed answer (if proceeding): **Option A** — define a named `CohortDTO` type in analytics-svc handlers.ts:
+  ```typescript
+  interface CohortDTO {
+    group_id: string;
+    class_id: string;
+    skill_id: string;
+    groups: ClusterGroup[];
+    computed_at: string;
+    stale_since: string | null;
+  }
+  ```
+  `ClusterGroup` type imported from Stage 30 analytics-svc handler module (already defined there for processTeacherRefresh). Staleness rule: spec §9.6 30-day rule applied to `computed_at`.
+- Code affected: `supabase/functions/analytics-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-22): **Option A**. Named CohortDTO per above shape. ClusterGroup imported from existing Stage 30 handler.
+
+### Q-32.1 — POST /analytics/generate-assignment: persist to assignment table or return DraftAssignmentDTO only?
+
+- Date raised: 2026-05-22 (Stage 32 morning ritual)
+- Asked of: self
+- Source: Arch §4.7 (line 1570): `POST /analytics/generate-assignment | Teacher | Auto-generate assignment`. Arch §6.6 defines `AssignmentDTO` with `id`, `created_at`, `status: 'draft'`. Spec §14.3 (line 2124) pseudocode: `return assignment { items, time_limit, mode, rationale }` — no INSERT in pseudocode.
+- Question: (A) INSERT into `assignment` table as draft and return persisted `AssignmentDTO`; (B) compute and return draft without persisting — teacher submits to `POST /assignments` (Stage 33) to create.
+- Why ambiguous: Two endpoints exist (`/analytics/generate-assignment` and `POST /assignments`). If (A), analytics-svc writes to `assignment` table owned by assignments-svc (Stage 33) — cross-owner write. Spec §14.3 pseudocode has no INSERT.
+- Blocking? yes
+- Assumed answer (if proceeding): **Option B** — return `DraftAssignmentDTO` without INSERT. Type defined as `Omit<AssignmentDTO, 'id' | 'created_at' | 'updated_at'>` — all fields of AssignmentDTO except the database-generated ones. analytics-svc does NOT write to `assignment` table. Stage 33 assignments-svc `POST /assignments` persists. Inline comment at handler: `// Stage 33 assignments-svc persists this draft via POST /assignments. Q-32.1 Option B — no INSERT here.`
+- Code affected: `supabase/functions/analytics-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-22): **Option B**. DraftAssignmentDTO = `Omit<AssignmentDTO, 'id' | 'created_at' | 'updated_at'>`. No assignment table write from analytics-svc.
+
 ### Q-31.7 — SELECT FOR UPDATE unavailable in Supabase JS client; concurrency guard for SUPERSEDE+INSERT
 
 - Date raised: 2026-05-21 (Stage 31 implementation)
