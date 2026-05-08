@@ -124,6 +124,7 @@ export type DbBuilder = {
   eq: (col: string, val: unknown) => DbBuilder;
   in: (col: string, vals: unknown[]) => DbBuilder;
   gte: (col: string, val: unknown) => DbBuilder;
+  lte: (col: string, val: unknown) => DbBuilder;
   contains: (col: string, val: unknown) => DbBuilder;
   order: (col: string, opts?: { ascending?: boolean }) => DbBuilder;
   limit: (n: number) => DbBuilder;
@@ -1546,4 +1547,541 @@ function predictMasteryDateDays(
     return L5_MASTERY_DATE_CAP_DAYS;
   }
   return Math.ceil(adjusted);
+}
+
+// ─── Stage 32 — Intelligence GET endpoints ───────────────────────────────────
+//
+// Five read endpoints: learner-profile, causal-map, behaviour-profile,
+// audit-log, explain. All role-gated; null caller = service-role bypass.
+//
+// Spec refs: arch §4.5, §6.4, §6.5; spec §9.6 (30-day staleness); ADR-0013
+// (audit-log column redaction); Q-32.3–Q-32.7.
+
+// ─── Shared row interfaces (Stage 32) ────────────────────────────────────────
+
+interface BehaviourProfileRow2 {
+  avg_guess_rate: number;
+  avg_fatigue_onset_minutes: number;
+  persistence_score: number;
+  avg_cognitive_load_comfort: number;
+  time_pressure_sensitivity: number;
+  session_length_sweet_spot: number;
+  data_points: number;
+  computed_at: string | null;
+}
+
+interface RepairRecordRow {
+  id: string;
+  repair_sequence_id: string;
+  misconception_id: string | null;
+  root_cause_skill_id: string | null;
+  status: string;
+  stages_completed: number;
+  total_stages: number;
+}
+
+interface AuditLogEntry {
+  id: string;
+  event_type: string;
+  layer: string;
+  created_at: string;
+}
+
+interface AuditLogEntryFull extends AuditLogEntry {
+  student_id: string;
+  explanation: unknown | null;
+  output: { root_causes?: string[] } | null;
+}
+
+export interface AuditLogResponse {
+  entries: AuditLogEntry[];
+  truncated: boolean;
+}
+
+// ─── DTO types (arch §6.4 verbatim) ──────────────────────────────────────────
+
+export interface BehaviourProfileDTO {
+  avg_guess_rate: number;
+  avg_fatigue_onset_minutes: number;
+  persistence_score: number;
+  avg_cognitive_load_comfort: number;
+  time_pressure_sensitivity: number;
+  session_length_sweet_spot: number;
+  data_points: number;
+  computed_at: string;
+  stale_since: string | null;
+}
+
+export interface CausalMapRootSkill {
+  skill_id: string;
+  skill_name: string;
+  mastery: number;
+  affected_skill_count: number;
+  priority: 'critical' | 'high' | 'medium';
+}
+
+export interface CausalMapMisconception {
+  misconception_id: string;
+  name: string;
+  category: string;
+  confidence: number;
+  severity: string;
+  affected_skill_count: number;
+}
+
+export interface RepairSessionDTO {
+  repair_record_id: string;
+  misconception_id: string | null;
+  misconception_name: string | null;
+  root_cause_skill_id: string | null;
+  root_cause_skill_name: string | null;
+  repair_sequence_name: string;
+  status: 'queued' | 'in_progress' | 'completed' | 'failed' | 'deferred';
+  stages_completed: number;
+  total_stages: number;
+  estimated_duration_min: number;
+  priority: 'critical' | 'high' | 'medium';
+  rationale: string;
+}
+
+export interface CausalMapDTO {
+  root_cause_skills: CausalMapRootSkill[];
+  active_misconceptions: CausalMapMisconception[];
+  repair_queue: RepairSessionDTO[];
+}
+
+export interface LearningDNADTO {
+  student_id: string;
+  overall_level: string;
+  domain_profiles: Record<string, { mastery: number; velocity: number; weakest_skills: string[]; strongest_skills: string[] }>;
+  behaviour_profile: BehaviourProfileDTO;
+  active_misconceptions: Array<{ id: string; name: string; confidence: number; severity: string }>;
+  active_repair_ids: string[];
+  pathway_readiness: Record<string, unknown>;
+  stretch_readiness: Record<string, unknown>;
+  computed_at: string;
+  stale_since: string | null;
+}
+
+export interface ExplanationDTO {
+  summary: string;
+  factors: Array<{ factor_type: string; value: string | number; weight: number; direction: 'positive' | 'negative' | 'neutral' }>;
+  source_layer: string;
+  evidence_ids: string[];
+  generated_at: string;
+}
+
+// ─── Shared helpers (Stage 32) ────────────────────────────────────────────────
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const AUDIT_LOG_LIMIT = 200;
+const VALID_AUDIT_LAYERS = new Set(['foundation', 'behaviour', 'causal', 'predictive', 'orchestration', 'all']);
+
+function checkStudentAccess(caller: PredictionsCallerContext, studentId: string): boolean {
+  if (caller === null) return true;
+  const elevated =
+    caller.role === 'teacher' ||
+    caller.role === 'tutor' ||
+    caller.role === 'org_admin' ||
+    caller.role === 'platform_admin';
+  return elevated || caller.userId === studentId;
+}
+
+function staleSince(computedAt: string | null, nowMs: number): string | null {
+  if (computedAt === null) return null;
+  return nowMs - new Date(computedAt).getTime() > THIRTY_DAYS_MS ? computedAt : null;
+}
+
+// ─── getBehaviourProfile ─────────────────────────────────────────────────────
+
+/** GET /intelligence/behaviour-profile/{student_id} (arch §4.5, §6.4 BehaviourProfileDTO). */
+export async function getBehaviourProfile(
+  studentId: string,
+  db: DbClient,
+  caller: PredictionsCallerContext,
+  effects?: Partial<Effects>,
+): Promise<HandlerResult<BehaviourProfileDTO>> {
+  const eff = { ...DEFAULT_EFFECTS, ...effects };
+  if (!checkStudentAccess(caller, studentId)) {
+    return err(403, 'FORBIDDEN', 'Students may only read their own behaviour profile');
+  }
+  const res = await db
+    .from('behaviour_profile')
+    .select('avg_guess_rate,avg_fatigue_onset_minutes,persistence_score,avg_cognitive_load_comfort,time_pressure_sensitivity,session_length_sweet_spot,data_points,computed_at')
+    .eq('student_id', studentId)
+    .maybeSingle();
+  if (res.error !== null) return err(500, 'INTERNAL_ERROR', res.error.message);
+  if (res.data === null) return err(404, 'NOT_FOUND', `No behaviour profile for '${studentId}'`);
+  const row = res.data as BehaviourProfileRow2;
+  const computedAt = row.computed_at ?? eff.now();
+  return ok<BehaviourProfileDTO>({
+    avg_guess_rate: row.avg_guess_rate,
+    avg_fatigue_onset_minutes: row.avg_fatigue_onset_minutes,
+    persistence_score: row.persistence_score,
+    avg_cognitive_load_comfort: row.avg_cognitive_load_comfort,
+    time_pressure_sensitivity: row.time_pressure_sensitivity,
+    session_length_sweet_spot: row.session_length_sweet_spot,
+    data_points: row.data_points,
+    computed_at: computedAt,
+    stale_since: staleSince(computedAt, new Date(eff.now()).getTime()),
+  });
+}
+
+// ─── getAuditLog ─────────────────────────────────────────────────────────────
+
+/**
+ * GET /intelligence/audit-log/{student_id}?layer=&from=&to= (arch §4.5).
+ * ADR-0013: returns id, event_type, layer, created_at only (redacts input_snapshot,
+ * algorithm_version, trace_id). ISSUE-0022: v1 LIMIT 200 + truncated flag;
+ * cursor pagination deferred to v1.1.
+ */
+export async function getAuditLog(
+  studentId: string,
+  layer: string | null,
+  from: string | null,
+  to: string | null,
+  db: DbClient,
+  caller: PredictionsCallerContext,
+): Promise<HandlerResult<AuditLogResponse>> {
+  if (!checkStudentAccess(caller, studentId)) {
+    return err(403, 'FORBIDDEN', 'Students may only read their own audit log');
+  }
+  if (layer !== null && !VALID_AUDIT_LAYERS.has(layer)) {
+    return err(400, 'BAD_REQUEST', `Invalid layer '${layer}'; valid: ${[...VALID_AUDIT_LAYERS].join('|')}`);
+  }
+  if (from !== null && isNaN(Date.parse(from))) {
+    return err(400, 'BAD_REQUEST', `Invalid 'from' date '${from}'; must be ISO 8601`);
+  }
+  if (to !== null && isNaN(Date.parse(to))) {
+    return err(400, 'BAD_REQUEST', `Invalid 'to' date '${to}'; must be ISO 8601`);
+  }
+
+  // ISSUE-0022: v1 LIMIT 200 + truncated flag; cursor pagination deferred to v1.1.
+  let q = db
+    .from('intelligence_audit_log')
+    .select('id,event_type,layer,created_at')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+    .limit(AUDIT_LOG_LIMIT + 1); // +1 to detect truncation
+
+  if (layer !== null) q = q.eq('layer', layer);
+  if (from !== null) q = q.gte('created_at', from);
+  if (to !== null) q = q.lte('created_at', to);
+
+  const res = await q;
+  if (res.error !== null) return err(500, 'INTERNAL_ERROR', res.error.message);
+  const rows = (res.data ?? []) as AuditLogEntry[];
+  const truncated = rows.length > AUDIT_LOG_LIMIT;
+  return ok<AuditLogResponse>({
+    entries: truncated ? rows.slice(0, AUDIT_LOG_LIMIT) : rows,
+    truncated,
+  });
+}
+
+// ─── getExplanation ──────────────────────────────────────────────────────────
+
+/**
+ * GET /intelligence/explain/{decision_id} (arch §4.5, §6.4 ExplanationDTO).
+ * Returns 404 for not-found OR not-authorized — no 403 to prevent existence
+ * leakage (Q-32.7 resolution). Derives ExplanationDTO from explanation column;
+ * falls back to output + layer when explanation is null (Q-32.7).
+ */
+export async function getExplanation(
+  decisionId: string,
+  db: DbClient,
+  caller: PredictionsCallerContext,
+): Promise<HandlerResult<ExplanationDTO>> {
+  const res = await db
+    .from('intelligence_audit_log')
+    .select('id,student_id,event_type,layer,explanation,output,created_at')
+    .eq('id', decisionId)
+    .maybeSingle();
+  if (res.error !== null) return err(500, 'INTERNAL_ERROR', res.error.message);
+
+  // 404 for not-found OR unauthorized — no 403 to prevent existence leak.
+  if (res.data === null) return err(404, 'NOT_FOUND', 'Decision not found');
+  const row = res.data as AuditLogEntryFull;
+  if (!checkStudentAccess(caller, row.student_id)) {
+    return err(404, 'NOT_FOUND', 'Decision not found');
+  }
+
+  // Return stored explanation if present; derive from output otherwise (Q-32.7).
+  if (row.explanation !== null && typeof row.explanation === 'object') {
+    return ok<ExplanationDTO>(row.explanation as ExplanationDTO);
+  }
+  return ok<ExplanationDTO>({
+    summary: `Decision at layer '${row.layer}': ${row.event_type}`,
+    factors: [],
+    source_layer: row.layer,
+    evidence_ids: [],
+    generated_at: row.created_at,
+  });
+}
+
+// ─── getCausalMap ─────────────────────────────────────────────────────────────
+
+/** GET /intelligence/causal-map/{student_id} (arch §4.5, §6.4 CausalMapDTO). */
+export async function getCausalMap(
+  studentId: string,
+  db: DbClient,
+  caller: PredictionsCallerContext,
+): Promise<HandlerResult<CausalMapDTO>> {
+  if (!checkStudentAccess(caller, studentId)) {
+    return err(403, 'FORBIDDEN', 'Students may only read their own causal map');
+  }
+
+  // 1. Most recent L3b audit log → root_causes skill IDs.
+  const auditRes = await db
+    .from('intelligence_audit_log')
+    .select('output')
+    .eq('student_id', studentId)
+    .eq('event_type', 'L3b.causal.full')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (auditRes.error !== null) return err(500, 'INTERNAL_ERROR', auditRes.error.message);
+  const auditRows = (auditRes.data ?? []) as { output: { root_causes?: string[] } }[];
+  const rootCauseIds = ([...(auditRows[0]?.output?.root_causes ?? [])]).sort();
+
+  // 2. Skill names + mastery for root cause skills.
+  const rootCauseSkills: CausalMapRootSkill[] = [];
+  if (rootCauseIds.length > 0) {
+    const [snRes, masteryRes] = await Promise.all([
+      db.from('skill_node').select('id,name').in('id', rootCauseIds),
+      db.from('skill_mastery').select('skill_id,mastery_level').eq('student_id', studentId).in('skill_id', rootCauseIds),
+    ]);
+    if (snRes.error !== null) return err(500, 'INTERNAL_ERROR', snRes.error.message);
+    if (masteryRes.error !== null) return err(500, 'INTERNAL_ERROR', masteryRes.error.message);
+    const nameMap = new Map(((snRes.data ?? []) as { id: string; name: string }[]).map(r => [r.id, r.name]));
+    const mMap = new Map(((masteryRes.data ?? []) as { skill_id: string; mastery_level: number }[]).map(r => [r.skill_id, r.mastery_level]));
+    for (const skillId of rootCauseIds) {
+      const mastery = mMap.get(skillId) ?? 0;
+      rootCauseSkills.push({
+        skill_id: skillId,
+        skill_name: nameMap.get(skillId) ?? skillId,
+        mastery,
+        affected_skill_count: 1, // v1 simplified (full downstream count requires graph traversal)
+        priority: mastery < 0.3 ? 'critical' : mastery < 0.5 ? 'high' : 'medium',
+      });
+    }
+  }
+
+  // 3. Active misconceptions (Q-32.6: status IN ('active','suspected')).
+  const miscRes = await db
+    .from('student_misconception')
+    .select('misconception_id,confidence,status')
+    .eq('student_id', studentId)
+    .in('status', ['active', 'suspected']);
+  if (miscRes.error !== null) return err(500, 'INTERNAL_ERROR', miscRes.error.message);
+  const miscRows = (miscRes.data ?? []) as { misconception_id: string; confidence: number; status: string }[];
+  const activeMiscIds = miscRows.map(r => r.misconception_id).sort();
+
+  const miscMetaMap = new Map<string, { name: string; category: string; severity: string }>();
+  if (activeMiscIds.length > 0) {
+    const mRes = await db.from('misconception').select('id,name,category,severity').in('id', activeMiscIds);
+    if (mRes.error !== null) return err(500, 'INTERNAL_ERROR', mRes.error.message);
+    for (const row of (mRes.data ?? []) as { id: string; name: string; category: string; severity: string }[]) {
+      miscMetaMap.set(row.id, row);
+    }
+  }
+  const activeMisconceptions: CausalMapMisconception[] = [...miscRows]
+    .sort((a, b) => a.misconception_id.localeCompare(b.misconception_id))
+    .map(r => ({
+      misconception_id: r.misconception_id,
+      name: miscMetaMap.get(r.misconception_id)?.name ?? r.misconception_id,
+      category: miscMetaMap.get(r.misconception_id)?.category ?? 'conceptual',
+      confidence: r.confidence,
+      severity: miscMetaMap.get(r.misconception_id)?.severity ?? 'moderate',
+      affected_skill_count: 1,
+    }));
+
+  // 4. Repair queue (status IN ('queued','in_progress')).
+  const repairRes = await db
+    .from('repair_record')
+    .select('id,repair_sequence_id,misconception_id,root_cause_skill_id,status,stages_completed,total_stages')
+    .eq('student_id', studentId)
+    .in('status', ['queued', 'in_progress']);
+  if (repairRes.error !== null) return err(500, 'INTERNAL_ERROR', repairRes.error.message);
+  const repairRows = (repairRes.data ?? []) as RepairRecordRow[];
+
+  const repairSeqIds = [...new Set(repairRows.map(r => r.repair_sequence_id))].sort();
+  const seqMap = new Map<string, { display_name: string; estimated_duration_minutes: number }>();
+  if (repairSeqIds.length > 0) {
+    const rsRes = await db.from('repair_sequence').select('id,display_name,estimated_duration_minutes').in('id', repairSeqIds);
+    if (rsRes.error !== null) return err(500, 'INTERNAL_ERROR', rsRes.error.message);
+    for (const row of (rsRes.data ?? []) as { id: string; display_name: string; estimated_duration_minutes: number }[]) {
+      seqMap.set(row.id, row);
+    }
+  }
+  const repairQueue: RepairSessionDTO[] = [...repairRows]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map(r => ({
+      repair_record_id: r.id,
+      misconception_id: r.misconception_id,
+      misconception_name: r.misconception_id !== null ? (miscMetaMap.get(r.misconception_id)?.name ?? null) : null,
+      root_cause_skill_id: r.root_cause_skill_id,
+      root_cause_skill_name: null,
+      repair_sequence_name: seqMap.get(r.repair_sequence_id)?.display_name ?? r.repair_sequence_id,
+      status: r.status as RepairSessionDTO['status'],
+      stages_completed: r.stages_completed,
+      total_stages: r.total_stages,
+      estimated_duration_min: seqMap.get(r.repair_sequence_id)?.estimated_duration_minutes ?? 15,
+      priority: 'medium' as const,
+      rationale: `Repair for ${r.misconception_id ?? r.root_cause_skill_id ?? 'unknown'}`,
+    }));
+
+  return ok<CausalMapDTO>({ root_cause_skills: rootCauseSkills, active_misconceptions: activeMisconceptions, repair_queue: repairQueue });
+}
+
+// ─── getLearnerProfile ────────────────────────────────────────────────────────
+
+/** GET /intelligence/learner-profile/{student_id} (arch §4.5, §6.4 LearningDNADTO). */
+export async function getLearnerProfile(
+  studentId: string,
+  db: DbClient,
+  caller: PredictionsCallerContext,
+  effects?: Partial<Effects>,
+): Promise<HandlerResult<LearningDNADTO>> {
+  const eff = { ...DEFAULT_EFFECTS, ...effects };
+  if (!checkStudentAccess(caller, studentId)) {
+    return err(403, 'FORBIDDEN', 'Students may only read their own learning profile');
+  }
+
+  // 1. user_profile
+  const profileRes = await db.from('user_profile').select('id,year_level').eq('id', studentId).maybeSingle();
+  if (profileRes.error !== null) return err(500, 'INTERNAL_ERROR', profileRes.error.message);
+  if (profileRes.data === null) return err(404, 'NOT_FOUND', `Student '${studentId}' not found`);
+  const profile = profileRes.data as { id: string; year_level: number | null };
+
+  // 2. skill_mastery + learning_velocity
+  const [masteryRes, velocityRes] = await Promise.all([
+    db.from('skill_mastery').select('skill_id,mastery_level').eq('student_id', studentId),
+    db.from('learning_velocity').select('skill_id,velocity').eq('student_id', studentId),
+  ]);
+  if (masteryRes.error !== null) return err(500, 'INTERNAL_ERROR', masteryRes.error.message);
+  if (velocityRes.error !== null) return err(500, 'INTERNAL_ERROR', velocityRes.error.message);
+  const masteryRows = (masteryRes.data ?? []) as { skill_id: string; mastery_level: number }[];
+  const velocityMap = new Map(((velocityRes.data ?? []) as { skill_id: string; velocity: number }[]).map(r => [r.skill_id, r.velocity]));
+  const skillIds = masteryRows.map(r => r.skill_id).sort();
+
+  // 3. skill_node for mastered skills → parent IDs for grouping
+  const skillNodeMap = new Map<string, { parent_id: string | null }>();
+  let parentIds: string[] = [];
+  if (skillIds.length > 0) {
+    const snRes = await db.from('skill_node').select('id,parent_id').in('id', skillIds);
+    if (snRes.error !== null) return err(500, 'INTERNAL_ERROR', snRes.error.message);
+    for (const row of (snRes.data ?? []) as { id: string; parent_id: string | null }[]) {
+      skillNodeMap.set(row.id, row);
+      if (row.parent_id !== null) parentIds.push(row.parent_id);
+    }
+    parentIds = [...new Set(parentIds)].sort();
+  }
+
+  // 4. Parent (strand) skill_node names
+  const domainNameMap = new Map<string, string>();
+  if (parentIds.length > 0) {
+    const domRes = await db.from('skill_node').select('id,name').in('id', parentIds);
+    if (domRes.error !== null) return err(500, 'INTERNAL_ERROR', domRes.error.message);
+    for (const row of (domRes.data ?? []) as { id: string; name: string }[]) {
+      domainNameMap.set(row.id, row.name);
+    }
+  }
+
+  // Build domain_profiles keyed by strand name.
+  const domainGroups = new Map<string, { skillId: string; mastery: number; velocity: number }[]>();
+  for (const m of [...masteryRows].sort((a, b) => a.skill_id.localeCompare(b.skill_id))) {
+    const node = skillNodeMap.get(m.skill_id);
+    const parentId = node?.parent_id ?? null;
+    const key = parentId !== null ? (domainNameMap.get(parentId) ?? 'other') : 'other';
+    const group = domainGroups.get(key) ?? [];
+    group.push({ skillId: m.skill_id, mastery: m.mastery_level, velocity: velocityMap.get(m.skill_id) ?? 0 });
+    domainGroups.set(key, group);
+  }
+  const domainProfiles: Record<string, { mastery: number; velocity: number; weakest_skills: string[]; strongest_skills: string[] }> = {};
+  for (const [key, skills] of [...domainGroups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const sorted = [...skills].sort((a, b) => a.mastery - b.mastery);
+    domainProfiles[key] = {
+      mastery: skills.reduce((s, x) => s + x.mastery, 0) / Math.max(1, skills.length),
+      velocity: skills.reduce((s, x) => s + x.velocity, 0) / Math.max(1, skills.length),
+      weakest_skills: sorted.slice(0, 3).map(s => s.skillId),
+      strongest_skills: sorted.slice(-3).reverse().map(s => s.skillId),
+    };
+  }
+
+  // 5. behaviour_profile
+  const bpRes = await db.from('behaviour_profile')
+    .select('avg_guess_rate,avg_fatigue_onset_minutes,persistence_score,avg_cognitive_load_comfort,time_pressure_sensitivity,session_length_sweet_spot,data_points,computed_at')
+    .eq('student_id', studentId)
+    .maybeSingle();
+  if (bpRes.error !== null) return err(500, 'INTERNAL_ERROR', bpRes.error.message);
+  const bpRow = bpRes.data as BehaviourProfileRow2 | null;
+  const nowMs = new Date(eff.now()).getTime();
+  const bpComputedAt = bpRow?.computed_at ?? eff.now();
+  const behaviourProfile: BehaviourProfileDTO = bpRow !== null ? {
+    avg_guess_rate: bpRow.avg_guess_rate,
+    avg_fatigue_onset_minutes: bpRow.avg_fatigue_onset_minutes,
+    persistence_score: bpRow.persistence_score,
+    avg_cognitive_load_comfort: bpRow.avg_cognitive_load_comfort,
+    time_pressure_sensitivity: bpRow.time_pressure_sensitivity,
+    session_length_sweet_spot: bpRow.session_length_sweet_spot,
+    data_points: bpRow.data_points,
+    computed_at: bpComputedAt,
+    stale_since: staleSince(bpComputedAt, nowMs),
+  } : {
+    avg_guess_rate: 0.1, avg_fatigue_onset_minutes: 20, persistence_score: 0.5,
+    avg_cognitive_load_comfort: 0.4, time_pressure_sensitivity: 0.3, session_length_sweet_spot: 20,
+    data_points: 0, computed_at: eff.now(), stale_since: null,
+  };
+
+  // 6. Active misconceptions (Q-32.6: status IN ('active','suspected')).
+  const miscRes = await db.from('student_misconception')
+    .select('misconception_id,confidence')
+    .eq('student_id', studentId)
+    .in('status', ['active', 'suspected']);
+  if (miscRes.error !== null) return err(500, 'INTERNAL_ERROR', miscRes.error.message);
+  const miscRows = (miscRes.data ?? []) as { misconception_id: string; confidence: number }[];
+  const miscIds = miscRows.map(r => r.misconception_id).sort();
+  const miscNameMap3 = new Map<string, { name: string; severity: string }>();
+  if (miscIds.length > 0) {
+    const mRes = await db.from('misconception').select('id,name,severity').in('id', miscIds);
+    if (mRes.error !== null) return err(500, 'INTERNAL_ERROR', mRes.error.message);
+    for (const row of (mRes.data ?? []) as { id: string; name: string; severity: string }[]) {
+      miscNameMap3.set(row.id, row);
+    }
+  }
+  const activeMisconceptions = [...miscRows]
+    .sort((a, b) => a.misconception_id.localeCompare(b.misconception_id))
+    .map(r => ({
+      id: r.misconception_id,
+      name: miscNameMap3.get(r.misconception_id)?.name ?? r.misconception_id,
+      confidence: r.confidence,
+      severity: miscNameMap3.get(r.misconception_id)?.severity ?? 'moderate',
+    }));
+
+  // 7. Active repair IDs.
+  const repairRes = await db.from('repair_record').select('id').eq('student_id', studentId).in('status', ['queued', 'in_progress']);
+  if (repairRes.error !== null) return err(500, 'INTERNAL_ERROR', repairRes.error.message);
+  const activeRepairIds = ((repairRes.data ?? []) as { id: string }[]).map(r => r.id).sort();
+
+  // 8. Pathway readiness: all L5 cache entries for this student.
+  const cacheRes = await db.from('cohort_metric_cache').select('metric_key,value').eq('cohort_key', studentId).order('computed_at', { ascending: false });
+  if (cacheRes.error !== null) return err(500, 'INTERNAL_ERROR', cacheRes.error.message);
+  const pathwayReadiness: Record<string, unknown> = {};
+  for (const row of (cacheRes.data ?? []) as { metric_key: string; value: unknown }[]) {
+    if (row.metric_key.startsWith('readiness:') && !(row.metric_key.slice('readiness:'.length) in pathwayReadiness)) {
+      pathwayReadiness[row.metric_key.slice('readiness:'.length)] = row.value;
+    }
+  }
+
+  return ok<LearningDNADTO>({
+    student_id: studentId,
+    overall_level: profile.year_level !== null ? `Year ${profile.year_level}` : 'Unknown',
+    domain_profiles: domainProfiles,
+    behaviour_profile: behaviourProfile,
+    active_misconceptions: activeMisconceptions,
+    active_repair_ids: activeRepairIds,
+    pathway_readiness: pathwayReadiness,
+    stretch_readiness: {}, // PHASE-2 stub — L6 deferred per CLAUDE.md scope
+    computed_at: bpComputedAt,
+    stale_since: staleSince(bpComputedAt, nowMs),
+  });
 }

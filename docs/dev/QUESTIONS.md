@@ -9,6 +9,71 @@
 
 ## Resolved
 
+### Q-32.7 — getExplanation: return 403 or 404 when caller lacks access to another student's decision?
+
+- Date raised: 2026-05-22 (Stage 32)
+- Asked of: self
+- Source: Arch §4.5 (line 1545): `GET /intelligence/explain/{decision_id}`. No explicit note on error code when caller lacks access.
+- Question: (A) Return 403 FORBIDDEN when caller's userId ≠ decision.student_id and role < teacher; (B) return 404 for both not-found and unauthorized to prevent existence leak.
+- Why ambiguous: Returning 403 confirms the decision_id exists — an attacker can enumerate decision IDs by probing. Returning 404 for unauthorized prevents this but diverges from REST convention.
+- Blocking? no
+- Assumed answer (if proceeding): **Option B** — 404 for both not-found and unauthorized. Inline comment: `// 404 for both not-found and unauthorized — do not leak existence.`
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-22): **Option B**. No 403 from getExplanation in any scenario.
+
+### Q-32.6 — getAuditLog/getCausalMap active_misconceptions: which statuses to include?
+
+- Date raised: 2026-05-22 (Stage 32)
+- Asked of: self
+- Source: Spec §10.5 says "active misconceptions"; student_misconception has status enum `active | suspected | resolved`.
+- Question: (A) Status = 'active' only; (B) status IN ('active', 'suspected') — suspected means unconfirmed but present.
+- Why ambiguous: "Active" in prose could mean the narrow DB value or the broader "not resolved" set.
+- Blocking? no
+- Assumed answer (if proceeding): **Option B** — status IN ('active', 'suspected'). Suspected misconceptions are actionable teaching signals.
+- Code affected: `supabase/functions/intelligence-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-22): **Option B**. getCausalMap and getLearnerProfile both use `.in('status', ['active', 'suspected'])`.
+
+### Q-32.5 — generateAssignment exclude_recently_seen: implement fully or skip for v1?
+
+- Date raised: 2026-05-22 (Stage 32)
+- Asked of: self
+- Source: Spec §14.3 line 2135: `exclude_recently_seen: last_14_days`.
+- Question: (A) Skip for v1 — return any items without the 14-day filter; (B) implement fully via class_student + session_record + session_response join.
+- Why ambiguous: Requires 3 extra DB queries per generateAssignment call.
+- Blocking? no
+- Assumed answer (if proceeding): **Option B** — full implementation. Teacher-triggered operation; 3 extra queries acceptable.
+- Code affected: `supabase/functions/analytics-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-22): **Option B**. Full exclusion implemented.
+
+### Q-32.4 — getPathwayReadiness composite_label thresholds not in arch; what are the boundaries?
+
+- Date raised: 2026-05-22 (Stage 32)
+- Asked of: self
+- Source: PathwayReadinessDTO.composite_label = 'not_ready' | 'developing' | 'on_track' | 'ready' | 'strong'. No threshold values in arch.
+- Question: What numeric boundaries map each label?
+- Why ambiguous: No spec citation for exact thresholds.
+- Blocking? no
+- Assumed answer (if proceeding): `<0.3=not_ready, <0.5=developing, <0.7=on_track, <0.85=ready, ≥0.85=strong`. Consistent with `overall_level` quintile bands implied by spec §12.
+- Code affected: `supabase/functions/analytics-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-22): Thresholds as above, implemented in `compositeLabel()` helper.
+
+### Q-32.3 — getPathwayReadiness: L5 cache payload lacks separate readiness dimensions + skill names; how to map to PathwayReadinessDTO?
+
+- Date raised: 2026-05-22 (Stage 32)
+- Asked of: self
+- Source: Arch §6.5 PathwayReadinessDTO (line 2023): four distinct readiness dimensions (skill_readiness, coverage, condition_readiness, composite_readiness), gap_skills with skill_name+target_mastery, active_misconceptions_affecting, predicted_ready_date.
+- Question: (A) Defer until separate predictive_skill_score table adds individual dimensions; (B) map v1 single composite score to all four dimension fields; join skill_node.name for gap skill names; null for predicted_ready_date/exam_date.
+- Why ambiguous: L5 cache only stores current_readiness_score (single composite) + gap_skills (skill_id+mastery_level+velocity). No per-dimension breakdown, no skill_name, no misconception count.
+- Blocking? no
+- Assumed answer (if proceeding): **Option B**. All four readiness fields = composite score (v1 simplification); join skill_node.name at read time; target_mastery = 0.6 (L5_SKILL_THRESHOLD); active_misconceptions_affecting = 0; predicted_ready_date/exam_date/days_remaining = null (DEV-20260519-1).
+- Code affected: `supabase/functions/analytics-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-22): **Option B**. Inline note added to each null field citing Q-32.3 or DEV-20260519-1.
+
 ### Q-32.2 — GET /analytics/cohort/{group_id}: no named CohortDTO in arch §6; response shape?
 
 - Date raised: 2026-05-22 (Stage 32 morning ritual)

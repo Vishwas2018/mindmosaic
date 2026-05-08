@@ -23,6 +23,9 @@ import {
   processTeacherRefresh,
   getAutoGroups,
   getInterventionAlerts,
+  getCohort,
+  getPathwayReadiness,
+  generateAssignment,
   type DbClient,
 } from '../handlers.ts';
 
@@ -487,5 +490,213 @@ describe('getInterventionAlerts', () => {
     expect(result.status).toBe(200);
     expect(result.data).toHaveLength(1);
     expect(result.data![0]!.alert_type).toBe('low_persistence');
+  });
+});
+
+// ─── Stage 32 additions ──────────────────────────────────────────────────────
+
+const GROUP_ID2     = `class:${CLASS_ID}:${SKILL_ID}`;
+const PATHWAY_SLUG2 = 'naplan-y5-numeracy';
+// STALE_DATE2: well in the past so stale_since is set regardless of real system clock.
+const STALE_DATE2   = '2024-01-01T00:00:00.000Z';
+const ITEM_A2       = 'item-a0000-seen-in-session';
+const ITEM_B2       = 'item-b0000-not-seen';
+
+describe('getCohort', () => {
+  it('getCohort: returns CohortDTO with ClusterGroup[] for teacher caller', async () => {
+    const db = buildClient({
+      class_group: { data: [{ teacher_id: TEACHER_ID }], error: null },
+      cohort_metric_cache: {
+        data: [{
+          cohort_key: GROUP_ID2,
+          value: { groups: [{ centroid: [0.5], member_ids: [STUDENT_A] }] },
+          computed_at: '2026-05-20T10:00:00.000Z',
+        }],
+        error: null,
+      },
+    });
+
+    const result = await getCohort(GROUP_ID2, { userId: TEACHER_ID, role: 'teacher' }, db);
+    expect(result.status).toBe(200);
+    expect(result.data).not.toBeNull();
+    expect(result.data!.group_id).toBe(GROUP_ID2);
+    expect(result.data!.class_id).toBe(CLASS_ID);
+    expect(result.data!.skill_id).toBe(SKILL_ID);
+    expect(result.data!.groups).toHaveLength(1);
+  });
+
+  it('getCohort: student caller → 403 (teacher/admin role required)', async () => {
+    const db = buildClient({});
+    const result = await getCohort(GROUP_ID2, { userId: STUDENT_A, role: 'student' }, db);
+    expect(result.status).toBe(403);
+    expect(result.error).toBe('FORBIDDEN');
+  });
+
+  it('getCohort: returns 404 for unknown group_id', async () => {
+    const db = buildClient({
+      class_group: { data: [{ teacher_id: TEACHER_ID }], error: null },
+      cohort_metric_cache: { data: [], error: null },
+    });
+    const result = await getCohort(GROUP_ID2, { userId: TEACHER_ID, role: 'teacher' }, db);
+    expect(result.status).toBe(404);
+    expect(result.error).toBe('NOT_FOUND');
+  });
+});
+
+describe('getPathwayReadiness', () => {
+  it('getPathwayReadiness: returns PathwayReadinessDTO; stale_since set when predictive data stale', async () => {
+    const db = buildClient({
+      cohort_metric_cache: {
+        data: [{
+          value: {
+            status: 'fresh', current_readiness_score: 0.6,
+            gap_skills: [], data_points: 5, computed_at: STALE_DATE2,
+          },
+          computed_at: STALE_DATE2,
+        }],
+        error: null,
+      },
+      pathway: { data: [{ display_name: 'NAPLAN Y5 Numeracy' }], error: null },
+    });
+
+    const result = await getPathwayReadiness(
+      STUDENT_A, PATHWAY_SLUG2,
+      { userId: STUDENT_A, role: 'student' }, db,
+    );
+    expect(result.status).toBe(200);
+    expect(result.data).not.toBeNull();
+    expect(result.data!.stale_since).toBe(STALE_DATE2);
+    expect(result.data!.pathway_name).toBe('NAPLAN Y5 Numeracy');
+    expect(result.data!.composite_readiness).toBeCloseTo(0.6);
+  });
+
+  it('getPathwayReadiness: student reads own pathway; teacher reads any student in tenant', async () => {
+    const stub = {
+      cohort_metric_cache: {
+        data: [{
+          value: { status: 'fresh', current_readiness_score: 0.7, gap_skills: [], data_points: 5, computed_at: '2026-05-20T10:00:00.000Z' },
+          computed_at: '2026-05-20T10:00:00.000Z',
+        }],
+        error: null,
+      },
+      pathway: { data: [{ display_name: 'NAPLAN Y5 Numeracy' }], error: null },
+    };
+
+    // Student reads own pathway.
+    const db1 = buildClient(stub);
+    const r1 = await getPathwayReadiness(STUDENT_A, PATHWAY_SLUG2, { userId: STUDENT_A, role: 'student' }, db1);
+    expect(r1.status).toBe(200);
+
+    // Teacher reads a different student's pathway.
+    const db2 = buildClient(stub);
+    const r2 = await getPathwayReadiness(STUDENT_A, PATHWAY_SLUG2, { userId: TEACHER_ID, role: 'teacher' }, db2);
+    expect(r2.status).toBe(200);
+  });
+
+  it('getPathwayReadiness: returns 404 for unknown student_id or pathway_slug', async () => {
+    const db = buildClient({
+      cohort_metric_cache: { data: [], error: null },
+    });
+    const result = await getPathwayReadiness(
+      STUDENT_A, 'unknown-pathway',
+      { userId: STUDENT_A, role: 'student' }, db,
+    );
+    expect(result.status).toBe(404);
+  });
+});
+
+describe('generateAssignment', () => {
+  it('generateAssignment: returns DraftAssignmentDTO without INSERT to assignment table (Q-32.1 Option B)', async () => {
+    const db = buildClient({
+      user_profile:  { data: [{ display_name: 'Ms Teacher' }], error: null },
+      class_student: { data: [{ student_id: STUDENT_A }], error: null },
+      session_record:{ data: [], error: null },
+      item:          { data: [{ id: 'item-1', skill_ids: [SKILL_ID], difficulty: 0.5, discrimination: 0.8 }], error: null },
+      skill_node:    { data: [{ id: SKILL_ID, name: 'Algebra' }], error: null },
+    });
+
+    const result = await generateAssignment(
+      { class_id: CLASS_ID, target_skill_ids: [SKILL_ID] },
+      { userId: TEACHER_ID, role: 'teacher' },
+      db,
+    );
+    expect(result.status).toBe(200);
+    expect(result.data).not.toBeNull();
+    expect(result.data!.status).toBe('draft');
+    expect(result.data!.auto_generated).toBe(true);
+    // Stage 33 assignments-svc persists the draft — no insert here (Q-32.1 Option B).
+    const inserts = db.calls.filter((c) => c.table === 'assignment' && c.op === 'insert');
+    expect(inserts).toHaveLength(0);
+  });
+
+  it('generateAssignment: item_count defaults to 15 when not specified (spec §14.3 line 2135)', async () => {
+    const db = buildClient({
+      user_profile:  { data: [{ display_name: 'Ms Teacher' }], error: null },
+      class_student: { data: [], error: null }, // empty roster → no session queries
+      item: {
+        data: Array.from({ length: 20 }, (_, i) => ({
+          id: `item-${i}`,
+          skill_ids: [SKILL_ID],
+          difficulty: 0.5,
+          discrimination: 0.8,
+        })),
+        error: null,
+      },
+      skill_node: { data: [{ id: SKILL_ID, name: 'Algebra' }], error: null },
+    });
+
+    const result = await generateAssignment(
+      { class_id: CLASS_ID }, // no item_count supplied
+      { userId: TEACHER_ID, role: 'teacher' },
+      db,
+    );
+    expect(result.status).toBe(200);
+    expect(result.data!.item_count).toBe(15);
+  });
+
+  it('generateAssignment: excludes items seen in last 14 days (spec §14.3 line 2135)', async () => {
+    const SEEN_SKILL   = 's0000000-0000-4000-8000-000000000099';
+    const UNSEEN_SKILL = 's0000000-0000-4000-8000-000000000100';
+    const db = buildClient({
+      user_profile:     { data: [{ display_name: 'Ms Teacher' }], error: null },
+      class_student:    { data: [{ student_id: STUDENT_A }], error: null },
+      session_record:   { data: [{ id: 'sess-recent' }], error: null },
+      session_response: { data: [{ item_id: ITEM_A2 }], error: null }, // ITEM_A2 seen recently
+      item: {
+        data: [
+          { id: ITEM_A2, skill_ids: [SEEN_SKILL],   difficulty: 0.5, discrimination: 0.8 },
+          { id: ITEM_B2, skill_ids: [UNSEEN_SKILL], difficulty: 0.5, discrimination: 0.7 },
+        ],
+        error: null,
+      },
+      skill_node: {
+        data: [
+          { id: SEEN_SKILL,   name: 'Seen Skill' },
+          { id: UNSEEN_SKILL, name: 'Unseen Skill' },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await generateAssignment(
+      { class_id: CLASS_ID },
+      { userId: TEACHER_ID, role: 'teacher' },
+      db,
+    );
+    expect(result.status).toBe(200);
+    // ITEM_A2 (SEEN_SKILL) was excluded; only ITEM_B2 (UNSEEN_SKILL) passes.
+    expect(result.data!.target_skill_ids).toContain(UNSEEN_SKILL);
+    expect(result.data!.target_skill_ids).not.toContain(SEEN_SKILL);
+  });
+
+  it('generateAssignment: student caller → 403 (teacher role required)', async () => {
+    const db = buildClient({});
+    const result = await generateAssignment(
+      { class_id: CLASS_ID },
+      { userId: STUDENT_A, role: 'student' },
+      db,
+    );
+    expect(result.status).toBe(403);
+    expect(result.error).toBe('FORBIDDEN');
   });
 });

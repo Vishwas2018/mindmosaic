@@ -22,6 +22,9 @@ import {
   processTeacherRefresh,
   getAutoGroups,
   getInterventionAlerts,
+  getCohort,
+  getPathwayReadiness,
+  generateAssignment,
   type DbClient as HandlerDbClient,
   type Caller,
 } from './handlers.ts';
@@ -123,6 +126,89 @@ Deno.serve(async (req: Request) => {
         return jsonError('INTERNAL_ERROR', 'Database error', traceId, 500);
       }
       return jsonOk(result.data ?? [], traceId, 200);
+    }
+
+    // ------------------------------------------------------------------
+    // GET /analytics/cohort/{group_id} — role-gated (Stage 32, arch §4.7)
+    // group_id = cohort_key format: class:{class_id}:{skill_id}
+    // ------------------------------------------------------------------
+    const cohortMatch = path.match(/^\/analytics\/cohort\/([^/]+)$/);
+    if (method === 'GET' && cohortMatch !== null) {
+      const groupId = cohortMatch[1]!;
+      const svcHeader = req.headers.get('x-mm-service-role');
+      let caller: Caller;
+      if (svcHeader !== null && svcHeader === SERVICE_ROLE_KEY) {
+        caller = { userId: '', role: 'platform_admin' };
+      } else {
+        const auth = await verifyBearer(req, db);
+        if (auth === null) {
+          status = 401;
+          return jsonError('UNAUTHENTICATED', 'Bearer token required', traceId, 401);
+        }
+        const role = (auth.user.app_metadata?.['role'] as string | undefined) ?? 'student';
+        caller = { userId: auth.user.id, role };
+      }
+      const result = await getCohort(groupId, caller, db as unknown as HandlerDbClient);
+      status = result.status;
+      if (result.status === 403) return jsonError('FORBIDDEN', 'Teacher access to own classes only', traceId, 403);
+      if (result.status === 404) return jsonError('NOT_FOUND', 'Cohort not found', traceId, 404);
+      if (result.status === 500) return jsonError('INTERNAL_ERROR', 'Database error', traceId, 500);
+      return jsonOk(result.data ?? null, traceId, 200);
+    }
+
+    // ------------------------------------------------------------------
+    // GET /analytics/pathway-readiness/{student_id}/{pathway_slug} — role-gated (Stage 32, arch §4.7)
+    // ------------------------------------------------------------------
+    const pathwayReadinessMatch = path.match(/^\/analytics\/pathway-readiness\/([^/]+)\/([^/]+)$/);
+    if (method === 'GET' && pathwayReadinessMatch !== null) {
+      const studentId = pathwayReadinessMatch[1]!;
+      const pathwaySlug = pathwayReadinessMatch[2]!;
+      const svcHeader = req.headers.get('x-mm-service-role');
+      let caller: Caller;
+      if (svcHeader !== null && svcHeader === SERVICE_ROLE_KEY) {
+        caller = { userId: '', role: 'platform_admin' };
+      } else {
+        const auth = await verifyBearer(req, db);
+        if (auth === null) {
+          status = 401;
+          return jsonError('UNAUTHENTICATED', 'Bearer token required', traceId, 401);
+        }
+        const role = (auth.user.app_metadata?.['role'] as string | undefined) ?? 'student';
+        caller = { userId: auth.user.id, role };
+      }
+      const result = await getPathwayReadiness(studentId, pathwaySlug, caller, db as unknown as HandlerDbClient);
+      status = result.status;
+      if (result.status === 403) return jsonError('FORBIDDEN', 'Access denied', traceId, 403);
+      if (result.status === 404) return jsonError('NOT_FOUND', 'Pathway readiness data not found', traceId, 404);
+      if (result.status === 500) return jsonError('INTERNAL_ERROR', 'Database error', traceId, 500);
+      return jsonOk(result.data ?? null, traceId, 200);
+    }
+
+    // ------------------------------------------------------------------
+    // POST /analytics/generate-assignment — role-gated (Stage 32, arch §4.7, spec §14.3)
+    // Teacher/admin only. Returns DraftAssignmentDTO without INSERT (Q-32.1).
+    // ------------------------------------------------------------------
+    if (method === 'POST' && path === '/analytics/generate-assignment') {
+      const svcHeader = req.headers.get('x-mm-service-role');
+      let caller: Caller;
+      if (svcHeader !== null && svcHeader === SERVICE_ROLE_KEY) {
+        caller = { userId: '', role: 'platform_admin' };
+      } else {
+        const auth = await verifyBearer(req, db);
+        if (auth === null) {
+          status = 401;
+          return jsonError('UNAUTHENTICATED', 'Bearer token required', traceId, 401);
+        }
+        const role = (auth.user.app_metadata?.['role'] as string | undefined) ?? 'student';
+        caller = { userId: auth.user.id, role };
+      }
+      const rawBody: unknown = await req.json();
+      const result = await generateAssignment(rawBody, caller, db as unknown as HandlerDbClient);
+      status = result.status;
+      if (result.status === 403) return jsonError('FORBIDDEN', 'Teacher/admin only', traceId, 403);
+      if (result.status === 400) return jsonError('BAD_REQUEST', result.error ?? 'Invalid request body', traceId, 400);
+      if (result.status === 500) return jsonError('INTERNAL_ERROR', 'Database error', traceId, 500);
+      return jsonOk(result.data ?? null, traceId, 200);
     }
 
     // ------------------------------------------------------------------

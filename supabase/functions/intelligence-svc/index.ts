@@ -27,6 +27,11 @@ import {
   processCausalFull,
   processPredictiveRefresh,
   getPredictions,
+  getLearnerProfile,
+  getCausalMap,
+  getBehaviourProfile,
+  getAuditLog,
+  getExplanation,
   type DbClient as HandlerDbClient,
   type PredictiveRefreshInput,
   type PredictionsCallerContext,
@@ -90,6 +95,68 @@ Deno.serve(async (req: Request) => {
       status = result.status;
       if (result.ok) return jsonOk(result.data, traceId, result.status);
       return jsonError(result.code, result.message, traceId, result.status);
+    }
+
+    // ── Stage 32 role-gated GET endpoints ────────────────────────────────────
+    // All accept service-role header OR Bearer JWT (same auth pattern as predictions).
+
+    const roleGatedMatch =
+      path.match(/^\/intelligence\/learner-profile\/([^/]+)$/) ??
+      path.match(/^\/intelligence\/causal-map\/([^/]+)$/) ??
+      path.match(/^\/intelligence\/behaviour-profile\/([^/]+)$/) ??
+      path.match(/^\/intelligence\/audit-log\/([^/]+)$/) ??
+      path.match(/^\/intelligence\/explain\/([^/]+)$/);
+
+    if (method === 'GET' && roleGatedMatch !== null) {
+      const paramId = roleGatedMatch[1]!;
+      const db = serviceClient();
+      let caller: PredictionsCallerContext;
+      const svcHdr = req.headers.get('x-mm-service-role');
+      if (svcHdr !== null && svcHdr === SERVICE_ROLE_KEY) {
+        caller = null;
+      } else {
+        const auth = await verifyBearer(req, db);
+        if (auth === null) {
+          status = 401;
+          return jsonError('UNAUTHENTICATED', 'Bearer token or service-role required', traceId, 401);
+        }
+        const role = (auth.user.app_metadata?.['role'] as string | undefined) ?? 'student';
+        caller = { userId: auth.user.id, role };
+      }
+
+      if (path.match(/^\/intelligence\/learner-profile\//)) {
+        const result = await getLearnerProfile(paramId, db as unknown as HandlerDbClient, caller);
+        status = result.status;
+        if (result.ok) return jsonOk(result.data, traceId, result.status);
+        return jsonError(result.code, result.message, traceId, result.status);
+      }
+      if (path.match(/^\/intelligence\/causal-map\//)) {
+        const result = await getCausalMap(paramId, db as unknown as HandlerDbClient, caller);
+        status = result.status;
+        if (result.ok) return jsonOk(result.data, traceId, result.status);
+        return jsonError(result.code, result.message, traceId, result.status);
+      }
+      if (path.match(/^\/intelligence\/behaviour-profile\//)) {
+        const result = await getBehaviourProfile(paramId, db as unknown as HandlerDbClient, caller);
+        status = result.status;
+        if (result.ok) return jsonOk(result.data, traceId, result.status);
+        return jsonError(result.code, result.message, traceId, result.status);
+      }
+      if (path.match(/^\/intelligence\/audit-log\//)) {
+        const layer = url.searchParams.get('layer');
+        const from = url.searchParams.get('from');
+        const to = url.searchParams.get('to');
+        const result = await getAuditLog(paramId, layer, from, to, db as unknown as HandlerDbClient, caller);
+        status = result.status;
+        if (result.ok) return jsonOk(result.data, traceId, result.status);
+        return jsonError(result.code, result.message, traceId, result.status);
+      }
+      if (path.match(/^\/intelligence\/explain\//)) {
+        const result = await getExplanation(paramId, db as unknown as HandlerDbClient, caller);
+        status = result.status;
+        if (result.ok) return jsonOk(result.data, traceId, result.status);
+        return jsonError(result.code, result.message, traceId, result.status);
+      }
     }
 
     // All other routes: service-role only.

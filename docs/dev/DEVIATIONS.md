@@ -3,6 +3,27 @@
 > Every deviation from DEV_PLAN.md, in writing.
 > Newest at TOP. Use the template from CLAUDE.md §Templates.
 
+### DEV-20260522-2 — Saved C-C-D-V specified POST /analytics/generate-assignment after service-role gate; shipped before
+
+- Date: 2026-05-22
+- Stage: 32
+- Type: substitution
+- What the stage said: C-C-D-V Deliverables (docs/prompts/2026-05-22_stage-32.md) listed the route
+  block as `POST /analytics/generate-assignment [after service-role gate; teacher role check in handler]`.
+- What I actually did: Placed the route block BEFORE the service-role gate
+  (analytics-svc/index.ts line 191; gate at line 217), consistent with every other teacher-UI route
+  in the service.
+- Why: The C-C-D-V instruction is internally inconsistent. The service-role gate consumes all
+  non-service-role traffic before the handler is reached; a Bearer-JWT-based role check
+  (`verifyBearer` + `app_metadata.role`) cannot run after the gate. Placing the route before the
+  gate is the only way to authenticate teachers via JWT. Implementation is architecturally correct.
+  Saved C-C-D-V updated in same commit to reflect shipped state. Origin: Stage 32 prep prompt error
+  not caught at pre-read.
+- Impact on later stages: None. Route placement before gate is the established analytics-svc pattern
+  for all teacher-facing GETs (Stages 30/32). Stage 33 assignments-svc follows same pattern.
+- Linked: ISSUE-0021, commit (Stage 32 implementation commit)
+- Resolved by: Stage 32 (implementation shipped at analytics-svc/index.ts line 191)
+
 ### DEV-20260522-1 — GET /analytics/auto-groups shipped with query params; arch §4.7 specifies path params
 
 - Date: 2026-05-22

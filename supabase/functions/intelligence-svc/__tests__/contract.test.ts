@@ -33,6 +33,11 @@ import {
   processCausalFull,
   processPredictiveRefresh,
   getPredictions,
+  getLearnerProfile,
+  getCausalMap,
+  getBehaviourProfile,
+  getAuditLog,
+  getExplanation,
   L5_ALGORITHM_VERSION,
   type DbClient,
   type PredictionsCallerContext,
@@ -916,5 +921,227 @@ describe('intelligence-svc — processPredictiveRefresh L5', () => {
     expect(typeof row.output.current_readiness_score).toBe('number');
     expect(typeof row.output.gap_skill_count).toBe('number');
     expect(typeof row.output.processing_time_ms).toBe('number');
+  });
+});
+
+// ─── Stage 32 — new read endpoint tests ─────────────────────────────────────
+
+const DECISION_ID = '00000000-0000-4000-8000-d3c1510ndef0';
+const TEACHER_32  = 'ffffffff-ffff-4fff-8fff-000000000001';
+// OLD_DATE_32: well in the past so stale_since is set regardless of real system clock.
+// 2024-01-01 is > 30 days ago on any machine running after 2024-01-31.
+const OLD_DATE_32 = '2024-01-01T00:00:00.000Z';
+// Future "now" for effects injection so OLD_DATE_32 is definitively stale.
+const FUTURE_NOW  = '2026-09-22T10:00:00.000Z';
+
+describe('intelligence-svc Stage 32 — getLearnerProfile', () => {
+  it('getLearnerProfile: returns LearningDNADTO with domain profiles, active misconceptions, and repair IDs', async () => {
+    const client = buildClient({
+      user_profile:          { data: { id: STUDENT_ID, year_level: 5 }, error: null },
+      skill_mastery:         { data: [{ skill_id: SKILL_A, mastery_level: 0.5 }], error: null },
+      learning_velocity:     { data: [{ skill_id: SKILL_A, velocity: 0.01 }], error: null },
+      skill_node: [
+        { data: [{ id: SKILL_A, parent_id: 'parent-strand-1' }], error: null }, // skill ids
+        { data: [{ id: 'parent-strand-1', name: 'Number' }], error: null },      // parent ids
+      ],
+      behaviour_profile:     { data: null, error: null },
+      student_misconception: { data: [{ misconception_id: MISC_1, confidence: 0.8 }], error: null },
+      misconception:         { data: [{ id: MISC_1, name: 'Fraction confusion', severity: 'high' }], error: null },
+      repair_record:         { data: [{ id: 'repair-1' }], error: null },
+      cohort_metric_cache:   { data: [], error: null },
+    });
+    const result = await getLearnerProfile(STUDENT_ID, client, null);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    const data = result.data;
+    expect(data.student_id).toBe(STUDENT_ID);
+    expect(Object.keys(data.domain_profiles)).toContain('Number');
+    expect(data.active_misconceptions).toHaveLength(1);
+    expect(data.active_misconceptions[0]!.id).toBe(MISC_1);
+    expect(data.active_repair_ids).toContain('repair-1');
+  });
+
+  it('getLearnerProfile: stretch_readiness is {} — PHASE-2 stub, L6 deferred per CLAUDE.md scope', async () => {
+    const client = buildClient({
+      user_profile:          { data: { id: STUDENT_ID, year_level: 5 }, error: null },
+      skill_mastery:         { data: [], error: null },
+      learning_velocity:     { data: [], error: null },
+      behaviour_profile:     { data: null, error: null },
+      student_misconception: { data: [], error: null },
+      repair_record:         { data: [], error: null },
+      cohort_metric_cache:   { data: [], error: null },
+    });
+    const result = await getLearnerProfile(STUDENT_ID, client, null);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.stretch_readiness).toEqual({});
+  });
+});
+
+describe('intelligence-svc Stage 32 — getCausalMap', () => {
+  it('getCausalMap: returns CausalMapDTO with root_cause_skills, active_misconceptions, repair_queue', async () => {
+    const client = buildClient({
+      intelligence_audit_log: { data: [{ output: { root_causes: [SKILL_B] } }], error: null },
+      skill_node:              { data: [{ id: SKILL_B, name: 'Fractions' }], error: null },
+      skill_mastery:           { data: [{ skill_id: SKILL_B, mastery_level: 0.2 }], error: null },
+      student_misconception:   { data: [{ misconception_id: MISC_1, confidence: 0.8, status: 'active' }], error: null },
+      misconception:           { data: [{ id: MISC_1, name: 'Fraction confusion', category: 'conceptual', severity: 'high' }], error: null },
+      repair_record:           {
+        data: [{ id: 'repair-1', repair_sequence_id: 'seq-1', misconception_id: MISC_1,
+                 root_cause_skill_id: null, status: 'queued', stages_completed: 0, total_stages: 3 }],
+        error: null,
+      },
+      repair_sequence:         { data: [{ id: 'seq-1', display_name: 'Fraction basics', estimated_duration_minutes: 30 }], error: null },
+    });
+    const result = await getCausalMap(STUDENT_ID, client, null);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    const data = result.data;
+    expect(data.root_cause_skills).toHaveLength(1);
+    expect(data.root_cause_skills[0]!.skill_id).toBe(SKILL_B);
+    expect(data.active_misconceptions).toHaveLength(1);
+    expect(data.active_misconceptions[0]!.misconception_id).toBe(MISC_1);
+    expect(data.repair_queue).toHaveLength(1);
+    expect(data.repair_queue[0]!.repair_record_id).toBe('repair-1');
+  });
+});
+
+describe('intelligence-svc Stage 32 — getBehaviourProfile', () => {
+  it('getBehaviourProfile: returns BehaviourProfileDTO; stale_since set when computed_at > 30 days (spec §9.6)', async () => {
+    const client = buildClient({
+      behaviour_profile: {
+        data: {
+          avg_guess_rate: 0.1, avg_fatigue_onset_minutes: 20, persistence_score: 0.5,
+          avg_cognitive_load_comfort: 0.4, time_pressure_sensitivity: 0.3,
+          session_length_sweet_spot: 20, data_points: 5, computed_at: OLD_DATE_32,
+        },
+        error: null,
+      },
+    });
+    // Inject a future "now" so OLD_DATE_32 is definitively > 30 days old.
+    const result = await getBehaviourProfile(STUDENT_ID, client, null, { now: () => FUTURE_NOW });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.stale_since).toBe(OLD_DATE_32);
+    expect(result.data.avg_fatigue_onset_minutes).toBe(20);
+  });
+});
+
+describe('intelligence-svc Stage 32 — getAuditLog', () => {
+  it('getAuditLog: returns up to 200 entries DESC; truncated: true when count = 200 (ISSUE-0022)', async () => {
+    // Provide 201 rows so the handler detects truncation (LIMIT 200 + 1 sentinel).
+    const client = buildClient({
+      intelligence_audit_log: {
+        data: Array.from({ length: 201 }, (_, i) => ({
+          id: `audit-${i}`,
+          event_type: 'session.processed',
+          layer: 'foundation',
+          created_at: '2026-05-20T10:00:00.000Z',
+        })),
+        error: null,
+      },
+    });
+    const result = await getAuditLog(STUDENT_ID, null, null, null, client, null);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.entries).toHaveLength(200);
+    expect(result.data.truncated).toBe(true);
+  });
+
+  it('getAuditLog: invalid layer value → 400; invalid ISO date string → 400', async () => {
+    // Both validation paths return 400 before any DB query — empty stubs safe.
+    const client = buildClient({ intelligence_audit_log: EMPTY_LIST });
+
+    const r1 = await getAuditLog(STUDENT_ID, 'not-a-valid-layer', null, null, client, null);
+    expect(r1.ok).toBe(false);
+    if (r1.ok) throw new Error('expected err');
+    expect(r1.status).toBe(400);
+    expect(r1.code).toBe('BAD_REQUEST');
+
+    const r2 = await getAuditLog(STUDENT_ID, null, 'not-a-date', null, client, null);
+    expect(r2.ok).toBe(false);
+    if (r2.ok) throw new Error('expected err');
+    expect(r2.status).toBe(400);
+    expect(r2.code).toBe('BAD_REQUEST');
+  });
+});
+
+describe('intelligence-svc Stage 32 — getExplanation', () => {
+  it('getExplanation: returns ExplanationDTO from intelligence_audit_log WHERE id = decision_id', async () => {
+    const client = buildClient({
+      intelligence_audit_log: {
+        // maybeSingle resolves to this stub directly.
+        data: {
+          id: DECISION_ID, student_id: STUDENT_ID,
+          event_type: 'session.processed', layer: 'foundation',
+          explanation: null, output: null,
+          created_at: '2026-05-20T10:00:00.000Z',
+        },
+        error: null,
+      },
+    });
+    const result = await getExplanation(DECISION_ID, client, null);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.source_layer).toBe('foundation');
+    expect(result.data.summary).toContain('session.processed');
+    expect(result.data.generated_at).toBe('2026-05-20T10:00:00.000Z');
+    expect(Array.isArray(result.data.evidence_ids)).toBe(true);
+  });
+
+  it('getExplanation: returns 404 for unknown decision_id — existence not leaked with 403', async () => {
+    const client = buildClient({
+      intelligence_audit_log: { data: null, error: null },
+    });
+    const result = await getExplanation(DECISION_ID, client, null);
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected err');
+    expect(result.status).toBe(404);
+    expect(result.code).toBe('NOT_FOUND');
+    // 403 must NOT be returned — no existence leak.
+    expect(result.status).not.toBe(403);
+  });
+});
+
+describe('intelligence-svc Stage 32 — cross-cutting role access', () => {
+  it('intelligence read endpoints: student caller reads own student_id; non-teacher cross-student → 403', async () => {
+    const bpStub = {
+      behaviour_profile: {
+        data: {
+          avg_guess_rate: 0.1, avg_fatigue_onset_minutes: 20, persistence_score: 0.5,
+          avg_cognitive_load_comfort: 0.4, time_pressure_sensitivity: 0.3,
+          session_length_sweet_spot: 20, data_points: 5, computed_at: '2026-05-22T10:00:00.000Z',
+        },
+        error: null,
+      },
+    };
+
+    // Student reading own record → ok.
+    const ownClient = buildClient(bpStub);
+    const ownResult = await getBehaviourProfile(STUDENT_ID, ownClient, { userId: STUDENT_ID, role: 'student' });
+    expect(ownResult.ok).toBe(true);
+
+    // Different student reading STUDENT_ID's record → 403 (no DB calls made).
+    const crossClient = buildClient({});
+    const crossResult = await getBehaviourProfile(STUDENT_ID, crossClient, { userId: 'other-student-id', role: 'student' });
+    expect(crossResult.ok).toBe(false);
+    if (crossResult.ok) throw new Error('expected err');
+    expect(crossResult.status).toBe(403);
+  });
+
+  it('intelligence read endpoints: teacher caller reads any student_id within same tenant', async () => {
+    const client = buildClient({
+      behaviour_profile: {
+        data: {
+          avg_guess_rate: 0.1, avg_fatigue_onset_minutes: 20, persistence_score: 0.5,
+          avg_cognitive_load_comfort: 0.4, time_pressure_sensitivity: 0.3,
+          session_length_sweet_spot: 20, data_points: 5, computed_at: '2026-05-22T10:00:00.000Z',
+        },
+        error: null,
+      },
+    });
+    const result = await getBehaviourProfile(STUDENT_ID, client, { userId: TEACHER_32, role: 'teacher' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.avg_fatigue_onset_minutes).toBe(20);
   });
 });

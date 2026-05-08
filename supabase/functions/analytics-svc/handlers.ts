@@ -494,3 +494,406 @@ async function checkTeacherOwnership(
   const owns = rows?.[0]?.teacher_id === caller.userId;
   return { forbidden: !owns };
 }
+
+// ---------------------------------------------------------------------------
+// Stage 32 — Analytics GET endpoints + generate-assignment
+//
+// Spec refs: arch §4.7, §6.4 (PathwayReadinessDTO), §6.6 (AssignmentDTO);
+// spec §9.6 (30-day staleness); spec §14.3 (generate-assignment defaults);
+// Q-32.1 (DraftAssignmentDTO), Q-32.2 (CohortDTO), Q-32.3–Q-32.5.
+// ---------------------------------------------------------------------------
+
+const THIRTY_DAYS_MS_A = 30 * 24 * 60 * 60 * 1000;
+const L5_SKILL_THRESHOLD_A = 0.6; // Q-32.3: target_mastery for gap skills
+const ASSIGNMENT_ITEM_COUNT_DEFAULT = 15; // spec §14.3 line 2135
+
+function staleSinceA(computedAt: string, nowMs: number): string | null {
+  return nowMs - new Date(computedAt).getTime() > THIRTY_DAYS_MS_A ? computedAt : null;
+}
+
+function compositeLabel(score: number): 'not_ready' | 'developing' | 'on_track' | 'ready' | 'strong' {
+  // Q-32.4: threshold bands derived from 5-band split (arch unspecified).
+  if (score < 0.3) return 'not_ready';
+  if (score < 0.5) return 'developing';
+  if (score < 0.7) return 'on_track';
+  if (score < 0.85) return 'ready';
+  return 'strong';
+}
+
+function isTeacherOrAdmin(caller: Caller): boolean {
+  return (
+    caller.role === 'teacher' ||
+    caller.role === 'tutor' ||
+    caller.role === 'org_admin' ||
+    caller.role === 'platform_admin'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CohortDTO + getCohort
+// ---------------------------------------------------------------------------
+
+export interface ClusterGroup {
+  centroid: number[];
+  member_ids: string[];
+}
+
+export interface CohortDTO {
+  group_id: string;
+  class_id: string;
+  skill_id: string;
+  groups: ClusterGroup[];
+  computed_at: string;
+  stale_since: string | null;
+}
+
+type AnalyticsResult<T> = { data: T | null; status: number; error?: string };
+
+/**
+ * GET /analytics/cohort/{group_id} (arch §4.7).
+ * group_id = cohort_key string (format: class:{class_id}:{skill_id}).
+ * Teacher/admin only. Returns most recent auto_groups result from cohort_metric_cache.
+ */
+export async function getCohort(
+  groupId: string,
+  caller: Caller,
+  db: DbClient,
+): Promise<AnalyticsResult<CohortDTO>> {
+  if (!isTeacherOrAdmin(caller)) return { data: null, status: 403, error: 'FORBIDDEN' };
+
+  // Teacher ownership: parse class_id from cohort_key (class:{class_id}:{skill_id}).
+  const parts = groupId.split(':');
+  const classId = parts[1] ?? '';
+  if (caller.role === 'teacher' || caller.role === 'tutor') {
+    const gate = await checkTeacherOwnership(classId, caller, db);
+    if (gate.forbidden) return { data: null, status: 403, error: 'FORBIDDEN' };
+  }
+
+  const { data: rows, error } = (await db
+    .from('cohort_metric_cache')
+    .select('cohort_key,value,computed_at')
+    .eq('cohort_key', groupId)
+    .eq('metric_key', 'auto_groups')
+    .order('computed_at', { ascending: false })
+    .limit(1)) as { data: Array<{ cohort_key: string; value: { groups?: ClusterGroup[] }; computed_at: string }> | null; error: unknown };
+
+  if (error) return { data: null, status: 500, error: 'DB_ERROR' };
+  if (!rows?.[0]) return { data: null, status: 404, error: 'NOT_FOUND' };
+
+  const row = rows[0]!;
+  const skillId = parts[2] ?? '';
+  return {
+    data: {
+      group_id: groupId,
+      class_id: classId,
+      skill_id: skillId,
+      groups: row.value.groups ?? [],
+      computed_at: row.computed_at,
+      stale_since: staleSinceA(row.computed_at, Date.now()),
+    },
+    status: 200,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PathwayReadinessDTO + getPathwayReadiness
+// ---------------------------------------------------------------------------
+
+export interface PathwayReadinessDTO {
+  pathway_slug: string;
+  pathway_name: string;
+  skill_readiness: number;
+  coverage: number;
+  condition_readiness: number;
+  composite_readiness: number;
+  composite_label: 'not_ready' | 'developing' | 'on_track' | 'ready' | 'strong';
+  gap_skills: Array<{ skill_id: string; skill_name: string; current_mastery: number; target_mastery: number }>;
+  active_misconceptions_affecting: number;
+  predicted_ready_date: string | null;
+  exam_date: string | null;
+  days_remaining: number | null;
+  stale_since: string | null;
+}
+
+interface L5PredictivePayloadFresh {
+  status: 'fresh';
+  current_readiness_score: number;
+  gap_skills: Array<{ skill_id: string; mastery_level: number; velocity: number; estimated_mastery_date: string | null }>;
+  data_points: number;
+  computed_at: string;
+}
+
+interface L5PredictivePayloadInsufficient {
+  status: 'insufficient_data';
+}
+
+type L5PredictivePayload = L5PredictivePayloadFresh | L5PredictivePayloadInsufficient;
+
+/**
+ * GET /analytics/pathway-readiness/{student_id}/{pathway_slug} (arch §4.7).
+ * Reads L5 cache; maps to PathwayReadinessDTO per Q-32.3 Option B.
+ * Role-gated: student reads own; teacher/admin reads any.
+ */
+export async function getPathwayReadiness(
+  studentId: string,
+  pathwaySlug: string,
+  caller: Caller,
+  db: DbClient,
+): Promise<AnalyticsResult<PathwayReadinessDTO>> {
+  // Role gate: student/parent reads own; teacher/admin reads any.
+  if (!isTeacherOrAdmin(caller) && caller.role !== 'parent' && caller.userId !== studentId) {
+    return { data: null, status: 403, error: 'FORBIDDEN' };
+  }
+
+  // 1. Load L5 cache entry.
+  const { data: cacheRows, error: cacheErr } = (await db
+    .from('cohort_metric_cache')
+    .select('value,computed_at')
+    .eq('cohort_key', studentId)
+    .eq('metric_key', `readiness:${pathwaySlug}`)
+    .order('computed_at', { ascending: false })
+    .limit(1)) as { data: Array<{ value: L5PredictivePayload; computed_at: string }> | null; error: unknown };
+
+  if (cacheErr) return { data: null, status: 500, error: 'DB_ERROR' };
+  const cacheRow = cacheRows?.[0];
+  if (!cacheRow) return { data: null, status: 404, error: 'NOT_FOUND' };
+
+  const payload = cacheRow.value;
+  if (payload.status === 'insufficient_data') {
+    return { data: null, status: 404, error: 'NOT_FOUND' };
+  }
+
+  // 2. pathway display_name.
+  const { data: pathwayRows, error: pathwayErr } = (await db
+    .from('pathway')
+    .select('display_name')
+    .eq('slug', pathwaySlug)
+    .limit(1)) as { data: Array<{ display_name: string }> | null; error: unknown };
+  if (pathwayErr) return { data: null, status: 500, error: 'DB_ERROR' };
+  const pathwayName = pathwayRows?.[0]?.display_name ?? pathwaySlug;
+
+  // 3. skill_node names for gap_skills.
+  const gapIds = [...payload.gap_skills].map(g => g.skill_id).sort();
+  const skillNameMap = new Map<string, string>();
+  if (gapIds.length > 0) {
+    const { data: snRows, error: snErr } = (await db
+      .from('skill_node')
+      .select('id,name')
+      .in('id', gapIds)) as { data: Array<{ id: string; name: string }> | null; error: unknown };
+    if (snErr) return { data: null, status: 500, error: 'DB_ERROR' };
+    for (const row of snRows ?? []) skillNameMap.set(row.id, row.name);
+  }
+
+  // 4. Map L5 payload → PathwayReadinessDTO (Q-32.3 Option B).
+  const composite = payload.current_readiness_score;
+  const gapSkills = [...payload.gap_skills]
+    .sort((a, b) => a.skill_id.localeCompare(b.skill_id))
+    .map(g => ({
+      skill_id: g.skill_id,
+      skill_name: skillNameMap.get(g.skill_id) ?? g.skill_id,
+      current_mastery: g.mastery_level,
+      target_mastery: L5_SKILL_THRESHOLD_A,
+    }));
+
+  return {
+    data: {
+      pathway_slug: pathwaySlug,
+      pathway_name: pathwayName,
+      skill_readiness: composite,       // Q-32.3: v1 uses single composite
+      coverage: composite,
+      condition_readiness: composite,
+      composite_readiness: composite,
+      composite_label: compositeLabel(composite),
+      gap_skills: gapSkills,
+      active_misconceptions_affecting: 0, // Q-32.3: not in L5 cache
+      predicted_ready_date: null,          // Q-32.3: not in L5 cache
+      exam_date: null,                     // DEV-20260519-1: exam_date v1.1 deferral
+      days_remaining: null,
+      stale_since: staleSinceA(cacheRow.computed_at, Date.now()),
+    },
+    status: 200,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// DraftAssignmentDTO + generateAssignment
+// ---------------------------------------------------------------------------
+
+export interface DraftAssignmentDTO {
+  title: string;
+  description: string | null;
+  mode: string;
+  target_skill_ids: string[];
+  target_skill_names: string[];
+  difficulty_range: { min: number; max: number } | null;
+  item_count: number;
+  time_limit_ms: number | null;
+  due_at: string | null;
+  status: 'draft';
+  auto_generated: boolean;
+  rationale: string | null;
+  created_by: { id: string; display_name: string };
+  published_at: null;
+}
+
+interface GenerateAssignmentBody {
+  class_id: string;
+  target_skill_ids?: string[];
+  difficulty_range?: { min: number; max: number } | null;
+  item_count?: number | null;
+  time_limit_ms?: number | null;
+  mode?: string;
+  due_at?: string | null;
+  rationale?: string | null;
+}
+
+function parseGenerateAssignmentBody(raw: unknown): GenerateAssignmentBody {
+  if (typeof raw !== 'object' || raw === null) throw new Error('body must be an object');
+  const b = raw as Record<string, unknown>;
+  if (typeof b['class_id'] !== 'string') throw new Error('class_id required (string)');
+  return {
+    class_id: b['class_id'],
+    target_skill_ids: Array.isArray(b['target_skill_ids']) ? (b['target_skill_ids'] as string[]) : undefined,
+    difficulty_range: (typeof b['difficulty_range'] === 'object' && b['difficulty_range'] !== null)
+      ? (b['difficulty_range'] as { min: number; max: number })
+      : null,
+    item_count: typeof b['item_count'] === 'number' ? b['item_count'] : null,
+    time_limit_ms: typeof b['time_limit_ms'] === 'number' ? b['time_limit_ms'] : null,
+    mode: typeof b['mode'] === 'string' ? b['mode'] : 'practice',
+    due_at: typeof b['due_at'] === 'string' ? b['due_at'] : null,
+    rationale: typeof b['rationale'] === 'string' ? b['rationale'] : null,
+  };
+}
+
+/**
+ * POST /analytics/generate-assignment (arch §4.7, spec §14.3).
+ * Teacher/admin only. Returns DraftAssignmentDTO without INSERT (Q-32.1 Option B).
+ * Stage 33 assignments-svc persists this draft via POST /assignments.
+ *
+ * Spec §14.3 defaults: item_count=15, prefer_high_discrimination=true.
+ * exclude_recently_seen: queries class roster + session_response for last 14 days (Q-32.5).
+ */
+export async function generateAssignment(
+  rawBody: unknown,
+  caller: Caller,
+  db: DbClient,
+): Promise<AnalyticsResult<DraftAssignmentDTO>> {
+  if (!isTeacherOrAdmin(caller)) return { data: null, status: 403, error: 'FORBIDDEN' };
+
+  let body: GenerateAssignmentBody;
+  try {
+    body = parseGenerateAssignmentBody(rawBody);
+  } catch (e) {
+    return { data: null, status: 400, error: `BAD_REQUEST: ${String(e)}` };
+  }
+
+  const itemCount = body.item_count ?? ASSIGNMENT_ITEM_COUNT_DEFAULT;
+  const targetSkillIds = body.target_skill_ids ?? [];
+
+  // 1. Caller display_name for created_by.
+  const { data: profileRows, error: profileErr } = (await db
+    .from('user_profile')
+    .select('display_name')
+    .eq('id', caller.userId)
+    .limit(1)) as { data: Array<{ display_name: string }> | null; error: unknown };
+  if (profileErr) return { data: null, status: 500, error: 'DB_ERROR' };
+  const displayName = profileRows?.[0]?.display_name ?? '';
+
+  // 2. exclude_recently_seen = last 14 days (spec §14.3 line 2135, Q-32.5 full impl).
+  const cutoffDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+  const recentItemIds = new Set<string>();
+
+  const { data: rosterRows, error: rosterErr } = (await db
+    .from('class_student')
+    .select('student_id')
+    .eq('class_id', body.class_id)) as { data: Array<{ student_id: string }> | null; error: unknown };
+  if (rosterErr) return { data: null, status: 500, error: 'DB_ERROR' };
+  const studentIds = (rosterRows ?? []).map(r => r.student_id);
+
+  if (studentIds.length > 0) {
+    const { data: sessionRows, error: sessionErr } = (await db
+      .from('session_record')
+      .select('id')
+      .in('student_id', studentIds)
+      .gte('created_at', cutoffDate)) as { data: Array<{ id: string }> | null; error: unknown };
+    if (sessionErr) return { data: null, status: 500, error: 'DB_ERROR' };
+    const sessionIds = (sessionRows ?? []).map(r => r.id);
+
+    if (sessionIds.length > 0) {
+      const { data: respRows, error: respErr } = (await db
+        .from('session_response')
+        .select('item_id')
+        .in('session_id', sessionIds)) as { data: Array<{ item_id: string }> | null; error: unknown };
+      if (respErr) return { data: null, status: 500, error: 'DB_ERROR' };
+      for (const r of respRows ?? []) recentItemIds.add(r.item_id);
+    }
+  }
+
+  // 3. Query items: filter by skill_ids overlap, lifecycle=published, is_active=true.
+  //    prefer_high_discrimination=true → ORDER BY discrimination DESC NULLS LAST.
+  let itemQuery = db
+    .from('item')
+    .select('id,skill_ids,difficulty,discrimination')
+    .eq('lifecycle', 'published')
+    .eq('is_active', true)
+    .order('discrimination', { ascending: false });
+
+  if (body.difficulty_range !== null && body.difficulty_range !== undefined) {
+    itemQuery = itemQuery.gte('difficulty', body.difficulty_range.min);
+  }
+
+  const { data: itemRows, error: itemErr } = (await itemQuery) as {
+    data: Array<{ id: string; skill_ids: string[]; difficulty: number; discrimination: number | null }> | null;
+    error: unknown;
+  };
+  if (itemErr) return { data: null, status: 500, error: 'DB_ERROR' };
+
+  // Filter by target_skill_ids overlap + difficulty_range upper bound + exclude recently seen.
+  const filtered = (itemRows ?? []).filter(item => {
+    if (recentItemIds.has(item.id)) return false;
+    if (targetSkillIds.length > 0 && !targetSkillIds.some(sid => item.skill_ids.includes(sid))) return false;
+    if (body.difficulty_range !== null && body.difficulty_range !== undefined) {
+      if (item.difficulty > body.difficulty_range.max) return false;
+    }
+    return true;
+  });
+  const selected = filtered.slice(0, itemCount);
+  const selectedSkillIds = [...new Set(selected.flatMap(i => i.skill_ids))].sort();
+
+  // 4. Skill names for target_skill_names.
+  const skillNameMap2 = new Map<string, string>();
+  const idsToName = targetSkillIds.length > 0 ? targetSkillIds : selectedSkillIds;
+  if (idsToName.length > 0) {
+    const { data: snRows, error: snErr } = (await db
+      .from('skill_node')
+      .select('id,name')
+      .in('id', idsToName)) as { data: Array<{ id: string; name: string }> | null; error: unknown };
+    if (snErr) return { data: null, status: 500, error: 'DB_ERROR' };
+    for (const row of snRows ?? []) skillNameMap2.set(row.id, row.name);
+  }
+  const targetSkillNames = (targetSkillIds.length > 0 ? targetSkillIds : selectedSkillIds)
+    .map(id => skillNameMap2.get(id) ?? id);
+
+  const finalSkillIds = targetSkillIds.length > 0 ? targetSkillIds : selectedSkillIds;
+
+  // Stage 33 assignments-svc persists this draft via POST /assignments.
+  return {
+    data: {
+      title: `Auto-generated: ${finalSkillIds.slice(0, 3).map(id => skillNameMap2.get(id) ?? id).join(', ')}`,
+      description: null,
+      mode: body.mode ?? 'practice',
+      target_skill_ids: finalSkillIds,
+      target_skill_names: targetSkillNames,
+      difficulty_range: body.difficulty_range ?? null,
+      item_count: selected.length > 0 ? selected.length : itemCount,
+      time_limit_ms: body.time_limit_ms ?? null,
+      due_at: body.due_at ?? null,
+      status: 'draft',
+      auto_generated: true,
+      rationale: body.rationale ?? `Targeting ${finalSkillIds.length} skill(s) for class ${body.class_id}`,
+      created_by: { id: caller.userId, display_name: displayName },
+      published_at: null,
+    },
+    status: 200,
+  };
+}
