@@ -5,6 +5,20 @@
 
 ## Open
 
+### ISSUE-0020 — POST /orchestration/generate-plan synchronous in v1; async upgrade deferred
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-21 (Stage 31 prep, Q-31.4 resolution)
+- Area: backend (orchestration-svc)
+- Tags: orchestration-svc · async · v1.1 · generate-plan
+
+**Summary.** `POST /orchestration/generate-plan/{student_id}` calls `processOrchestratorReplan` synchronously in v1 and returns a `LearningPlanDTO` (200). Arch §4.6 describes this endpoint as "trigger regeneration" (ambiguous). The async shape — enqueue `pipeline.orchestration_replan` into job_queue via outbox and return 202 — is architecturally cleaner for a heavy computation but deferred until p95 plan-generation timing is measured in a deployed environment.
+
+**Trigger for upgrade.** If `POST /orchestration/generate-plan` p95 > 2 s (dashboard load budget per BUILD_CONTRACT §10), upgrade to async: `outbox_event` INSERT → outbox-dispatcher enqueue → job_queue → worker → orchestration-svc batch handler → 202 with `job_id`. Idempotency-Key at the HTTP layer remains the dedup mechanism (arch §4.6).
+
+**Tracking pointer.** Stage 31 close commit. Q-31.4 resolved to Option A (sync).
+
 ### ISSUE-0019 — Tooling guard: amend-over-pushed-commit pattern (no automated guard)
 
 - Status: open
@@ -29,9 +43,9 @@
 
 **Summary.** `INTELLIGENCE_SVC_URL` (jobs-worker, Stage 28) and `ANALYTICS_SVC_URL` (jobs-worker, Stage 30) are referenced in `supabase/functions/jobs-worker/index.ts` and mentioned in `docs/prompts/` (non-authoritative prompt logs) but are not documented in any deployment guide, `.env.example`, `.toml`, or `OWNERS.md`. A deployer starting fresh has no authoritative reference for these env vars beyond reading the code.
 
-**Pre-existing gap.** `INTELLIGENCE_SVC_URL` was already undocumented at Stage 28. `ANALYTICS_SVC_URL` surfaces it.
+**Pre-existing gap.** `INTELLIGENCE_SVC_URL` was already undocumented at Stage 28. `ANALYTICS_SVC_URL` surfaces it. `ORCHESTRATION_SVC_URL` added at Stage 31 (same pattern — falls back to `${SUPABASE_URL}/functions/v1/orchestration-svc` if not set, but the fallback is not documented anywhere for deployers).
 
-**Fix (post-Stage 30, v1 close or Stage 36).** Add env var table to `docs/dev/deployment.md` (create if absent) listing all Edge Function env vars with default resolution logic. Or add `.env.example` at repo root. Refs: `supabase/functions/jobs-worker/index.ts` lines for both constants.
+**Fix (post-Stage 31, v1 close or Stage 36).** Add env var table to `docs/dev/deployment.md` (create if absent) listing all Edge Function env vars with default resolution logic. Or add `.env.example` at repo root. Vars: `INTELLIGENCE_SVC_URL`, `ANALYTICS_SVC_URL`, `ORCHESTRATION_SVC_URL`. Refs: `supabase/functions/jobs-worker/index.ts`.
 
 ### ISSUE-0013 — Evening ritual test count methodology (tail truncation drift)
 

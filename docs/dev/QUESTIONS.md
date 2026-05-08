@@ -9,6 +9,58 @@
 
 ## Resolved
 
+### Q-31.4 — POST /orchestration/generate-plan/{student_id}: synchronous or async?
+
+- Date raised: 2026-05-21 (Stage 31 morning ritual)
+- Asked of: self
+- Source: Arch §4.6 (line 1552): `POST /orchestration/generate-plan/{student_id} | Role-gated (Idempotency-Key) | Trigger regeneration`
+- Question: "Trigger regeneration" is ambiguous — does the endpoint call `generateWeeklyPlan` synchronously and return the new `LearningPlanDTO` (200), or enqueue a `pipeline.orchestration_replan` job and return 202?
+- Why ambiguous: Arch §4.6 uses "trigger regeneration" without specifying sync vs async. The batch path is async (job_queue); the manual path could be either.
+- Blocking? no
+- Assumed answer (if proceeding): **Option A — synchronous** in v1. Calls `processOrchestratorReplan` directly and returns new `LearningPlanDTO`. Idempotency-Key at the HTTP layer is the dedup mechanism (arch §4.6). Upgrade to async (outbox/job_queue enqueue + 202 response) deferred to v1.1 once plan generation p95 timing is measured.
+- Code affected: `supabase/functions/orchestration-svc/handlers.ts`, `supabase/functions/orchestration-svc/index.ts`
+- Status: resolved
+- Resolution (2026-05-21): **Option A**. Synchronous. ISSUE-0020 filed (low, v1.1) tracking async upgrade.
+
+### Q-31.3 — `retention_estimate` computation: column does not exist in `skill_mastery`
+
+- Date raised: 2026-05-21 (Stage 31 morning ritual)
+- Asked of: self
+- Source: Spec §16.2 (line 2335): `retention_estimate < 0.5 and mastery > 0.6` — "low retention" priority-queue condition. Migration 0005 `skill_mastery` columns: `mastery_level, confidence, total_attempts, correct_attempts, last_attempted_at, streak_current, streak_best, history`. No `retention_estimate` column.
+- Question: (A) Compute inline as exponential decay using `retentionHalfLifeDays(year_level)` helper from `@mm/engines` (Stage 29, Q-29.3); (B) use `confidence` column as proxy; (C) skip step 4 "low retention" entirely in v1 with PHASE-2 stub.
+- Why ambiguous: Spec references `retention_estimate` as if it is a persisted field; v1 schema has no such column; `retentionHalfLifeDays` already exists in `@mm/engines` from Stage 29 (Q-29.3 resolution) and takes `yearLevel: number` returning a half-life in days.
+- Blocking? no
+- Assumed answer (if proceeding): **Option A modified**. `retention_estimate = mastery_level * exp(-(days_since_last_attempt / retentionHalfLifeDays(year_level)))`. `year_level` loaded from `user_profile` (already read by the handler). NULL `last_attempted_at` → no decay: `retention_estimate = mastery_level`. Reuses `@mm/engines/src/constants/retention.ts` helper; `HALF_LIFE_DAYS_BY_YEAR_LEVEL = { y5: 60, y7: 90, y9: 120, default: 90 }` (Q-29.3 values). Do NOT hardcode 14d.
+- Code affected: `supabase/functions/orchestration-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-21): **Option A modified**. Inline exponential decay via `retentionHalfLifeDays(year_level)` from `@mm/engines`. Inline comment: `// Spec §16.2 retention_estimate: not a persisted column; computed inline. Reuses @mm/engines retentionHalfLifeDays() from Stage 29 (Q-29.3). v1.1 may persist or replace formula.` Deviation: spec references `retention_estimate` as if persisted; v1 computes inline.
+
+### Q-31.2 — `pipeline_event` step 9 for L9: write alongside `intelligence_audit_log`, or skip?
+
+- Date raised: 2026-05-21 (Stage 31 morning ritual)
+- Asked of: self
+- Source: Arch §5.2 (line 1686): `9 Orchestration replan | pipeline.orchestration_replan | high | replan:{student_id}:{session_id} | 3 | 1/2/4s`. ADR-0032 generalised pattern (skip pipeline_event for non-session-scoped stages). ISSUE-0016 (L5/L7 observability gap).
+- Question: L9 idempotency key is `replan:{student_id}:{session_id}` — session_id IS in the payload (constraint met). ADR-0032 skip rule was motivated by `session_id NOT NULL` being unavailable for L5/L7. Options: (A) skip pipeline_event, write intelligence_audit_log only (follow DEV_PLAN "audit log" literal); (B) write pipeline_event step 9 AND intelligence_audit_log — L9 is session-scoped; ADR-0032 skip does not apply; L3b (Stage 28) is the precedent.
+- Why ambiguous: DEV_PLAN says "audit log" without mentioning pipeline_event. However, ISSUE-0016 covers L5/L7 where the NOT NULL FK blocks the write — it does NOT license skipping when the write is feasible (L9 has session_id).
+- Blocking? no
+- Assumed answer (if proceeding): **Option B** — write both pipeline_event step 9 and intelligence_audit_log. L3b (Stage 28) is the correct precedent: when session_id is available in the payload, write pipeline_event. ADR-0032 skip pattern is a workaround for the NOT NULL FK gap, not a policy preference. ISSUE-0016 remains open for L5 + L7 cases where the write is not feasible.
+- Code affected: `supabase/functions/orchestration-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-21): **Option B**. Write `pipeline_event` step 9 (session_id available) AND `intelligence_audit_log`. Inline comment at write site: `// Stage 28 L3b precedent; session-scoped per arch §5.2 replan:{student_id}:{session_id} — pipeline_event writable unlike L5/L7.`
+
+### Q-31.1 — `available_minutes_per_week` source for `pipeline.orchestration_replan` batch handler
+
+- Date raised: 2026-05-21 (Stage 31 morning ritual)
+- Asked of: self
+- Source: Spec §16.2 (line 2311): `generate_weekly_plan(student, available_minutes_per_week):` — no default value shown. Arch §5.2 idempotency key `replan:{student_id}:{session_id}` — `available_minutes_per_week` not in the job payload.
+- Question: (A) Derive from `behaviour_profile.session_length_sweet_spot * 5` at runtime (loaded as part of existing behaviour_profile read, no extra DB call); (B) hardcoded constant (e.g. 120 min/week); (C) student preference in `user_profile.preferences` jsonb (no defined key).
+- Why ambiguous: Spec defines `available_minutes_per_week` as a required parameter with no default. The job payload carries `{student_id, session_id}` only. The value must be computed or defaulted at handler runtime.
+- Blocking? no
+- Assumed answer (if proceeding): **Option A** — `available_minutes_per_week = behaviour_profile.session_length_sweet_spot * 5`. `session_length_sweet_spot` default is 20 min (migration 0005 line 67). `behaviour_profile` is already loaded by the handler for the session-length guardrail (`behaviour.session_length_sweet_spot + 5 min`, spec §16.6). Zero extra DB calls.
+- Code affected: `supabase/functions/orchestration-svc/handlers.ts`
+- Status: resolved
+- Resolution (2026-05-21): **Option A**. `available_minutes_per_week = session_length_sweet_spot * 5`. Derived from existing `behaviour_profile` read; consistent with spec's own session-length framing.
+
 ### Q-30.5 — "≥3 skills" scope for velocity-based §14.2 trigger rules
 
 - Date raised: 2026-05-20 (Stage 30 pre-implementation)

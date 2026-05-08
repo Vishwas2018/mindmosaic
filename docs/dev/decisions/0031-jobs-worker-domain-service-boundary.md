@@ -3,6 +3,7 @@
 - Status: accepted
 - Amended: 2026-05-19 (Stage 29) — `pipeline.predictive_refresh` route added; speculative `pipeline.l5.*` → `analytics-svc` entry removed.
 - Amended: 2026-05-20 (Stage 30) — `pipeline.teacher_refresh` → `analytics-svc` added (concrete); speculative `pipeline.l7.* → orchestration-svc` entry replaced; `pipeline.l9.* → orchestration-svc` retained as still speculative. Q-30.1 resolved. ADR-0033 filed for location decision.
+- Amended: 2026-05-21 (Stage 31) — `pipeline.l9.*` wildcard replaced with concrete `pipeline.orchestration_replan → orchestration-svc → POST /orchestration/pipeline/orchestration-replan`. orchestration-svc confirmed as correct owner per arch §4.6 + §1.2. Q-31.1–Q-31.4 resolved. Third amendment.
 - Date: 2026-05-18
 - Stage: 28
 - Tags: backend | architecture | async-pipeline
@@ -63,7 +64,7 @@ Each `job_type` maps to an owning service URL:
 | `pipeline.causal.evaluate_full` | `intelligence-svc` | `POST /intelligence/pipeline/causal-full` |
 | `pipeline.predictive_refresh` | `intelligence-svc` | `POST /intelligence/pipeline/predictive-refresh` |
 | `pipeline.teacher_refresh` | `analytics-svc` | `POST /analytics/pipeline/teacher-refresh` |
-| `pipeline.l9.*` (Stage 31+) | `orchestration-svc` | TBD |
+| `pipeline.orchestration_replan` | `orchestration-svc` | `POST /orchestration/pipeline/orchestration-replan` |
 
 HTTP call uses `SUPABASE_SERVICE_ROLE_KEY` (`x-mm-service-role` header) and propagates
 `x-mm-trace-id`. The owning service is responsible for idempotency (audit-log dedup
