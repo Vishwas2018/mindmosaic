@@ -2,6 +2,60 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 30 — 2026-05-20
+
+**Planned (from DEV_PLAN.md Stage 30):** L7 Teacher Intervention Intelligence — `pipeline.teacher_refresh` async handler, auto-grouping (k-means), 5 of 6 §14.2 alert trigger types, GET read endpoints. 1-day budget (Day 43).
+
+**Actually delivered:**
+
+- `supabase/functions/analytics-svc/` (new — 12th workspace): `handlers.ts` (`processTeacherRefresh` L7 handler: class roster load, skill_mastery + learning_velocity + behaviour_profile + student_misconception parallel load, Lloyd's k-means k=4, 5 trigger types, soft dedup, cohort_metric_cache UPSERT; `getAutoGroups`; `getInterventionAlerts`; `checkTeacherOwnership`), `index.ts` (3 routes; GET endpoints before service-role gate per intelligence-svc pattern), `package.json`, `tsconfig.json`. (commit 8a8ee8a)
+- `packages/engines/src/algorithms/kmeans.ts` (new): Lloyd's k-means with determinism contract (Q-30.3) — sort by student_id ASC, first-k centroids, 20-iteration cap, no Math.random. (commit 8a8ee8a)
+- `packages/engines/src/__tests__/kmeans.test.ts` (new): 5 unit tests (empty input, k>n cap, determinism, k=4 with N≥4, separable convergence). (commit 8a8ee8a)
+- `packages/engines/src/index.ts`: barrel export `./algorithms/kmeans.js`. (commit 8a8ee8a)
+- `supabase/functions/jobs-worker/index.ts`: `ANALYTICS_SVC_URL` env + `pipeline.teacher_refresh → analytics-svc /analytics/pipeline/teacher-refresh` route entry. (commit 8a8ee8a)
+- `pnpm-workspace.yaml`: `supabase/functions/analytics-svc` added. (commit 8a8ee8a)
+- Prep commit (9f7b22d): Q-30.1..4 resolved; ADR-0033 new; ADR-0031 + ADR-0032 amended; ISSUE-0017 filed; C-C-D-V saved.
+
+**Time spent:** ~1 day (on 1-day budget)
+
+**Surprises / departures:**
+
+1. **(a) k=3 silent narrowing — caught at pre-push verification.** Spec §14.1 `auto_group(max_groups=4)` → `cluster(k=max_groups)` clearly pins k=4. Implementer chose k=3 (unverified; matched typical seed class size). Caught in the pre-push verification round. Discipline gap: pre-read read the §14.2 trigger table but did not read §14.1 function-signature defaults. Tightening for Stage 31: pre-read must cite spec function signatures + default parameter values verbatim, not just formula/trigger tables.
+2. **(b) Q-30.6 (window_days semantics) surfaced at verification, not pre-read.** Spec §14.2 says "for >14 days" for velocity triggers. `learning_velocity.window_days = 14` satisfies this (rolling window). The interpretive choice was not pinned upfront. Same pattern as (a) — spec phrasing is implicit; pre-read must surface all thresholds + their data-model mapping. Q-30.6 filed and resolved at verification stage.
+3. **(c) Amend-consumed-already-pushed-commit — near-miss recovered cleanly.** Implementation commit was accidentally staged as `git commit --amend` over the prep commit (9f7b22d, already on origin/main). `git push` would have been rejected (diverged history) or required force-push. Caught by `git status -b` showing diverged branches before push. Recovered via `git reset --soft origin/main` — working tree preserved, 13 implementation files re-committed as a new commit (8a8ee8a) on top of 9f7b22d. Severity: near-miss. Guard is vigilance-only. ISSUE-0019 filed (low, tooling).
+4. **Q-30.5 filed during pre-read (scope of "≥3 skills" in trigger rules) but not written to QUESTIONS.md** — caught at evening ritual. Added to ## Resolved.
+
+**Decisions made (not in stage):**
+
+- ADR-0033: analytics-svc owns L7 pipeline + read endpoints (location decision over extending intelligence-svc)
+- ADR-0031 amended: `pipeline.teacher_refresh → analytics-svc` replaces speculative `pipeline.l7.* → orchestration-svc`
+- ADR-0032 amended (Stage 30): `intelligence_audit_log.student_id NOT NULL` also blocks class-scoped L7 writes; generalised pattern: non-session, non-student-scoped stages use domain artifacts as sole observability surface
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0017 opened (low): high-fatigue alert deferred — `avg_fatigue_onset_minutes` is rolling avg, not per-session; last-5-session data not directly queryable
+- ISSUE-0018 opened (low): `INTELLIGENCE_SVC_URL` + `ANALYTICS_SVC_URL` env vars undocumented in env.example/deployment docs
+- ISSUE-0019 opened (low): tooling guard for amend-over-pushed-commit pattern
+- Q-30.1 resolved: `pipeline.teacher_refresh → analytics-svc` (Option A, ADR-0033)
+- Q-30.2 resolved: skip `intelligence_audit_log` for L7 (Option B, ADR-0032 amended)
+- Q-30.3 resolved: hand-rolled Lloyd's k-means in @mm/engines (Option A)
+- Q-30.4 resolved: high_fatigue deferred; 5 of 6 triggers implemented (Option B, ISSUE-0017)
+- Q-30.5 resolved: "≥3 skills" scope = all skills (unscoped, student-level); k-means uses skill_id-scoped features
+- Q-30.6 resolved: "for >14 days" = window_days=14 rolling window (pre-push pin)
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ (12 packages) · Tests ✅ (438 passed / 1 skipped — full output captured per ISSUE-0013) · Build ✅ · RLS ✅ (no RLS changes)
+
+**Tomorrow — first thing:**
+Stage 31 — L9 Orchestration Weekly Plan (Day 44). Read DEV_PLAN Stage 31 + verify spec section number (do NOT trust morning prompt section ref without confirming — Stage 30 lesson). Pre-read must cite spec function signatures + default parameter values verbatim.
+
+---
+
 ## Stage 29 — 2026-05-19
 
 **Planned (from DEV_PLAN.md Stage 29):** L5 Predictive Intelligence — `pipeline.predictive_refresh` job handler, GET predictions endpoint (role-gated), retention decay constants, §12.4 data-threshold guard, strand-weighted readiness score, gap skill ranking. 1-day budget (Day 42).

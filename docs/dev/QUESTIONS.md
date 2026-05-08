@@ -9,6 +9,19 @@
 
 ## Resolved
 
+### Q-30.5 — "≥3 skills" scope for velocity-based §14.2 trigger rules
+
+- Date raised: 2026-05-20 (Stage 30 pre-implementation)
+- Asked of: self
+- Source: Spec §14.2 trigger table — "Velocity < -0.02 for >14 days on ≥3 skills" and "Velocity > +0.05 across ≥3 skills for 14+ days"
+- Question: Does "≥3 skills" mean (A) ≥3 skills with the triggering velocity across all skills the student has velocity data for (unscoped, student-level), or (B) ≥3 skills within the specific `skill_id` referenced in the job payload?
+- Why ambiguous: The `pipeline.teacher_refresh` job payload carries a single `skill_id` (for the k-means grouping target). The trigger rules in §14.2 are described at a class/student level without specifying whether they are scoped to the job's target skill.
+- Blocking? no — proceeding with Option A (all skills)
+- Assumed answer (if proceeding): **Option A** — trigger rules evaluated across all skills the student has learning_velocity data for. The job's `skill_id` is used for k-means feature vector construction (skill-scoped mastery + velocity), not for trigger rule scoping. This matches the spec's intent: §14.2 alerts are student-level indicators, not per-skill.
+- Code affected: `supabase/functions/analytics-svc/handlers.ts` (trigger evaluation — loads all `learning_velocity` rows for student, counts matching velocity rows)
+- Status: resolved
+- Resolution (2026-05-20): **Option A** — all skills (unscoped, student-level). Added to QUESTIONS.md at Stage 30 evening ritual (was mentioned in commit message but not written to file during pre-read).
+
 ### Q-30.6 — "for >14 days" velocity trigger condition and window_days semantics
 
 - Date raised: 2026-05-20 (Stage 30 pre-push verification)

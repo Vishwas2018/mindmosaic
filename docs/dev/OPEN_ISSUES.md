@@ -5,6 +5,20 @@
 
 ## Open
 
+### ISSUE-0019 — Tooling guard: amend-over-pushed-commit pattern (no automated guard)
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-20 (Stage 30 close)
+- Area: tooling / process
+- Tags: git · pre-push · near-miss · evening-ritual
+
+**Summary.** During Stage 30 implementation, the implementation commit was accidentally created with `git commit --amend`, rewriting the already-pushed prep commit (9f7b22d) rather than creating a new commit on top of it. `git push` would have been rejected (diverged history) or required force-push to main. Caught by checking `git status -b` before push; recovered via `git reset --soft origin/main` (working tree preserved, 13 files re-committed as 8a8ee8a). Recovery was clean but the guard is vigilance-only — there is no hook or automated check that warns when `--amend` would rewrite a commit already present on origin/main.
+
+**Proposed fix.** Add a `pre-push` or `commit-msg` hook that checks whether the current HEAD's parent matches origin/main's HEAD — if an amend rewrites a published commit, abort with: "ERROR: --amend would rewrite a commit already on origin/main. Use a new commit instead." Alternatively, a standing pre-commit check `git merge-base --is-ancestor HEAD origin/main` can detect the diverge before it happens.
+
+**Impact.** No code loss, no force-push occurred. Process gap only.
+
 ### ISSUE-0018 — Env var documentation gap: INTELLIGENCE_SVC_URL and ANALYTICS_SVC_URL undocumented
 
 - Status: open

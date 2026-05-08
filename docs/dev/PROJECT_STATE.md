@@ -5,41 +5,41 @@
 
 ## Position
 
-- Last completed stage: Stage 29 — L5 Predictive Intelligence (2026-05-19)
-- Next stage: Stage 30 — L7 Teacher Intelligence (Day 43)
-- Days remaining (target 75): 33
+- Last completed stage: Stage 30 — L7 Teacher Intelligence (2026-05-20)
+- Next stage: Stage 31 — L9 Orchestration Weekly Plan (Day 44)
+- Days remaining (target 75): 32
 - Buffer days consumed in Phase 0 (Stages 1–14): 0 of 3
 - Phase 1 complete: Stages 15–27 (13 stages). Phase 1 buffer at close: **+2 days banked**.
-- Phase 2 in progress: Stages 28–29 shipped within budget. **+2 days net banked entering Stage 30** (no buffer impact from Stage 28 or 29).
+- Phase 2 in progress: Stages 28–30 shipped within budget. **+2 days net banked entering Stage 31** (no buffer impact from Stage 28, 29, or 30).
 
 ## Test suite
 
 | Suite       | Status   | Count                         | Last run   |
 | ----------- | -------- | ----------------------------- | ---------- |
-| Unit        | ✅ green  | 421 passed / 1 skipped        | 2026-05-19 |
+| Unit        | ✅ green  | 438 passed / 1 skipped        | 2026-05-20 |
 | Integration | n/a      | n/a                           | n/a        |
 | pgTAP       | ✅ green  | 451/451                       | 2026-05-03 |
-| Contract    | ✅ green  | 103/103                       | 2026-05-19 |
+| Contract    | ✅ green  | 115/115                       | 2026-05-20 |
 | RLS         | ✅ green  | 451/451 (53 tables)           | 2026-05-03 |
 | E2E         | ⚠ opt-in | 5 specs (gated)               | n/a        |
 | Replay      | ✅ green  | 58/58 assertions              | 2026-05-16 |
 
 Unit + contract breakdown (full `pnpm -r run test` output — ISSUE-0013 fix applied):
-98 (@mm/types) + 32 (@mm/sdk) + 67 (@mm/ui) + 110 (@mm/engines) + 24 (content-svc) + 30 (assessment-svc) + 43 (intelligence-svc) + 6 (jobs-worker) + 11 (apps/web) = **421 passed, 1 skipped** (Docker-guarded Postgres integration test in jobs-worker).
+98 (@mm/types) + 32 (@mm/sdk) + 67 (@mm/ui) + 115 (@mm/engines) + 24 (content-svc) + 30 (assessment-svc) + 43 (intelligence-svc) + 6 (jobs-worker) + 12 (analytics-svc) + 11 (apps/web) = **438 passed, 1 skipped** (Docker-guarded Postgres integration test in jobs-worker).
 
-Baseline note: pre-Stage-29 baseline was **412**. Stage 29 adds +9 L5 contract tests to intelligence-svc (34 → 43).
+Baseline note: pre-Stage-30 baseline was **421**. Stage 30 adds +17: 12 analytics-svc contract + 5 k-means unit (engines 110 → 115).
 
-Contract count = 24 (content-svc) + 30 (assessment-svc) + 43 (intelligence-svc) + 6 (jobs-worker) = **103** (was 94 at Stage 28 close).
+Contract count = 24 (content-svc) + 30 (assessment-svc) + 43 (intelligence-svc) + 6 (jobs-worker) + 12 (analytics-svc) = **115** (was 103 at Stage 29 close).
 
-pgTAP/RLS not re-run for Stage 29 — no RLS policy changes. No new migrations. Pre-deploy gate from Stages 19+20 still applies.
+pgTAP/RLS not re-run for Stage 30 — no RLS policy changes. No new migrations. Pre-deploy gate from Stages 19+20 still applies.
 
 ## Quality gates
 
 | Gate                | Last status                                                     | Last run   |
 | ------------------- | --------------------------------------------------------------- | ---------- |
-| pnpm lint           | ✅ green (7 packages)                                           | 2026-05-19 |
-| pnpm typecheck      | ✅ green (11 packages)                                          | 2026-05-19 |
-| pnpm test           | ✅ green (421 passed / 1 skipped — full output captured)        | 2026-05-19 |
+| pnpm lint           | ✅ green (12 packages)                                          | 2026-05-20 |
+| pnpm typecheck      | ✅ green (12 packages)                                          | 2026-05-20 |
+| pnpm test           | ✅ green (438 passed / 1 skipped — full output captured)        | 2026-05-20 |
 | pnpm test:replay    | ✅ green (58/58 assertions)                                     | 2026-05-16 |
 | pnpm build          | ✅ green (7/7 packages)                                         | 2026-05-18 |
 | RLS coverage        | ✅ 53/53 tables enabled + tested                                | 2026-05-03 |
@@ -59,11 +59,12 @@ k6 load test (`k6/session-loop.js`) is ready for execution; nightly CI workflow 
 
 ## Open items
 
-- ADRs accepted: **32** (ADR-0001 through ADR-0032)
+- ADRs accepted: **33** (ADR-0001 through ADR-0033)
 - ADRs proposed: 0
-- Issues critical / high / medium / low: **0/0/4/3**
+- Workspaces: **12** (analytics-svc added at Stage 30)
+- Issues critical / high / medium / low: **0/0/4/6**
   - Medium (4): ISSUE-0009 (IndexedDB + SW shell-cache v1.1 upgrade — DEV_PLAN §5 P1.6), ISSUE-0010 (adaptive section-boundary banner + DTO field — DEV_PLAN §5 P1.7), ISSUE-0011 (deferred content blocks: Results screen 5 stubs (a–e) + Dashboard mastery snapshot (f) — DEV_PLAN §5 P2.10), ISSUE-0014 (exam_date column + UI ingress — v1.1)
-  - Low (3): ISSUE-0013 (evening ritual test count methodology — fix applied from Stage 29), ISSUE-0015 (cohort_metric_cache category mismatch — v1.1), ISSUE-0016 (async_pipeline_event for L5/L7/L9 observability parity post ADR-0032 — v1.1)
+  - Low (6): ISSUE-0013 (evening ritual test count methodology — fix applied from Stage 29), ISSUE-0015 (cohort_metric_cache category mismatch — v1.1), ISSUE-0016 (async_pipeline_event + analytics_audit_log for L5/L7/L9 observability parity post ADR-0032 — v1.1), ISSUE-0017 (high-fatigue alert deferred — per-session data not queryable — v1.1), ISSUE-0018 (INTELLIGENCE_SVC_URL + ANALYTICS_SVC_URL undocumented in env.example/deployment docs), ISSUE-0019 (tooling guard: amend-over-pushed-commit pattern)
   - **Resolved at Stage 28:** ISSUE-0006 (L3a now uses skill-graph-cache via getSkillGraph())
   - **Resolved at Stage 26:** ISSUE-0005, ISSUE-0007, ISSUE-0008
   - **Resolved at Stage 25 audit:** ISSUE-0012
@@ -79,7 +80,11 @@ k6 load test (`k6/session-loop.js`) is ready for execution; nightly CI workflow 
 
 ## Notes for next session
 
-Stage 30 — L7 Teacher Intelligence (Day 43). Read DEV_PLAN Stage 30 + Spec §13 + arch §4.6 first; surface Q-30.* before coding.
+Stage 31 — L9 Orchestration Weekly Plan (Day 44). Before coding:
+1. Read DEV_PLAN Stage 31 + verify spec section number (do NOT trust morning prompt section reference without reading the spec TOC — Stage 30 retro lesson: "§13" ≠ "§14").
+2. Read arch §4.x for owning service (orchestration-svc or analytics-svc?).
+3. Pre-read must cite function signatures + default parameter values verbatim (Stage 30 retro: k=4 vs k=3 caught only at pre-push).
+4. Surface Q-31.* before coding.
 
 Pre-deploy gate still pending: migrations 0012 + 0013 + 0014 + RLS must be run locally before any deploy (sandbox lacks Docker).
 
