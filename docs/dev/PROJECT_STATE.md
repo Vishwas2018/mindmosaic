@@ -5,42 +5,43 @@
 
 ## Position
 
-- Last completed stage: Stage 34 — Notifications Service (2026-05-24)
-- Next stage: Stage 35 — Plan Overrides (Day 49, 1-day budget)
-- Days remaining (target 75): 27 (Day 48 of 75 complete)
+- Last completed stage: Stage 35 — Plan Overrides (2026-05-25)
+- Next stage: Stage 36 — Parent Dashboard (Days 50–51, 2-day budget)
+- Days remaining (target 75): 26 (Day 49 of 75 complete)
 - Buffer days consumed in Phase 0 (Stages 1–14): 0 of 3
 - Phase 1 complete: Stages 15–27 (13 stages). Phase 1 buffer at close: **+2 days banked**.
-- Phase 2 in progress: Stages 28–34 all shipped within budget. **+2 days net banked entering Stage 35** (no buffer impact from Stages 28–34).
+- Phase 2 in progress: Stages 28–35 all shipped within budget. **+2 days net banked entering Stage 36** (no buffer impact from Stages 28–35).
+- Stages closed: 35 of 75.
 
 ## Test suite
 
 | Suite           | Status       | Count                          | Last run   |
 | --------------- | ------------ | ------------------------------ | ---------- |
-| Unit            | ✅ green      | 505 passed / 1 skipped         | 2026-05-24 |
+| Unit            | ✅ green      | 516 passed / 1 skipped         | 2026-05-25 |
 | Integration     | n/a          | n/a                            | n/a        |
 | pgTAP           | ✅ green      | 451/451                        | 2026-05-03 |
-| Contract        | ✅ green      | 178/178                        | 2026-05-24 |
+| Contract        | ✅ green      | 188/188                        | 2026-05-25 |
 | E2E (Vitest)    | ✅ green      | 1/1 (assignments-svc lifecycle)| 2026-05-23 |
 | E2E (Playwright)| ⚠ opt-in     | 5 specs (gated)                | n/a        |
 | RLS             | ✅ green      | 451/451 (53 tables)            | 2026-05-03 |
 | Replay          | ✅ green      | 58/58 assertions               | 2026-05-16 |
 
 Unit + contract breakdown (full `pnpm -r run test` output):
-101 (@mm/types) + 32 (@mm/sdk) + 67 (@mm/ui) + 115 (@mm/engines) + 24 (content-svc) + 30 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 22 (analytics-svc) + 9 (orchestration-svc) + 19 (assignments-svc contract) + 1 (assignments-svc e2e) + 15 (notifications-svc contract) + 11 (apps/web) = **505 passed, 1 skipped**
+102 (@mm/types) + 32 (@mm/sdk) + 67 (@mm/ui) + 115 (@mm/engines) + 24 (content-svc) + 30 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 22 (analytics-svc) + 19 (orchestration-svc) + 19 (assignments-svc contract) + 1 (assignments-svc e2e) + 15 (notifications-svc contract) + 11 (apps/web) = **516 passed, 1 skipped**
 
-Stage 34 adds +18: +15 (notifications-svc contract.test.ts) + +3 (@mm/types — 3 new Zod schemas auto-generate 3 new cases in schemas.test.ts).
+Stage 35 adds +11: +10 (orchestration-svc contract tests — 9 → 19) + +1 (@mm/types — PlanOverrideDTOSchema auto-generates 1 new case in schemas.test.ts `X3 exhaustive schema registry` loop).
 
-Contract count = 24 (content-svc) + 30 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 22 (analytics-svc) + 9 (orchestration-svc) + 19 (assignments-svc) + 15 (notifications-svc) = **178** (was 163 at Stage 33 close).
+Contract count = 24 (content-svc) + 30 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 22 (analytics-svc) + 19 (orchestration-svc) + 19 (assignments-svc) + 15 (notifications-svc) = **188** (was 178 at Stage 34 close).
 
-pgTAP/RLS not re-run for Stages 28–34 — no new RLS policies. Migration 0016 amends `fn_drain_outbox_batch` (OR REPLACE); no new tables or policies.
+pgTAP/RLS not re-run for Stages 28–35 — no new RLS policies. plan_override table + RLS exists from migration 0005. Stage 35 adds no migrations.
 
 ## Quality gates
 
 | Gate                | Last status                                                     | Last run   |
 | ------------------- | --------------------------------------------------------------- | ---------- |
-| pnpm lint           | ✅ green (15 packages)                                          | 2026-05-24 |
-| pnpm typecheck      | ✅ green (15 packages)                                          | 2026-05-24 |
-| pnpm test           | ✅ green (505 passed / 1 skipped — full output captured)        | 2026-05-24 |
+| pnpm lint           | ✅ green (15 packages)                                          | 2026-05-25 |
+| pnpm typecheck      | ✅ green (15 packages)                                          | 2026-05-25 |
+| pnpm test           | ✅ green (516 passed / 1 skipped — full output captured)        | 2026-05-25 |
 | pnpm test:replay    | ✅ green (58/58 assertions)                                     | 2026-05-16 |
 | pnpm build          | ✅ green (7/7 packages)                                         | 2026-05-18 |
 | RLS coverage        | ✅ 53/53 tables enabled + tested                                | 2026-05-03 |
@@ -71,7 +72,7 @@ Stage 34 SLA note: outbox → notifications 5s wall-clock SLA (DEV-20260524-1) c
   - **Resolved at Stage 28:** ISSUE-0006
   - **Resolved at Stage 26:** ISSUE-0005, ISSUE-0007, ISSUE-0008
   - **Resolved at Stage 25 audit:** ISSUE-0012
-- Open questions: 0 (Q-34.1–Q-34.6 all resolved)
+- Open questions: 0 (Q-35.1–Q-35.4 all resolved)
 - Open bugs: 0
 - Deviations logged: 10 total (5 resolved, 5 open)
   - DEV-20260430-1 resolved Stage 15
@@ -87,16 +88,31 @@ Stage 34 SLA note: outbox → notifications 5s wall-clock SLA (DEV-20260524-1) c
 
 ## Notes for next session
 
-Stage 35 — Plan Overrides (Day 49, 1-day budget). Pre-read: confirm which tables plan overrides write to (likely `learning_plan` with an override column or a dedicated `plan_override` table — verify arch §4.6 and spec §13). Verify outbox pattern: does a plan override trigger a replan event or just a direct UPDATE?
+Stage 36 — Parent Dashboard (Days 50–51, 2-day budget). **First Phase 2 UI stage** — `apps/web` parent dashboard screens.
 
-T2 timing gap — second occurrence at Stage 34 (Stage 31 was first). Tightening rule now documented in DAILY_LOG.md Stage 34 retro: file mid-impl self-resolve Qs in same work session as resolving code, not deferred to pre-push verification.
+**Pre-reads required:**
+- intelligence-svc `/learner-profile` handler shape (Stage 32) — verbatim DTO fields for dashboard display
+- orchestration-svc `/plan/current` handler shape (Stage 31) — `LearningPlanDTO` fields
+- notifications-svc `/me` handler shape (Stage 34) — `NotificationsListDTO` fields
+- spec section for parent dashboard (§ TBD — verify at morning ritual)
+- DEV_PLAN Stage 36 deliverables verbatim
 
-T3 Option 3 hybrid now two stages of evidence (Stage 31 + Stage 34). Rule is stable: operator round-trip REQUIRED for Qs touching DTO shape / scope / schema / auth model; self-resolve PERMITTED for tight implementation details (thresholds, filter inclusivity, internal plumbing keys) with documented options + default.
+**UI stage discipline differences from service stages:**
+- Testing gates: Storybook? visual regression? component contracts? Establish or surface as Q-36.* round-trip at morning ritual if not defined by prior UI stages (Stages 13–27).
+- Verification: `pnpm -r run test` still required; UI-specific gates (Playwright specs?) to be confirmed.
+- No new Edge Functions expected; Stage 36 is read-only consumer of Stages 31/32/34 APIs.
 
-Pre-deploy gate still pending: migrations 0012–0016 + RLS must be run locally before any deploy (sandbox lacks Docker).
+**T-discipline state for Stage 36:**
+- T1: pre-read cites function signatures + prop shapes + DTO fields verbatim (extends to component prop types for UI stages).
+- T2-tightened: mid-impl self-resolve Qs filed in same work session. (Stage 35 evidence: first clean stage.)
+- T3 Option 3: round-trip required for DTO/scope/schema/auth-model Qs; self-resolve permitted for tight details.
+- T4: never `--amend` over pushed commits.
+- Stage 33 R5 lesson: cross-service ownership verification before assuming write access.
+- Stage 31 retro b: stale-comment guard on copy-paste from prior service/component scaffolds.
 
-Phase 1 Exit Report at `docs/dev/phase-1-exit-report.md`. Git tag `v1-phase-1` created locally; **push pending approval** — run `git push origin v1-phase-1` when ready.
-
-ISSUE-0018 now at 5 undocumented env vars: `INTELLIGENCE_SVC_URL`, `ANALYTICS_SVC_URL`, `ORCHESTRATION_SVC_URL`, `ASSESSMENT_SVC_URL`, `NOTIFICATIONS_SVC_URL`. Address in docs/dev/deployment.md at v1 close or Stage 36.
-
-Q-28.8 deferral: `SkillGraphCache.adjacency` lacks `strength` + `dependency_class` fields (Option B applied). `// Q-28.8:` grep markers at two sites in `intelligence-svc/handlers.ts`. Address in v1.1 if content team adds enriching edges.
+**Open carry-forwards:**
+- ISSUE-0018: 5 undocumented env vars — address in `docs/dev/deployment.md` at v1 close or Stage 36.
+- Pre-deploy gate: migrations 0012–0016 + RLS must be run locally before any deploy (sandbox lacks Docker).
+- Phase 1 Exit Report at `docs/dev/phase-1-exit-report.md`. Git tag `v1-phase-1` created locally; **push pending approval**.
+- Q-28.8 deferral: `SkillGraphCache.adjacency` lacks `strength` + `dependency_class` fields (Option B applied). `// Q-28.8:` grep markers at two sites in `intelligence-svc/handlers.ts`. Address in v1.1.
+- v1.1 self-supersession note: if plan_override row count grows materially, consider migrating deterministic key to a generated column + partial unique index (current JS-side SELECT+filter pattern acceptable for v1 volume).

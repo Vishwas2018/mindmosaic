@@ -2,6 +2,57 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 35 — 2026-05-25
+
+**Planned (from DEV_PLAN.md Stage 35):** Plan Overrides — `POST /orchestration/overrides` + `DELETE /orchestration/overrides/{id}`; `PlanOverrideDTOSchema` in `@mm/types`; ≥10 contract tests. Day 49, 1-day budget.
+
+**Actually delivered:**
+
+- Prep commit (306bb8e): Q-35.1–Q-35.4 resolved to QUESTIONS.md ## Resolved; PROJECT_STATE.md deviation count corrected (DEV-20260518-1 erroneously carried as ongoing — corrected to resolved Stage 28 per DEVIATIONS.md); C-C-D-V saved to docs/prompts/2026-05-25_stage-35.md.
+- Implementation commit (d1e7a1a): 4 files, 674 insertions, 3 deletions.
+  - `packages/types/src/orchestration.ts`: `PlanOverrideDTOSchema` + `PlanOverrideDTO` appended (Q-35.1 Modified Option A — `{ id, student_id, type, target, actor: { id, display_name }, expires_at, created_at }`; `tenant_id` dropped as auth-redundant; `actor` object mirrors `AssignmentDTO.created_by` Stage 33 precedent).
+  - `supabase/functions/orchestration-svc/handlers.ts`: `createOverride` + `deleteOverride` exported functions added (lines 837–1067); `PlanOverrideFullRow` + `PlanOverrideDTOLocal` interfaces added. Consumption path `processOrchestratorReplan` (lines 288–735) untouched. `tenant_id` propagation through `user_profile` join (createOverride) and `plan_override` SELECT (deleteOverride) for `intelligence_audit_log NOT NULL` constraint.
+  - `supabase/functions/orchestration-svc/index.ts`: POST + DELETE route blocks added before service-role gate; header comment updated to Stage 31 + Stage 35; `createOverride` + `deleteOverride` imported.
+  - `supabase/functions/orchestration-svc/__tests__/contract.test.ts`: 10 new contract tests across 3 new `describe` blocks (createOverride × 7, deleteOverride × 2, consumption-path sanity × 1); 9 → 19 tests.
+
+**Time spent:** 1 day (on 1-day budget — Day 49)
+
+**Surprises / departures:**
+
+1. **T4: intelligence_audit_log.tenant_id NOT NULL** — pre-push verification round (R5 audit log shape pre-read) caught that `intelligence_audit_log.tenant_id uuid NOT NULL` and `plan_override.tenant_id NOT NULL` were both missing from the initial createOverride + deleteOverride implementations. T4 amendment applied in working tree before push: `user_profile SELECT` extended to `display_name,tenant_id`; `plan_override INSERT` enriched with `tenant_id`; `plan_override SELECT` in deleteOverride extended to include `tenant_id`; test stubs updated. Correct discipline — fix before push, never amend after push.
+
+2. **Self-supersession JS-side filtering** — `DbClient` interface lacks JSONB path operators (`filter()`, `contains()`), so `target->>'skill_id'` equality cannot be expressed as a DB-side condition. SELECT fetches all active rows of same `(student_id, type)` and JS-side `find()` applies the deterministic key check. Acceptable for v1 row volume; `idx_plan_override_active` on `(student_id, type, expires_at)` keeps the scan efficient.
+
+**Decisions made (not in stage):**
+
+- none (all Q-35.* resolutions baked into prep commit per T2-tightened discipline)
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- Q-35.1, Q-35.2, Q-35.3, Q-35.4 all resolved (filed in prep, zero retroactive — T2-tightened first clean stage).
+
+**Quality gates at close:**
+
+- Lint ✅ (15 packages) · Typecheck ✅ (15 packages) · Tests ✅ (516 passed / 1 skipped) · Build ✅ (husky turbo 22/22 at commit) · RLS ✅ (no new tables or policies — plan_override table + RLS exists from migration 0005)
+
+**Process retro:**
+
+(a) **T2-tightened first stage in force** (tightening imposed after Stage 34 retro). Zero retroactive Q filings this stage — all four Q-35.* entries filed in the prep commit before any handler code. Pattern from Stage 31 + Stage 34 (mid-impl Q lag) broken on first stage of the new discipline. T3 Option 3 hybrid working correctly: Q-35.1 + Q-35.2 as round-trip (DTO shape + auth model); Q-35.3 + Q-35.4 as self-resolve (tight implementation details).
+
+(b) **Pre-push verification caught audit_log.tenant_id NOT NULL via R5 pre-read.** T1 pre-reads working as designed — R5 read the existing audit_log INSERT shape verbatim (lines 694-706), which revealed the `tenant_id` column requirement. Without R5, the tenant_id omission would have been invisible in tests (mock doesn't enforce NOT NULL) and would have surfaced as a production DB error. T4 fix-before-push applied correctly.
+
+(c) **Self-supersession deterministic key JS-side** — acceptable for v1 but noted for v1.1: if plan_override row count grows materially, consider migrating the deterministic key to a generated column + partial unique index, which would allow DB-side upsert and remove the JS-side SELECT+filter pattern.
+
+(d) **Phase 2 momentum**: 7 of 14 Phase 2 stages complete (Stages 28–35), all shipped on budget, buffer untouched at +2 days. 6 stages remaining (36–41) within the 9-day envelope (Day 50–58, with +2 banked).
+
+**Tomorrow — first thing:**
+
+Stage 36 — Parent Dashboard (Days 50–51, 2-day budget). First Phase 2 UI stage — apps/web. Pre-reads must verify spec section + DEV_PLAN deliverables verbatim; read intelligence-svc /learner-profile, orchestration-svc /plan/current, notifications-svc /me handler shapes. Surface UI testing strategy as Q-36.* round-trip if not established by prior UI stages.
+
 ## Stage 34 — 2026-05-24
 
 **Planned (from DEV_PLAN.md Stage 34):** Notifications Service — 15th workspace `notifications-svc` with 4 endpoints (GET /notifications/me, PATCH /notifications/{id}/read, POST /notifications/read-all, POST /notifications/pipeline/create); migration 0016 (fn_drain_outbox_batch fix + plan_updated + intervention_alert branches); Bell UI primitive; SDK getUnreadCount helper. Day 48, 1-day budget.
