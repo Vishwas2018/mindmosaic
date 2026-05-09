@@ -3,6 +3,7 @@ export const mmKeys = {
   users: {
     all: () => ['users'] as const,
     me: () => ['users', 'me'] as const,
+    children: () => ['users', 'children'] as const,
   },
   tenants: {
     all: () => ['tenants'] as const,
@@ -22,16 +23,19 @@ export const mmKeys = {
     state: (id: string) => ['sessions', id, 'state'] as const,
     summary: (id: string) => ['sessions', id, 'summary'] as const,
     recent: () => ['sessions', 'recent'] as const,
+    childRecent: (studentId: string) => ['sessions', 'recent', studentId] as const,
   },
   intelligence: {
     all: () => ['intelligence'] as const,
     learningDNA: (studentId: string) => ['intelligence', 'learningDNA', studentId] as const,
+    learnerProfile: (studentId: string) => ['intelligence', 'learnerProfile', studentId] as const,
     skillProgress: (skillId: string) => ['intelligence', 'skillProgress', skillId] as const,
     causalMap: (studentId: string) => ['intelligence', 'causalMap', studentId] as const,
   },
   orchestration: {
     all: () => ['orchestration'] as const,
     learningPlan: (studentId: string) => ['orchestration', 'learningPlan', studentId] as const,
-    pathwayReadiness: (slug: string) => ['orchestration', 'pathwayReadiness', slug] as const,
+    pathwayReadiness: (studentId: string, slug: string) =>
+      ['orchestration', 'pathwayReadiness', studentId, slug] as const,
   },
 } as const;

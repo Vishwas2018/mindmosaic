@@ -4,6 +4,20 @@ import { LearningDNADTOSchema, SkillProgressDTOSchema, CausalMapDTOSchema } from
 import { useMmClient } from '../context.js';
 import { mmKeys } from '../keys.js';
 
+// Stage 36: GET /intelligence/learner-profile/{student_id} → LearningDNADTO.
+// Distinct from useLearningDNA (stub hook with wrong path retained as ISSUE-0026 pattern).
+export function useLearnerProfile(studentId: string) {
+  const client = useMmClient();
+  return useQuery({
+    queryKey: mmKeys.intelligence.learnerProfile(studentId),
+    queryFn: () =>
+      client
+        .get(`/intelligence-svc/intelligence/learner-profile/${studentId}`, LearningDNADTOSchema)
+        .then((r) => r.data),
+    enabled: studentId.length > 0,
+  });
+}
+
 // Stage 28+: dispatcher not in v1; body fix deferred to that stage.
 // OWNERS.md:122 spells the future endpoint as
 // `GET /intelligence/learner-profile/{student_id}`.
@@ -30,16 +44,14 @@ export function useSkillProgress(skillId: string) {
   });
 }
 
-// Stage 28+: dispatcher not in v1; body fix deferred to that stage.
-// OWNERS.md:123 spells the future endpoint as
-// `GET /intelligence/causal-map/{student_id}`.
+// Stage 36: path corrected to include {student_id} per arch §6.4 + OWNERS.md:123.
 export function useCausalMap(studentId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.intelligence.causalMap(studentId),
     queryFn: () =>
       client
-        .get('/intelligence-svc/intelligence/causal-map', CausalMapDTOSchema)
+        .get(`/intelligence-svc/intelligence/causal-map/${studentId}`, CausalMapDTOSchema)
         .then((r) => r.data),
     enabled: studentId.length > 0,
   });

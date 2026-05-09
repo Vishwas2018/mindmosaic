@@ -44,10 +44,11 @@ describe('mmKeys — X4 hierarchy pattern', () => {
     ]);
   });
 
-  it('orchestration.pathwayReadiness(slug) includes slug', () => {
-    expect(mmKeys.orchestration.pathwayReadiness('naplan-y5')).toEqual([
+  it('orchestration.pathwayReadiness(studentId, slug) includes both', () => {
+    expect(mmKeys.orchestration.pathwayReadiness('student-1', 'naplan-y5')).toEqual([
       'orchestration',
       'pathwayReadiness',
+      'student-1',
       'naplan-y5',
     ]);
   });

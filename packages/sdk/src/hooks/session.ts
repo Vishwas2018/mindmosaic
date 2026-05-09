@@ -71,6 +71,22 @@ export function useListRecentSessions() {
   });
 }
 
+/** Stage 36: GET /sessions/recent?student_id={id}&limit={n} — parent dashboard child sessions. */
+export function useChildRecentSessions(studentId: string, limit = 5) {
+  const client = useMmClient();
+  return useQuery({
+    queryKey: mmKeys.sessions.childRecent(studentId),
+    queryFn: () =>
+      client
+        .get(
+          `/assessment-svc/sessions/recent?student_id=${studentId}&limit=${limit}`,
+          SessionSummaryListSchema,
+        )
+        .then((r) => r.data),
+    enabled: studentId.length > 0,
+  });
+}
+
 /** X3: idempotencyKey per-mount. Not retry-safe without stable key.
  *  ADR-0026: lock_token echoed via X-Session-Lock; rotates on each successful /respond.
  *  Call updateLockToken(token) after session create/resume to seed the initial token. */

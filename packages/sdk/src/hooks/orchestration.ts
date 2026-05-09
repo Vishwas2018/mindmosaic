@@ -28,20 +28,20 @@ export function useLearningPlan(studentId: string) {
   });
 }
 
-// Stage 32+: cross-service — endpoint owned by analytics-svc per OWNERS.md
-// (line 173: `GET /analytics/pathway-readiness/{student_id}/{pathway_slug}`),
-// not orchestration-svc. Hook stays in orchestration.ts for now; SDK file
-// reorganisation is a v1.1 concern. Body fix deferred to whichever stage
-// ships analytics-svc.
-export function usePathwayReadiness(slug: string) {
+// Stage 36: path + signature corrected per SCREEN_SPECS §15 + analytics-svc route.
+// Endpoint owned by analytics-svc (ADR-0033); hook stays in orchestration.ts (v1.1 reorganisation).
+export function usePathwayReadiness(studentId: string, slug: string) {
   const client = useMmClient();
   return useQuery({
-    queryKey: mmKeys.orchestration.pathwayReadiness(slug),
+    queryKey: mmKeys.orchestration.pathwayReadiness(studentId, slug),
     queryFn: () =>
       client
-        .get(`/analytics-svc/orchestration/readiness/${slug}`, PathwayReadinessDTOSchema)
+        .get(
+          `/analytics-svc/analytics/pathway-readiness/${studentId}/${slug}`,
+          PathwayReadinessDTOSchema,
+        )
         .then((r) => r.data),
-    enabled: slug.length > 0,
+    enabled: studentId.length > 0 && slug.length > 0,
   });
 }
 

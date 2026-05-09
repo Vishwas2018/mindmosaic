@@ -38,6 +38,8 @@ export { ProgressBar } from './ProgressBar/ProgressBar.js';
 export type { ProgressBarProps, ProgressBarVariant } from './ProgressBar/ProgressBar.js';
 export { SkillBar } from './SkillBar/SkillBar.js';
 export type { SkillBarProps } from './SkillBar/SkillBar.js';
+export { ReadinessRing } from './ReadinessRing/ReadinessRing.js';
+export type { ReadinessRingProps } from './ReadinessRing/ReadinessRing.js';
 export {
   Table,
   TableHead,

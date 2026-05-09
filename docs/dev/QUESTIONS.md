@@ -9,6 +9,45 @@
 
 ## Resolved
 
+### Q-36.8 — apps/web jest-axe test infrastructure absent
+
+- Date raised: 2026-05-26 (Stage 36 implementation T1 reads — T2-tightened: filed before component code)
+- Asked of: self (T3 self-resolve)
+- Source: C-C-D-V Deliverable 9 — `apps/web/src/app/(parent)/parent/page.test.tsx` jest-axe route scan; packages/ui/vitest.config.ts (environment: 'jsdom', setupFiles, jest-axe devDeps) vs apps/web/vitest.config.ts (no jsdom, no setupFiles)
+- Question: `apps/web` has no `@testing-library/react`, `jest-axe`, or `jsdom` configured. A DOM-render axe test in `apps/web/src/app/(parent)/parent/page.test.tsx` would fail at import resolution. Do we (A) add jsdom + testing-library + jest-axe to apps/web devDeps, or (B) rely on packages/ui tests for new primitives + packages/core tests for explain-format, matching actual Stage 22b–25 precedent?
+- Why ambiguous: C-C-D-V specified an apps/web page test; actual prior stages (22b–25) never created one — axe always ran in packages/ui for primitives, not the full rendered page.
+- Blocking? no — tight implementation detail; T3 self-resolve permitted
+- Assumed answer (if proceeding): Option B — axe tests in packages/ui + packages/core only
+- Code affected: `packages/ui/src/ReadinessRing/ReadinessRing.test.tsx`, `packages/core/src/explain-format.test.ts`
+- Status: resolved
+- Resolution (2026-05-26, T3 self-resolve): **Option B.** Axe tests in `packages/ui` (ReadinessRing.test.tsx — 4 tests: axe + 3 prop contract) and `packages/core` (explain-format.test.ts — ≥3 tests: one per severity tier). Matches actual Stage 22b–25 pattern — no apps/web DOM test existed in any prior UI stage. Total new test count: ≥7, giving 516 + 7 = 523+ (above 520 floor).
+
+### Q-36.7 — No copy.ts convention in apps/web
+
+- Date raised: 2026-05-26 (Stage 36 implementation T1 reads — T2-tightened: filed before component code)
+- Asked of: self (T3 self-resolve)
+- Source: C-C-D-V Constraint 12 "All microcopy via copy.ts"; apps/web/src/ directory (no copy.ts found); student dashboard page.tsx (inline strings throughout)
+- Question: C-C-D-V said "all copy via copy.ts" but no copy.ts file exists in apps/web/src. Student dashboard uses inline strings directly. Create copy.ts for parent dashboard, or follow established inline string pattern?
+- Why ambiguous: C-C-D-V constraint was aspirational; actual codebase pattern is inline strings. Adding copy.ts would introduce a new convention not present in any prior stage.
+- Blocking? no — tight implementation detail; T3 self-resolve permitted
+- Assumed answer (if proceeding): Inline strings following student dashboard pattern
+- Code affected: `apps/web/src/app/(parent)/parent/page.tsx`
+- Status: resolved
+- Resolution (2026-05-26, T3 self-resolve): **Inline strings.** No copy.ts created. Student dashboard page.tsx is the authoritative style guide — inline strings throughout, no abstraction layer. Adding copy.ts would be a new convention the codebase doesn't support yet and is out of Stage 36 budget.
+
+### Q-36.6 — buildExplanationCards input field: misconception_id vs id
+
+- Date raised: 2026-05-26 (Stage 36 implementation T1 reads — T2-tightened: filed before component code)
+- Asked of: self (T3 self-resolve)
+- Source: C-C-D-V "buildExplanationCards() takes CausalMapDTO.active_misconceptions[] ... input: { id, name, confidence, severity }"; CausalMapDTOSchema at packages/types/src/intelligence.ts:66 — field is `misconception_id` not `id`
+- Question: C-C-D-V specified input shape `{ id, name, confidence, severity }`. Actual `CausalMapDTOSchema.active_misconceptions` has `{ misconception_id, name, category, confidence, severity, affected_skill_count }`. Should the input type use `misconception_id` (matching actual schema), and should `ExplanationCard.id` map from `misconception_id`?
+- Why ambiguous: C-C-D-V used `id` based on LearningDNADTO.active_misconceptions shape; CausalMapDTO uses `misconception_id`. Both DTOs have an active_misconceptions array but with different field names.
+- Blocking? no — tight implementation detail; T3 self-resolve permitted
+- Assumed answer (if proceeding): Use CausalMapDTOSchema shape exactly — `misconception_id`, map to ExplanationCard.id
+- Code affected: `packages/core/src/explain-format.ts`
+- Status: resolved
+- Resolution (2026-05-26, T3 self-resolve): **Use `misconception_id`.** `buildExplanationCards` input type uses `CausalMapDTOSchema.active_misconceptions` exact shape: `{ misconception_id: string; name: string; category: string; confidence: number; severity: string; affected_skill_count: number }`. `ExplanationCard.id = misconception_id`. Extra fields (`category`, `affected_skill_count`) accepted but not used in copy templates.
+
 ### Q-36.5 — ChildSwitcher placement in TopBar
 
 - Date raised: 2026-05-26 (Stage 36 prep — T2-tightened: filed before component code)
