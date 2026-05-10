@@ -2,6 +2,59 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 37 — 2026-05-27 (cont. 2026-05-10)
+
+**Planned (from DEV_PLAN.md Stage 37):** Teacher Dashboard — SCREEN_SPECS Screen 18 + Screen 19 companion; 4 backend endpoints (users-svc × 2, analytics-svc × 2); SDK hooks; frontend pages; contract tests. 2-day budget (Days 52–53).
+
+**Actually delivered:**
+
+- Prep commit (871d4fe): Q-37.1–Q-37.6 resolved + ISSUE-0027/0028 filed + C-C-D-V saved to `docs/prompts/2026-05-27_stage-37.md`. Screen 18/19 target confirmed as `(teacher)/teacher/page.tsx` + `(teacher)/teacher/students/page.tsx`.
+- Implementation:
+  - `supabase/functions/users-svc/handlers.ts` (new file): `handleGetMyClasses` + `handleGetClassStudents` with `DbClient`/`DbBuilder` interfaces, `ClassGroupDTO`/`StudentRowDTO`/`ClassStudentsResponse` DTOs.
+  - `supabase/functions/users-svc/__tests__/contract.test.ts` (new file): 5 contract tests (3 × handleGetMyClasses, 2 × handleGetClassStudents) with same mock-client harness as analytics-svc.
+  - `supabase/functions/users-svc/package.json` + `tsconfig.json` (new): vitest workspace entry; pnpm-workspace.yaml updated.
+  - `supabase/functions/analytics-svc/handlers.ts`: appended `getClassKpi` (4-stat KPI handler, `ClassKpiDTO`) + `patchInterventionAlert` (dismiss/acknowledge, Q-37.7 ownership via direct `teacher_id` column).
+  - `supabase/functions/analytics-svc/index.ts`: routes for `GET /analytics/class-kpi/{class_id}` + `PATCH /analytics/intervention-alerts/{id}`.
+  - `supabase/functions/analytics-svc/__tests__/contract.test.ts`: +7 tests (4 × getClassKpi, 3 × patchInterventionAlert); mock builder `.update().select()` chain fix (writeOps guard).
+  - `packages/sdk/src/keys.ts`: `analytics` namespace + `assignments` namespace + `users.classes()` + `users.classStudents(classId)`.
+  - `packages/sdk/src/hooks/identity.ts`: `useMyClasses()` + `ClassGroupSchema` + `useClassStudents()` + `StudentRowSchema`.
+  - `packages/sdk/src/hooks/analytics.ts` (new): `useInterventionAlerts`, `useClassKpi`, `useDismissAlert`.
+  - `packages/sdk/src/hooks/assignments.ts` (new): `useAssignmentsForClass`.
+  - `packages/sdk/src/hooks/index.ts`: exports for analytics.js + assignments.js.
+  - `apps/web/src/app/(teacher)/teacher/page.tsx`: full Screen 18 rewrite — 6 named blocks: ClassSwitcher, ClassKpiStrip, InterventionAlertsSection, StudentPerformanceTable (real `<table>` + `aria-sort`), TopicMasterySection (placeholder + ISSUE-0027), AssignmentsWidget. Teacher sidebar nav (5 items). All states: loading/empty/error/content.
+  - `apps/web/src/app/(teacher)/teacher/students/page.tsx` (new): Screen 19 students list — searchable `<table>` via `useClassStudents` + `useMyClasses`. ClassFilter dropdown + name search input.
+  - `apps/web/playwright/e2e/teacher-dashboard.spec.ts` (new): test.skip-guarded Playwright spec (fresh teacher → empty state).
+
+**Time spent:** 2 days (Days 52–53, within budget)
+
+**Surprises / departures:**
+
+1. **Q-37.7 self-resolve:** C-C-D-V specified PATCH ownership via `class_group.teacher_id` join (class_id path). Migration 0005 reveals `intervention_alert.teacher_id NOT NULL` direct column + `class_id NULLABLE` (ON DELETE SET NULL). Used direct `alert.teacher_id` check — simpler, handles NULL class_id case. Q-37.7 filed and resolved.
+2. **Mock builder `.update().select()` chain:** The analytics-svc mock client builder overwrote the `update` op with `select` when `.update(patch).select('...')` was chained. Fixed with a writeOps guard in both analytics-svc and users-svc harnesses. 3 test failures resolved after fix.
+3. **Q-36.8 Option B precedent:** `apps/web` jest-axe infrastructure absent per Q-36.8 resolution. Stage 37 follows the same Option B: no apps/web DOM test; axe covered by packages/ui primitive tests (StatTile, ProgressBar, Table all pre-tested).
+4. **useClassStudents not in SDK at stage start:** users-svc handler existed but SDK hook absent. Added `useClassStudents(classId, page)` to identity.ts before writing Screen 19.
+
+**Decisions made (not in stage):**
+
+- Q-37.7 self-resolve: direct `alert.teacher_id` vs class_group join for PATCH ownership (documented in QUESTIONS.md)
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- Q-37.7 filed + resolved (PATCH ownership check)
+- ISSUE-0027 (Block 5 placeholder, filed in prep): carried forward to v1.1
+- ISSUE-0028 (trend sparkline omitted, filed in prep): carried forward to v1.1
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ (16 packages) · Tests ✅ (540/540 + 1 skipped) · Build unknown — TODO measure · RLS ✅ (no new tables)
+
+**Tomorrow — first thing:**
+Stage 38 — Teacher: Student Detail page (SCREEN_SPECS Screen 20). Morning ritual pre-reads: existing `/teacher/students/[id]` route (probably stub), analytics-svc student-level endpoints, SDK hooks for student detail.
+
 ## Stage 36 — 2026-05-26
 
 **Planned (from DEV_PLAN.md Stage 36):** Parent Dashboard — SCREEN_SPECS §15; `apps/web/(parent)/parent/page.tsx`; ReadinessRing primitive; ExplanationCard formatter; all 7 content blocks; SDK hooks for parent data. 2-day budget (Days 50–51).

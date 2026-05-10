@@ -9,6 +9,21 @@
 
 ## Resolved
 
+### Q-37.7 — PATCH intervention-alerts ownership: join via class_group vs direct teacher_id column
+
+- Date raised: 2026-05-27 (Stage 37 implementation — T2-tightened: filed during handler coding)
+- Asked of: self (T3 self-resolve)
+- Source: C-C-D-V Constraint §PATCH endpoint role ownership: "alert.class_id must belong to caller (verify against class_group.teacher_id = caller.userId)"; migration 0005 (`intervention_alert` schema)
+- Question: The C-C-D-V specified ownership via a join: `alert.class_id → class_group.teacher_id = caller.userId`. But T1 pre-read of migration 0005 reveals `intervention_alert.teacher_id NOT NULL` is a direct column on the row, and `class_id` is NULLABLE (ON DELETE SET NULL). Which ownership check is correct?
+- Why ambiguous: The C-C-D-V join path (`class_id → class_group`) would fail for any alert where `class_id` is NULL (deleted class). The direct `teacher_id` column is non-nullable and is the authoritative ownership field.
+- Blocking? no — T3 self-resolve permitted
+- Assumed answer: Option A — use `alert.teacher_id === caller.userId` directly. Simpler, more authoritative, handles NULL class_id. The C-C-D-V join was written without knowledge of the NULLABLE class_id; the direct teacher_id is the correct authority per migration 0005.
+- Code affected: `supabase/functions/analytics-svc/handlers.ts` — `patchInterventionAlert`
+- Status: resolved
+- Resolution: Option A — direct `alert.teacher_id === caller.userId` ownership check. 2026-05-27.
+
+---
+
 ### Q-37.6 — Block 5 Topic Mastery Bars (Screen 18): class-strand-mastery data source absent
 
 - Date raised: 2026-05-27 (Stage 37 prep — T2-tightened: filed before any handler/component code)
