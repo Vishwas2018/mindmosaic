@@ -352,7 +352,7 @@ Each stage has: **Day**, **Title**, **Objective**, **Deliverables**, **Spec refs
 ### Stage 38 — Day 54 — Teacher Student Detail
 
 - **Objective:** Per-student drill-down.
-- **Deliverables:** `apps/web/src/app/(teacher)/students/[id]/page.tsx` per `teacher-student-detail.html` — strand performance, misconceptions, recent activity, action buttons (assign, view plan).
+- **Deliverables:** `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx` per `teacher-student-detail.html` — strand performance, misconceptions, recent activity, action buttons (assign, view plan). *(Path corrected Q-38.4: was missing `/teacher/` segment inside routing group; fixed at Stage 38 prep.)*
 - **Spec refs:** internal v1.1 plan
 - **Exit criteria:** Click student in dashboard → detail loads with complete profile.
 

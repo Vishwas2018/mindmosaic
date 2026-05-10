@@ -5,6 +5,26 @@
 
 ## Open
 
+### ISSUE-0030 — Pathway → strand mapping absent: teacher student detail ships NAPLAN tab only
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-28 (Stage 38 prep — Q-38.UI-2)
+- Area: frontend (apps/web) + backend (intelligence-svc)
+- Tags: teacher-student-detail · intelligence-svc · v1.1 · screen-20 · pathway-tabs
+
+**Summary.** SCREEN_SPECS §20 block 2 specifies pathway tabs (NAPLAN / ICAS / Selective) on the student detail page, with each tab filtering the strand performance bars. `LearningDNADTO.domain_profiles` keys are strand names (e.g., "Numeracy", "Reading") — not pathway slugs. There is no per-pathway strand breakdown in v1: the same strands appear under both NAPLAN and ICAS assessments, and the DTO has no `pathway_id` dimension on domain data. Stage 38 ships the NAPLAN tab only (visible + active); ICAS and Selective tabs are hidden (not rendered). A `// ISSUE-0030` comment marks the tab site.
+
+**Fix (v1.1).** Two options:
+1. **Extend `LearningDNADTO`:** add `pathway_domain_profiles: Record<pathwaySlug, Record<strandName, DomainProfile>>` — requires intelligence-svc to split mastery rows by pathway when building the DTO.
+2. **New endpoint:** `GET /intelligence/learner-profile/{student_id}/{pathway_slug}` — returns domain_profiles filtered to the specific pathway's strand coverage.
+
+Either option unblocks ICAS and Selective tabs in Screen 20.
+
+**Tracking pointer.** Q-38.UI-2 resolution. Stage 38 implementation marks tab site with `{/* ISSUE-0030: ICAS + Selective tabs deferred — no pathway→strand mapping in LearningDNADTO v1 */}`.
+
+---
+
 ### ISSUE-0029 — Stage close typecheck gate may return stale turbo-cached green when node_modules drift
 
 - Status: open

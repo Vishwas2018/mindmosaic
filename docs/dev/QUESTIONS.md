@@ -9,6 +9,141 @@
 
 ## Resolved
 
+### Q-38.UI-5 — SkillBar primitive layout: vertical (current) vs horizontal (mockup)
+
+- Date raised: 2026-05-28 (Stage 38 prep — T5 layout sketch)
+- Asked of: self (T5 operator decision)
+- Source: docs/mockups/13-teacher-student-detail.html `.skill-row` (label 180px | bar flex-1 | pct 36px inline); `packages/ui/src/SkillBar/SkillBar.tsx` (vertical stacked layout)
+- Question: Stage 38 mockup uses horizontal inline layout for skill rows. SkillBar primitive uses vertical (label+pct above, bar below). Use existing primitive or add horizontal variant?
+- Why ambiguous: Changing SkillBar layout globally could break Stage 36 parent dashboard and Stage 37 teacher page uses.
+- Blocking? no — T5 approval point, non-blocking to other work
+- Assumed answer: Option B — add `layout?: 'vertical' | 'horizontal'` prop to SkillBar (default `'vertical'`). Additive, no regressions.
+- Code affected: `packages/ui/src/SkillBar/SkillBar.tsx`, `packages/ui/src/SkillBar/SkillBar.test.tsx`, `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`
+- Status: resolved
+- Resolution: Option B — horizontal variant prop added to SkillBar; default remains `'vertical'` so no existing call sites break. Stage 38 student detail uses `layout="horizontal"`. 1 new Storybook story + jest-axe scan. 2026-05-28.
+
+---
+
+### Q-38.UI-4 — "Message Parent" button: omit or disabled with tooltip
+
+- Date raised: 2026-05-28 (Stage 38 prep — T5 layout sketch)
+- Asked of: self (T5 operator decision)
+- Source: docs/mockups/13-teacher-student-detail.html action cluster; SCREEN_SPECS §20 "Out of scope for v1: Chat with parent from this page"
+- Question: Mockup renders a "Message Parent" secondary button. SCREEN_SPECS §20 explicitly lists "Chat with parent from this page" as out of scope for v1. Omit entirely or render disabled with tooltip?
+- Why ambiguous: Disabled state preserves mockup fidelity but communicates v1.1 intent; omission is cleaner.
+- Blocking? no
+- Assumed answer: Omit entirely. SCREEN_SPECS is authoritative over mockup; rendering a disabled button for a feature the user cannot discover is dead UI.
+- Code affected: `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`
+- Status: resolved
+- Resolution: Omit entirely. Not rendered. Zero `Message Parent` grep hits in student detail page required at close. 2026-05-28.
+
+---
+
+### Q-38.UI-3 — Hero inline stats: sessions count + streak scope
+
+- Date raised: 2026-05-28 (Stage 38 prep — T5 layout sketch)
+- Asked of: self (T5 operator decision)
+- Source: docs/mockups/13-teacher-student-detail.html hero section ("42 sessions completed · 7 day streak · Last active Today, 8:52 am"); SCREEN_SPECS §20 header block ("student name + avatar + meta: class, year level, last active")
+- Question: Mockup shows sessions count and streak in the hero. Neither field is in any existing DTO. SCREEN_SPECS header definition does not list them. Show only what the spec defines or add fields to the Q-38.2 endpoint?
+- Why ambiguous: Mockup vs SCREEN_SPECS diverge on the hero fields.
+- Blocking? no
+- Assumed answer: Omit sessions count and streak. SCREEN_SPECS §20 is authoritative: header = name + avatar + class + year_level + last_active. The Q-38.2 endpoint (`GET /users/students/{id}`) returns `{display_name, year_level, class_name, last_session_at, avg_score}` — no sessions count or streak fields added.
+- Code affected: `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`; `supabase/functions/users-svc/handlers.ts`
+- Status: resolved
+- Resolution: Omit sessions count and streak. Hero shows display_name + year_level + class_name + formatted last_active only. 2026-05-28.
+
+---
+
+### Q-38.UI-2 — Pathway tabs behavior: NAPLAN/ICAS/Selective data filtering
+
+- Date raised: 2026-05-28 (Stage 38 prep — T5 layout sketch)
+- Asked of: self (T5 operator decision)
+- Source: SCREEN_SPECS §20 block 2 ("Pathway tabs — NAPLAN / ICAS / Selective; entitled ones only; Selective deferred → stub tab"); `LearningDNADTOSchema` `domain_profiles: Record<strandName, {...}>` (no per-pathway breakdown)
+- Question: `domain_profiles` keys are strand names (e.g., "Numeracy"), not pathway slugs. NAPLAN and ICAS tabs would show identical data — there is no per-pathway strand filter in v1. Show both tabs with same data (honest but redundant) or hide ICAS/Selective?
+- Why ambiguous: SCREEN_SPECS says "pathway tabs" implying filtering; but no pathway→strand mapping DTO exists yet.
+- Blocking? yes — affects tab component and ISSUE filing
+- Assumed answer: Option C (revised from morning ritual proposed defaults). NAPLAN tab visible + active (shows all domain_profiles strand bars). ICAS and Selective tabs hidden (not rendered) in v1. v1.1 unhides when a pathway→strand mapping DTO or endpoint exists. File ISSUE-0030.
+- Code affected: `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`
+- Status: resolved
+- Resolution: Option C — NAPLAN tab only rendered; ICAS + Selective hidden. `// ISSUE-0030` comment at tab site. 2026-05-28.
+
+---
+
+### Q-38.UI-1 — Stat tiles: substitute unavailable metrics
+
+- Date raised: 2026-05-28 (Stage 38 prep — T5 layout sketch)
+- Asked of: self (T5 operator decision)
+- Source: docs/mockups/13-teacher-student-detail.html stat tiles (Overall Score | Assignments | Time Spent | Questions Done); available DTOs from T1 pre-read
+- Question: "Time Spent" and "Questions Done" have no DTO source in any existing endpoint. Substitute or omit tiles?
+- Why ambiguous: Mockup shows 4 tiles; spec doesn't enumerate stat tile fields explicitly.
+- Blocking? no
+- Assumed answer: Substitute tile 3 with "Strand Mastery" (count of domain_profiles entries with mastery ≥ 0.6 / total, from LearningDNADTO); tile 4 with "Misconceptions" (active_misconceptions.length from LearningDNADTO). Overall Score from useStudentProfile avg_score. Assignments from counts over StudentAssignmentDTO[].
+- Code affected: `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`
+- Status: resolved
+- Resolution: Substitution confirmed. Tiles: Overall Score | Assignments (completed/total) | Strand Mastery | Misconceptions. 2026-05-28.
+
+---
+
+### Q-38.5 — Flag for Review: POST /analytics/intervention-alerts endpoint absent
+
+- Date raised: 2026-05-28 (Stage 38 prep — T3 round-trip, scope)
+- Asked of: self (T3 self-resolve)
+- Source: SCREEN_SPECS §20 Actions table — "Flag for Review → Confirmation → `POST /analytics/intervention-alerts` with manual reason"; analytics-svc index.ts (GET + PATCH routes only; no POST)
+- Question: POST /analytics/intervention-alerts (manual teacher-triggered alert creation) does not exist. Add backend or stub button?
+- Why ambiguous: DEV_PLAN deliverables say "action buttons (assign, view plan)" — does not explicitly list Flag for Review. But SCREEN_SPECS §20 specifies it as a v1 action with a concrete endpoint.
+- Blocking? yes for Flag for Review button functionality
+- Assumed answer: Option A — add `POST /analytics/intervention-alerts` handler in analytics-svc with body `{student_id, class_id, reason}`; teacher ownership via class_group join (class_id in body); writes intervention_alert row with `alert_type='manual'`, `status='active'`. Stub-dialog (Option B) is misleading UX — shows a dialog that does nothing.
+- Code affected: `supabase/functions/analytics-svc/handlers.ts`, `supabase/functions/analytics-svc/index.ts`, `supabase/functions/analytics-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution: Option A — new POST handler added. 2 contract tests (happy + teacher-class-ownership 403). 2026-05-28.
+
+---
+
+### Q-38.4 — DEV_PLAN Stage 38 path typo: missing /teacher/ segment
+
+- Date raised: 2026-05-28 (Stage 38 prep — T1 pre-read discovery)
+- Asked of: self (T3 self-resolve)
+- Source: DEV_PLAN.md line 355 — `apps/web/src/app/(teacher)/students/[id]/page.tsx`; Stage 37 precedent `apps/web/src/app/(teacher)/teacher/students/page.tsx`
+- Question: DEV_PLAN Stage 38 deliverables path is missing the `/teacher/` segment inside the `(teacher)` routing group. Is the plan typo'd or is Stage 38 intentionally at a different path?
+- Why ambiguous: One-off typo vs intentional flattening of the route hierarchy.
+- Blocking? no — self-resolve
+- Assumed answer: DEV_PLAN typo. Correct path per routing group and Stage 37 precedent is `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`. Screen 20 URL `/teacher/students/[id]` requires Next.js route `(teacher)/teacher/students/[id]/page.tsx`.
+- Code affected: `DEV_PLAN.md` (path corrected in this commit)
+- Status: resolved
+- Resolution: Path corrected in DEV_PLAN.md Stage 38 entry. Stage 38 implementation target: `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`. 2026-05-28.
+
+---
+
+### Q-38.2 — No GET /users/{student_id} endpoint for student profile header
+
+- Date raised: 2026-05-28 (Stage 38 prep — T3 round-trip, schema/scope)
+- Asked of: self (T3 self-resolve)
+- Source: SCREEN_SPECS §20 API calls — `GET /users/{student_id}` (basic profile); users-svc handlers.ts (only `handleGetMyClasses` + `handleGetClassStudents` exist)
+- Question: users-svc has no endpoint for fetching an individual student's profile. How does the student detail page header get display_name, year_level, class_name, last_active?
+- Why ambiguous: Could pass data from list page via URL search params (brittle; fails on direct link), or add a new endpoint.
+- Blocking? yes for hero header data
+- Assumed answer: Option A lite — add `GET /users-svc/users/students/{student_id}` returning `{display_name, year_level, class_name, last_session_at, avg_score}`. Teacher auth: verify student is in one of teacher's classes via class_student + class_group join (Stage 37 handler pattern). New SDK hook `useStudentProfile(studentId)`. New mmKey `users.student(id)`.
+- Code affected: `supabase/functions/users-svc/handlers.ts`, `supabase/functions/users-svc/index.ts`, `supabase/functions/users-svc/__tests__/contract.test.ts`, `packages/sdk/src/hooks/identity.ts`, `packages/sdk/src/keys.ts`
+- Status: resolved
+- Resolution: Option A lite — `handleGetStudentProfile` added to users-svc. Returns `{display_name, year_level, class_name, last_session_at, avg_score}`. 2 contract tests (happy + ownership 403). 2026-05-28.
+
+---
+
+### Q-38.1 — No teacher-addressable GET /sessions/recent endpoint
+
+- Date raised: 2026-05-28 (Stage 38 prep — T3 round-trip, scope)
+- Asked of: self (T3 self-resolve)
+- Source: SCREEN_SPECS §20 API calls — `GET /sessions/recent?student_id={id}&limit=10`; assessment-svc index.ts:346 — `listRecentSessions(handlerClient, userId, limit)` (userId hardcoded from JWT; no student_id query param)
+- Question: assessment-svc GET /sessions/recent uses the authenticated user's ID from JWT. A teacher calling this gets their own sessions. SCREEN_SPECS §20 requires recent sessions for an arbitrary student. Add student_id query param or defer Recent Activity block?
+- Why ambiguous: Scope/budget tradeoff.
+- Blocking? yes for Recent Activity block (SCREEN_SPECS §20 block 6)
+- Assumed answer: Option A — extend assessment-svc `GET /sessions/recent` to accept `?student_id=` query param. If present and caller is teacher/admin, use `student_id` instead of `userId`. Mirror parent's `useChildRecentSessions` pattern from Stage 36. New SDK hook `useTeacherRecentSessions(studentId)`. New mmKey `sessions.teacherRecent(studentId)`.
+- Code affected: `supabase/functions/assessment-svc/handlers.ts`, `supabase/functions/assessment-svc/index.ts`, `packages/sdk/src/hooks/session.ts`, `packages/sdk/src/keys.ts`
+- Status: resolved
+- Resolution: Option A — `listRecentSessions` extended with optional `targetStudentId` param; teacher/admin role check gates cross-student access. New SDK hook `useTeacherRecentSessions(studentId)`. 2 contract tests (happy + teacher-role gate). 2026-05-28.
+
+---
+
 ### Q-37.7 — PATCH intervention-alerts ownership: join via class_group vs direct teacher_id column
 
 - Date raised: 2026-05-27 (Stage 37 implementation — T2-tightened: filed during handler coding)
