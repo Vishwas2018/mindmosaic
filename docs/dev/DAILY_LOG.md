@@ -2,6 +2,65 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 41 — 2026-05-31 (Day 57, 1-day budget)
+
+**Planned (from DEV_PLAN.md Stage 41):** Phase 2 Exit Review — audit only, no feature delivery. T-discipline canonisation, deployment docs, phase-2 exit report, OPEN_ISSUES.md triage, tag pushes.
+
+**Actually delivered:**
+
+- Prep commit (dff6c96): Q-41.1/2/3 resolved in QUESTIONS.md ## Resolved; C-C-D-V audit plan saved to `docs/prompts/2026-05-31_stage-41.md`.
+- Canonisation commit (4894359): `CLAUDE.md` §T-Discipline + §Pre-push verification round + §Push gate + §Close-ritual cache-bust added; evening ritual step 9 (cache-bust) inserted; `docs/dev/ui-discipline.md` (new — full T1-T5 rationale + Stage 28-40 precedent history); `docs/dev/deployment.md` (new — 5 service URL env vars + migration 0017 deploy order + Stage 48 hardening checklist). Closes ISSUE-0018. Documents DEV-20260527-1 process fix.
+- Audit commit (pending): `docs/dev/phase-2-exit-report.md` (new — mirrors phase-1-exit-report.md 10-section structure; Conditional Go per Q-41.1 Option A; 6 SLAs "not measured — Stage 48 hardening pass"); `docs/dev/OPEN_ISSUES.md` triage (ISSUE-0013/0018/0026/0029 → Resolved; 8 medium + 12 low open confirmed); `docs/dev/DAILY_LOG.md` (this entry); `docs/dev/PROJECT_STATE.md` overwritten (Stage 42 next).
+
+**Time spent:** 1 day (2026-05-31). 1-day budget. On budget.
+
+**Surprises / departures:**
+
+- Context compaction mid-session; resumed cleanly from summary state. No information loss detected.
+- OPEN_ISSUES.md triage: ISSUE-0026 was in ## Open with resolved status (Stage 40 close did not move it); moved to ## Resolved at Stage 41 audit.
+
+**Decisions made (not in stage):**
+
+- none (all decisions pre-resolved in Q-41.1/2/3 in prep commit)
+
+**Deviations logged:**
+
+- none (audit stage; no code changes)
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0013 CLOSED (low, process): test count methodology — full output captured from Stage 28
+- ISSUE-0018 CLOSED (low, infra): 5 service URL env vars now documented in deployment.md
+- ISSUE-0026 CLOSED (low, SDK): already resolved Stage 40; moved to Resolved section at audit triage
+- ISSUE-0029 CLOSED (medium, process): close-ritual cache-bust canonised in CLAUDE.md
+- Q-41.1 resolved: Conditional Go (Option A)
+- Q-41.2 resolved: push both tags at Stage 41 close (Option A)
+- Q-41.3 resolved: CLAUDE.md summary + ui-discipline.md detail (Option C)
+
+**Process retros:**
+
+(a) Phase 2 complete via Conditional Go pattern — Phase 1 precedent re-applied. Numerical SLAs and Docker migration run deferred to Stage 48 hardening pass. Pattern proven: code-verifiable gate separates from infrastructure-verifiable gate cleanly.
+
+(b) T-discipline canonised after 13 stages of retro evidence (T1-T5 first named Stage 28; T4 near-miss Stage 30; T5 bypass Stage 38; push-gate bypass Stage 38; full canonisation Stage 41). T-rules now load on every cold start via CLAUDE.md §T-Discipline.
+
+(c) Push-gate protocol canonised. Stage 38/39 bypass pattern broken by Stage 40 architect intervention; CLAUDE.md §Push gate now makes "create the commit" phrase the explicit gate signal for all future stages.
+
+(d) ISSUE-0029 close-ritual cache-bust resolved. DEV-20260527-1 closed. Three-month risk window (Stage 36 false-green → Stage 37 discovery) closed by the `--force` mandate.
+
+(e) ISSUE-0018 (5 undocumented env vars) resolved. deployment.md is the now-authoritative deployer reference for all Edge Function env vars, migration deploy order, and Stage 48 hardening checklist.
+
+(f) Phase 1 git tag (`v1-phase-1`) pushed to origin — pending since Stage 27 (14 stages of delay). `v1-phase-2-partial` tag created and pushed at Stage 41 close.
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ (16/16 packages, 0 turbo-cached — `--force` run per §Close-ritual) · Tests ✅ (593 Vitest passed / 1 skipped — docs-only stage, unchanged from Stage 40) · Build n/a (docs-only) · RLS n/a (no schema changes)
+
+**Tomorrow — first thing:**
+Read DEV_PLAN.md Stage 42 (Stripe Integration). Phase 4 slice begins.
+
+---
+
+
 ## Stage 40 — 2026-05-11 (Day 54, 2-day budget)
 
 **Planned (from DEV_PLAN.md Stage 40):** Student Assignments (Screen 13) + Student Dashboard v2 (Screen 7) — fix ISSUE-0026 (D1), notifications SDK (D2–D3), useStartAssignment (D4), copy/student.ts (D5), assignments page (D6), dashboard upgrade (D7), ≥10 tests (D8), Playwright spec (D9).

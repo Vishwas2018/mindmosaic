@@ -43,26 +43,6 @@ Either option unblocks ICAS and Selective tabs in Screen 20.
 
 ---
 
-### ISSUE-0029 — Stage close typecheck gate may return stale turbo-cached green when node_modules drift
-
-- Status: open
-- Severity: medium
-- Reported: 2026-05-27 (Stage 37 prep — DEV-20260527-1)
-- Area: tooling / process
-- Tags: typecheck · turbo-cache · close-ritual · node_modules · process
-
-**Summary.** The Stage 36 close report recorded "pnpm typecheck ✅ green (15 packages)" via a turbo-cached result. Two days later at Stage 37 prep-time, a cold turbo cache revealed 2 pre-existing typecheck failures (`@mm/ui` Brand.tsx `next/image`; `@mm/orchestration-svc` handlers.ts `@mm/engines`). Root cause: node_modules symlinks were missing; turbo returned cached green from a prior run when node_modules were correctly installed. Running `pnpm install` restored symlinks; typecheck returned green with zero code changes. The close-ritual process does not explicitly bust the turbo cache, so stale-green results can persist across node_modules invalidation events (git clean, partial reinstall, CI runner cache eviction).
-
-**Fix (process, Stage 37 or Stage 41 audit).** Two mitigations:
-
-1. **Close-ritual cache bust:** Replace `pnpm -r run typecheck` in the evening ritual with `pnpm turbo typecheck --force` (or equivalent) to bypass the turbo cache and force re-execution. Document in CLAUDE.md §Evening ritual as a mandatory step.
-
-2. **Pre-commit hook guard:** The `.githooks/commit-msg` hook (Stage 25) only enforces commit trailer prohibition. Add a pre-commit hook that runs `pnpm install --frozen-lockfile` before typecheck if `node_modules` state is suspect, or at minimum, documents that `pnpm install` must be run after any git clone/checkout before committing.
-
-**Tracking pointer.** DEV-20260527-1. `pnpm install` one-liner restores green state; no lockfile change needed.
-
----
-
 ### ISSUE-0028 — Screen 18 student performance table: trend sparkline column omitted in v1
 
 - Status: open
@@ -98,22 +78,6 @@ Either option unblocks ICAS and Selective tabs in Screen 20.
 **Tracking pointer.** Stage 37 prep Q-37.6. Placeholder in `apps/web/src/app/(teacher)/teacher/page.tsx` Block 5 slot. ISSUE-0021 updated (Block 5 = next auto-groups consumer too; v1.1).
 
 ---
-
-### ISSUE-0026 — useLearningPlan SDK hook path malformed: double-svc segment + missing {student_id}
-
-- Status: **resolved** — 2026-05-11 (Stage 40 D1)
-- Severity: low
-- Reported: 2026-05-26 (Stage 36 pre-read R7)
-- Area: frontend (packages/sdk)
-- Tags: sdk · orchestration-svc · carry-forward · v1.1
-
-**Summary.** `useLearningPlan` at `packages/sdk/src/hooks/orchestration.ts:19-28` calls `.get('/orchestration-svc/orchestration/plan', LearningPlanDTOSchema)`. Two issues: (1) the path may carry a double-svc routing prefix artefact; (2) the correct arch §4.6 endpoint is `GET /orchestration/plan/{student_id}/current` — `{student_id}` path parameter is absent. Stage 36 does not consume `useLearningPlan` (SCREEN_SPECS §15 API call list does not include `/orchestration/plan/current`), so there is no Stage 36 runtime impact. First consumer is likely Stage 40 (Student Dashboard v2).
-
-**Fix (first UI stage that consumes the hook — likely Stage 40).** Correct hook path to include `studentId` as a parameter: `.get(\`/orchestration-svc/orchestration/plan/${studentId}/current\`, LearningPlanDTOSchema)` with `?plan_type=weekly` default. Verify against arch §4.6 verbatim.
-
-**Tracking pointer.** Stage 36 pre-read R7. `packages/sdk/src/hooks/orchestration.ts:19-28`.
-
-**Resolution (Stage 40 D1).** Path corrected to `/orchestration-svc/orchestration/plan/${encodeURIComponent(studentId)}/current`. Regression-guarded by `useLearningPlan — ISSUE-0026 path fix` test in `packages/sdk/src/__tests__/stage40.test.ts`. Commit: 0af5afb.
 
 ### ISSUE-0025 — Notification spam guard: soft dedup window production-tuning deferred
 
@@ -219,38 +183,6 @@ Either option unblocks ICAS and Selective tabs in Screen 20.
 **Proposed fix.** Add a `pre-push` or `commit-msg` hook that checks whether the current HEAD's parent matches origin/main's HEAD — if an amend rewrites a published commit, abort with: "ERROR: --amend would rewrite a commit already on origin/main. Use a new commit instead." Alternatively, a standing pre-commit check `git merge-base --is-ancestor HEAD origin/main` can detect the diverge before it happens.
 
 **Impact.** No code loss, no force-push occurred. Process gap only.
-
-### ISSUE-0018 — Env var documentation gap: INTELLIGENCE_SVC_URL and ANALYTICS_SVC_URL undocumented
-
-- Status: open
-- Severity: low
-- Reported: 2026-05-20 (Stage 30 pre-push verification)
-- Area: infra / docs
-- Tags: deployment · env-vars · analytics-svc · jobs-worker
-
-**Summary.** `INTELLIGENCE_SVC_URL` (jobs-worker, Stage 28) and `ANALYTICS_SVC_URL` (jobs-worker, Stage 30) are referenced in `supabase/functions/jobs-worker/index.ts` and mentioned in `docs/prompts/` (non-authoritative prompt logs) but are not documented in any deployment guide, `.env.example`, `.toml`, or `OWNERS.md`. A deployer starting fresh has no authoritative reference for these env vars beyond reading the code.
-
-**Pre-existing gap.** `INTELLIGENCE_SVC_URL` was already undocumented at Stage 28. `ANALYTICS_SVC_URL` surfaces it. `ORCHESTRATION_SVC_URL` added at Stage 31 (same pattern — falls back to `${SUPABASE_URL}/functions/v1/orchestration-svc` if not set, but the fallback is not documented anywhere for deployers).
-
-**Stage 33 update (2026-05-23).** `ASSESSMENT_SVC_URL` added to assignments-svc (Q-33.1 Option A — `POST /assignments/{id}/start` forwards student JWT to assessment-svc). Now 4 undocumented service URL vars: `INTELLIGENCE_SVC_URL`, `ANALYTICS_SVC_URL`, `ORCHESTRATION_SVC_URL`, `ASSESSMENT_SVC_URL`. Pattern: each falls back to `${SUPABASE_URL}/functions/v1/<service-name>` if not set, but fallback logic is not documented anywhere for deployers.
-
-**Stage 34 update (2026-05-24).** `NOTIFICATIONS_SVC_URL` added to jobs-worker dispatch path for `notification.create` job type. Now **5** undocumented service URL vars: `INTELLIGENCE_SVC_URL`, `ANALYTICS_SVC_URL`, `ORCHESTRATION_SVC_URL`, `ASSESSMENT_SVC_URL`, `NOTIFICATIONS_SVC_URL`. Ref: `supabase/functions/jobs-worker/index.ts`.
-
-**Fix (v1 close or Stage 36).** Add env var table to `docs/dev/deployment.md` (create if absent) listing all Edge Function env vars with default resolution logic. Or add `.env.example` at repo root. Vars: `INTELLIGENCE_SVC_URL`, `ANALYTICS_SVC_URL`, `ORCHESTRATION_SVC_URL`, `ASSESSMENT_SVC_URL`, `NOTIFICATIONS_SVC_URL`. Refs: `supabase/functions/jobs-worker/index.ts`, `supabase/functions/assignments-svc/index.ts`, `supabase/functions/notifications-svc/index.ts`.
-
-### ISSUE-0013 — Evening ritual test count methodology (tail truncation drift)
-
-- Status: open
-- Severity: low
-- Reported: 2026-05-18 (Stage 28 close)
-- Area: tooling / process
-- Tags: evening-ritual · test-count · methodology
-
-**Summary.** Test counts reported in `DAILY_LOG.md` and `PROJECT_STATE.md` through Phase 1 (Stages 22a–27) were captured via `tail -N` of `pnpm -r run test` output rather than the full run. This caused small drift in the running total: `@mm/types` (98 tests) was under-reported by 1 (as 97) in some evening captures, and `@mm/jobs-worker` was absent until Stage 28. Surfaced at Stage 28 close when full output revealed actual pre-Stage-28 baseline was **400 passed**, not 399 as reported at Stage 26 close.
-
-**No test surface was ever broken.** Counts were merely slightly under-reported in the evening ritual log and PROJECT_STATE.md. The cumulative drift was small (≤1 test per stage) and had no functional impact or audit-trail integrity issue beyond the running total.
-
-**Fix.** Capture full `pnpm -r run test` output at every evening ritual (not `tail`), or use the runner's own per-package summary line (`Tests  N passed`). Apply from Stage 29 onward.
 
 ### ISSUE-0011 — Results screen content blocks deferred pending DTO + service shipments
 
@@ -481,6 +413,38 @@ grep -rn "IndexedDB\|idb-keyval\|next-pwa\|sw\.js\|serviceWorker" apps/web/
 L5 writes `async_pipeline_event` (scope_type='student_pathway'); L7/L9 write both. L1/L2/L3a/L3b continue writing `pipeline_event`. Linked: ADR-0032, ADR-0033, Q-29.4, Q-30.2, ISSUE-0017.
 
 ## Resolved
+
+### ISSUE-0029 — Stage close typecheck gate may return stale turbo-cached green when node_modules drift
+
+- Status: resolved — 2026-05-31 (Stage 41)
+- Severity: medium
+- Reported: 2026-05-27 (Stage 37 prep — DEV-20260527-1)
+- Area: tooling / process
+- Resolution: `CLAUDE.md §Evening ritual` step 9 + `§Close-ritual cache-bust` section canonised. `pnpm install && pnpm turbo typecheck --force` mandatory at every stage close. Resolves DEV-20260527-1.
+
+### ISSUE-0026 — useLearningPlan SDK hook path malformed: double-svc segment + missing {student_id}
+
+- Status: resolved — 2026-05-11 (Stage 40 D1)
+- Severity: low
+- Reported: 2026-05-26 (Stage 36 pre-read R7)
+- Area: frontend (packages/sdk)
+- Resolution: Path corrected to `/orchestration-svc/orchestration/plan/${encodeURIComponent(studentId)}/current`. Regression-guarded by `useLearningPlan — ISSUE-0026 path fix` test in `packages/sdk/src/__tests__/stage40.test.ts`. Commit: 0af5afb. Moved to Resolved at Stage 41 audit triage (2026-05-31).
+
+### ISSUE-0018 — Env var documentation gap: 5 service URL env vars undocumented
+
+- Status: resolved — 2026-05-31 (Stage 41)
+- Severity: low
+- Reported: 2026-05-20 (Stage 30 pre-push verification)
+- Area: infra / docs
+- Resolution: `docs/dev/deployment.md` created with all 5 service URL vars + fallback resolution logic + migration 0017 deploy-order note. Closes ISSUE-0018.
+
+### ISSUE-0013 — Evening ritual test count methodology (tail truncation drift)
+
+- Status: resolved — 2026-05-31 (Stage 41 audit triage)
+- Severity: low
+- Reported: 2026-05-18 (Stage 28 close)
+- Area: tooling / process
+- Resolution: Full `pnpm -r run test` output captured at every stage close since Stage 28. Per-package line counts included in DAILY_LOG.md Stage 28+ entries. Methodology drift was Stage 22a–27 only; no functional impact. Fix applied in practice from Stage 28 onward.
 
 ### ISSUE-0006 — intelligence-svc L3a bypasses skill-graph cache (architectural inconsistency vs arch §9.3)
 
