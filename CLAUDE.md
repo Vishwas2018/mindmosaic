@@ -180,8 +180,13 @@ Stage N is complete. Update the developer context.
 8. Save the executed C-C-D-V prompt to
    docs/prompts/YYYY-MM-DD_stage-N.md.
 
-9. Stage all docs/dev changes and commit separately with:
-     chore(dev-context): stage N close — <one-line summary>
+9. Run `pnpm install && pnpm turbo typecheck --force` (cache-bust,
+   ISSUE-0029 / DEV-20260527-1 fix). All 16 packages must pass with
+   0 entries served from turbo cache. If any package fails, fix before
+   committing — do NOT commit with a cached-green claim.
+
+10. Stage all docs/dev changes and commit separately with:
+      chore(dev-context): stage N close — <one-line summary>
 
 Show me the commit message and the diff before pushing.
 ```
@@ -445,3 +450,44 @@ Files: <paths> · Commit: <sha> · Related: ADR-…, ISSUE-…, DEV-…
 - `DEVIATIONS.md` — never pruned
 - `decisions/` — never deleted; supersede with new ADR if reversed
 - `bugs/` — never deleted; mark `status: closed`
+
+---
+
+## T-Discipline (canonised Stage 41 from Stages 28–40 retros)
+
+Full rationale + per-rule precedent history: `docs/dev/ui-discipline.md`.
+
+- **T1** — Pre-read target files verbatim with file:line citations. Cite function signatures, default parameter values, and Zod schema field names verbatim before any C-C-D-V authorship or implementation.
+- **T2-tightened** — File mid-implementation Qs in `QUESTIONS.md ## Resolved` in the same work session as the resolving code. Not deferred to pre-push or evening ritual.
+- **T3 Option 3 hybrid** — Round-trip required for structural decisions (DTO shape, scope, schema, auth model). Self-resolve permitted for tight implementation details (thresholds, filter inclusivity, error codes) with documented options + default cited.
+- **T4** — Never `--amend` over a commit already on `origin/main`. Fix-then-push. Pre-push verification catches the gap while still in working tree.
+- **T5** — UI stages: mockup-driven layout sketch surfaced for operator approval BEFORE component code. Mid-impl skeleton checkpoint at end of layout pass (before data wiring) — operator may request adjustments.
+
+---
+
+## Pre-push verification round (MANDATORY)
+
+Every stage close surfaces verification round to architect BEFORE push. Round includes:
+
+- Q-* status verbatim (T2-tightened evidence)
+- Pre-read findings (T1 citations)
+- Test enumeration (verbatim names, diff against C-C-D-V plan)
+- Stale-comment grep output
+- Mojibake check on every modified `.md`
+- ADR-0029 SDK prefix grep (no stale hook paths)
+- Co-Authored-By absence confirmed in commit message
+- Full `pnpm -r run test` output captured (not tail-truncated)
+
+Reference: `docs/dev/ui-discipline.md §Pre-push verification round` for the full V1–V11 catalogue.
+
+---
+
+## Push gate
+
+After the verification round passes, architect responds with the literal phrase **"create the commit"** before any push. Applies to prep, impl, and chore-close commits separately. No bundled approvals.
+
+---
+
+## Close-ritual cache-bust (ISSUE-0029 fix)
+
+Pre-close gate runs `pnpm install && pnpm turbo typecheck --force` to bypass turbo cached green on unchanged source files when transitive deps have drifted. All 16 packages must pass with 0 entries served from cache. Resolves DEV-20260527-1.

@@ -1,0 +1,172 @@
+# deployment.md — MindMosaic v1 Deployment Reference
+
+> Living document. Append-only for new env vars, migration notes, and
+> checklist items. Never invent values — if unknown, write "unknown — TODO measure".
+> Resolves ISSUE-0018. Created Stage 41 (2026-05-31).
+
+---
+
+## Required environment variables
+
+All Supabase Edge Functions are deployed as individual Deno runtimes under
+`supabase/functions/<service-name>/`. The following env vars must be configured
+in the Supabase project dashboard (Settings > Edge Functions) or via the Supabase
+CLI (`supabase secrets set`) before deploying any service that consumes them.
+
+### Core Supabase (required by all services)
+
+| Variable | Source | Notes |
+|---|---|---|
+| `SUPABASE_URL` | Supabase project dashboard > Project URL | e.g. `https://<ref>.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase project dashboard > API > service_role | Used for inter-service calls and pipeline dispatch. Never expose to client. |
+| `SUPABASE_ANON_KEY` | Supabase project dashboard > API > anon | Used by apps/web for public client init. |
+
+### Service URL vars (jobs-worker inter-service dispatch)
+
+`supabase/functions/jobs-worker/index.ts` dispatches pipeline jobs to owning
+services via HTTP. Each service URL var falls back to `${SUPABASE_URL}/functions/v1/<service-name>`
+if not set, but the fallback is not documented anywhere in code — deployers must
+either set explicit values or rely on the default URL pattern below.
+
+| Variable | Consuming service | Default (if not set) | Resolves |
+|---|---|---|---|
+| `INTELLIGENCE_SVC_URL` | jobs-worker | `${SUPABASE_URL}/functions/v1/intelligence-svc` | ISSUE-0018 |
+| `ANALYTICS_SVC_URL` | jobs-worker | `${SUPABASE_URL}/functions/v1/analytics-svc` | ISSUE-0018 |
+| `ORCHESTRATION_SVC_URL` | jobs-worker + assignments-svc | `${SUPABASE_URL}/functions/v1/orchestration-svc` | ISSUE-0018 |
+| `ASSESSMENT_SVC_URL` | assignments-svc | `${SUPABASE_URL}/functions/v1/assessment-svc` | ISSUE-0018 |
+| `NOTIFICATIONS_SVC_URL` | jobs-worker | `${SUPABASE_URL}/functions/v1/notifications-svc` | ISSUE-0018 |
+
+**Note on fallback behaviour.** The default fallback (`${SUPABASE_URL}/functions/v1/<name>`)
+is correct for a standard Supabase project where all functions share the same
+Supabase URL. Set explicit vars only when functions are deployed to different
+projects or custom URLs (e.g., self-hosted Supabase, regional splits).
+
+### apps/web client vars
+
+Set in `apps/web/.env.local` (local dev) or Vercel environment variables
+(production). Template at `apps/web/.env.local.example` (contains placeholder
+values only — never real credentials).
+
+| Variable | Notes |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Same as `SUPABASE_URL` above |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same as `SUPABASE_ANON_KEY` above |
+
+### Load test vars (CI activation)
+
+| Variable | Consuming workflow | Notes |
+|---|---|---|
+| `LOAD_TEST_BASE_URL` | `.github/workflows/load-test.yml` | Activates nightly k6 run when set. Points to deployed Supabase URL. |
+| `LOAD_TEST_TOKEN` | `.github/workflows/load-test.yml` | Auth token for k6 session loop. |
+
+### Playwright E2E vars
+
+| Variable | Consuming workflow | Notes |
+|---|---|---|
+| `E2E_BASE_URL` | `.github/workflows/ci.yml` E2E job | Activates Playwright CI E2E when set. |
+| `E2E_WEB_URL` | Playwright specs (`test.skip` guard) | Full web app URL including port. |
+| `E2E_SUPABASE_URL` | Playwright setup | Supabase URL for E2E seeding. |
+| `E2E_SUPABASE_ANON_KEY` | Playwright setup | Anon key for E2E. |
+| `E2E_ANON` | Playwright specs (`test.skip` guard) | Shorthand anon token. |
+
+---
+
+## Migration deploy order
+
+Migrations are in `supabase/migrations/` and must be applied in sequential
+order. The following migrations have deployment-order constraints beyond the
+standard sequential requirement.
+
+### Migration 0017 — `ALTER TYPE alert_type ADD VALUE IF NOT EXISTS 'manual'`
+
+**File:** `supabase/migrations/0017_alert_type_manual.sql`
+
+**Constraint:** `ALTER TYPE ... ADD VALUE` is non-transactional in PostgreSQL
+12+. It cannot be rolled back inside a transaction. Once applied, removing the
+value requires `DROP TYPE ... CASCADE` + `CREATE TYPE` + re-adding all dependent
+columns — a destructive operation.
+
+**Deploy order requirement:**
+1. Run migration 0017 against the production database.
+2. Wait for migration to commit (verify with `SELECT enum_range(NULL::alert_type)`).
+3. THEN deploy `analytics-svc` code that inserts `alert_type='manual'`
+   (`supabase/functions/analytics-svc/handlers.ts` — `createInterventionAlert`
+   handler inserts `alert_type='manual'`).
+
+**If analytics-svc is deployed BEFORE migration 0017:** the `createInterventionAlert`
+handler will throw a PostgreSQL enum constraint violation on every manual alert
+creation, returning 500 to all teacher flag-for-review actions.
+
+**Linked:** Stage 38 DAILY_LOG retro (e); Q-38.6.
+
+### Migrations 0012–0017 — Docker integration test required
+
+Migrations 0012 through 0017 have not been run against a real PostgreSQL
+instance in this sandbox (no Docker available). They must be validated locally
+against a real Postgres before production deploy.
+
+**Steps:**
+```bash
+# Start local Supabase with Docker
+supabase start
+
+# Apply all migrations sequentially
+supabase db reset
+
+# Run pgTAP tests
+supabase test db
+```
+
+Expected outcome: all 451+ pgTAP tests pass (last confirmed green: 451/451
+on migrations 0001–0013, 2026-05-03).
+
+---
+
+## Git hooks activation
+
+The `.githooks/commit-msg` hook enforces BUILD_CONTRACT §11.2 (no AI
+Co-Authored-By trailers). It must be activated per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This command must be run once after each fresh `git clone`. It is NOT automatic.
+The hook will exit 1 if any `Co-Authored-By:` line appears in the commit message.
+Reference: Stage 25 (ISSUE-0012 resolution, commit `975e815`).
+
+---
+
+## Stage 48 hardening checklist (numerical SLAs)
+
+The following measurements are deferred from Stage 41 (Conditional Go — Q-41.1
+Option A) to Stage 48 hardening pass. They require a deployed environment.
+Results must be logged in `docs/dev/perf/measurements.md` (no invented numbers).
+
+| SLA | Budget | Measurement method | Status |
+|---|---|---|---|
+| POST /sessions/{id}/respond p95 | 300 ms | k6 `session-loop.js` | not measured — Stage 48 |
+| POST /sessions/{id}/submit + sync p95 | 5000 ms | k6 `session-loop.js` | not measured — Stage 48 |
+| Async pipeline (L3b/L5/L7/L9) p95 | 30000 ms | k6 `pipeline-soak.js` (TBD) | not measured — Stage 48 |
+| Parent dashboard load p95 | 2000 ms | k6 `dashboard-load.js` (TBD) | not measured — Stage 48 |
+| Dead-letter rate over 24h soak | < 0.5% | Monitor `job_queue.dead_lettered_at IS NOT NULL` count | not measured — Stage 48 |
+| Notification path wall-clock | < 5s | Outbox → dispatcher → jobs-worker → notifications-svc → visible in `/notifications/me` | not measured — Stage 48 (DEV-20260524-1) |
+
+k6 harness (`k6/session-loop.js`) created at Stage 26 D1. Activates when
+`LOAD_TEST_BASE_URL` + `LOAD_TEST_TOKEN` secrets are configured. Nightly CI
+workflow at `.github/workflows/load-test.yml`.
+
+---
+
+## Tag conventions
+
+| Tag | Meaning | Created at |
+|---|---|---|
+| `v1-phase-1` | Phase 1 complete (Stages 1–27, Conditional Go) | Stage 27 locally; push approved Stage 41 |
+| `v1-phase-2-partial` | Phase 2 complete (Stages 28–41, Conditional Go — numerical SLAs deferred) | Stage 41 |
+| `v1.0.0` | Full launch gate passed (Stage 49) | Stage 49 |
+
+**Conditional Go:** code-verifiable criteria complete; infrastructure-verifiable
+criteria (migrations Docker run, k6 SLAs, Playwright E2E against deployed env)
+deferred to the next hardening pass. No production deploy until all checklist
+items in §Migration deploy order and §Stage 48 hardening checklist are cleared.
