@@ -52,5 +52,7 @@ export const mmKeys = {
     all: () => ['assignments'] as const,
     forClass: (classId: string) => ['assignments', 'forClass', classId] as const,
     forStudent: (studentId: string) => ['assignments', 'forStudent', studentId] as const,
+    byId: (id: string) => ['assignments', id] as const,
+    tracking: (id: string) => ['assignments', id, 'tracking'] as const,
   },
 } as const;

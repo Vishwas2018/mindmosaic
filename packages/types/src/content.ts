@@ -9,6 +9,7 @@ export const PathwayDTOSchema = z.object({
   year_levels: z.array(z.number().int()),
   entitled: z.boolean(),
   locked_reason: z.string().nullable(),
+  id: z.string().uuid(),
 });
 export type PathwayDTO = z.infer<typeof PathwayDTOSchema>;
 

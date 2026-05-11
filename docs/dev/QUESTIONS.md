@@ -9,6 +9,69 @@
 
 ## Resolved
 
+### Q-39.9 — Draft assignment card: [Edit] action scope and navigation target
+
+- Date raised: 2026-05-29 (Stage 39 impl — T5 mid-impl checkpoint)
+- Classification: T3 Option 3 (implementation detail; tight-detail self-resolve)
+- Asked of: self (T3 self-resolve)
+- Source: D3 `useUpdateAssignment` hook (PATCH /assignments/{id}); SCREEN_SPECS §22 (no explicit edit flow); `assignments-svc/handlers.ts:276` (PATCH handler, draft-only gate)
+- Evidence: useUpdateAssignment in plan (D3); operator checkpoint confirmed draft → [Track] [Edit]; PATCH returns 422 if status ≠ draft
+- Question: Does the [Edit] button navigate to a dedicated edit route, open an inline panel, or reuse the creation wizard with a mode flag?
+- Options considered:
+  1. `/teacher/assignments/new?edit=<id>` — wizard in edit mode via useSearchParams; submits via useUpdateAssignment
+  2. `/teacher/assignments/<id>/edit` — dedicated edit route; mirrors wizard
+  3. Inline drawer on list page — no new route
+- Why ambiguous: SCREEN_SPECS §22 specifies creation flow only; edit flow not described.
+- Blocking? no
+- Assumed answer: Option 1.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/page.tsx` (card Edit button), `new/page.tsx` (useSearchParams ?edit= detection)
+- Status: resolved
+- Resolution: Option 1 — draft cards show [Edit] button navigating to `/teacher/assignments/new?edit=<assignmentId>`. Wizard detects `?edit=` via useSearchParams, loads draft via useAssignment(id), pre-populates all wizard state fields, submits via useUpdateAssignment. Same 5-step structure. On success → navigate to /teacher/assignments. Keeps route surface minimal; reuses wizard without a second route. 2026-05-29.
+
+---
+
+### Q-39.8 — Wizard type key 'skill' conflicts with CreateAssignmentRequestSchema enum 'skill_drill'
+
+- Date raised: 2026-05-29 (Stage 39 impl — T1 pre-coding read, R3+R4)
+- Classification: T2-tightened (TypeScript compile error; downstream assessment-svc mode routing depends on exact string value)
+- Asked of: self (T2 self-resolve; tightens Q-39.6)
+- Source: `15-assignment-engine.html:317` (`key:"skill"`); `packages/types/src/assignments.ts:37` (`z.enum(['practice','exam','diagnostic','skill_drill'])`); assessment-svc session routing (mode string gates handler paths)
+- Evidence: @mm/types CreateAssignmentRequestSchema.mode is z.enum excluding 'skill'. TypeScript rejects 'skill' as a valid CreateAssignmentRequest.mode at compile time. Assessment-svc derives session type from mode value; 'skill' ≠ 'skill_drill' would miss the skill_drill session path.
+- Question: Q-39.6 resolved to "use mockup keys directly"; but @mm/types enum rejects 'skill' and assessment-svc expects 'skill_drill'. How to resolve?
+- Options considered:
+  1. Wizard internal key 'skill_drill' throughout — breaks mockup vocabulary, confusing UX label management
+  2. Map 'skill' → 'skill_drill' in toServerMode before SDK calls — preserves wizard vocabulary, type-safe at boundary
+  3. Change CreateAssignmentRequestSchema.mode to include 'skill' — invasive @mm/types edit, inconsistent with server DB values
+- Why ambiguous: Q-39.6 resolved to "server accepts any string" (true for assignments-svc parseCreateBody) but missed @mm/types client enum and assessment-svc routing dependency.
+- Blocking? yes — TypeScript compile error without resolution
+- Assumed answer: Option 2.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (toServerMode map, build-body function)
+- Status: resolved
+- Resolution: Option 2 — `const toServerMode = {practice:'practice', diagnostic:'diagnostic', exam:'exam', skill:'skill_drill'} as const` in wizard file. Applied before generateAssignment call and createAssignment/updateAssignment call. Wizard internal type remains `'practice'|'diagnostic'|'exam'|'skill'`; SDK boundary receives the enum-valid value. Q-39.6 tightened: Q-39.6 "server accepts any string" is correct for assignments-svc but does not cover @mm/types enum or assessment-svc routing. 2026-05-29.
+
+---
+
+### Q-39.7 — Title field: absent from all 5 wizard steps in mockup, required by createAssignment
+
+- Date raised: 2026-05-29 (Stage 39 impl — T1 pre-coding read, R3)
+- Classification: T2-tightened (createAssignment returns 400 without title; server rejects at parseCreateBody:261)
+- Asked of: self (T2 self-resolve)
+- Source: `assignments-svc/handlers.ts:261` (`typeof b['title'] !== 'string' → throw Error('title required')`); `analytics-svc/handlers.ts:735` (`DraftAssignmentDTO.title: string`); SCREEN_SPECS §22 field validation "title 3–100 chars"
+- Evidence: parseCreateBody line 261 throws immediately if title is not a string — server returns 400. DraftAssignmentDTO provides a generated title. SCREEN_SPECS §22 validates 3–100 chars (implies user-editable). Mockup HTML has no `<input>` for title in any of the 5 step renderers.
+- Question: Where does the wizard collect the assignment title? Mockup omits it entirely; server requires it.
+- Options considered:
+  1. Read-only from DraftAssignmentDTO.title — no user input; silently uses generated title
+  2. Editable field in step 3 Configure, pre-populated from draft, validated 3–100 chars
+  3. Editable field in step 5 Review only
+- Why ambiguous: Mockup (T5 visual authority) has no title field; SCREEN_SPECS §22 (field authority) validates one. The conflict is between visual authority and field authority.
+- Blocking? yes — without a title the createAssignment call returns 400
+- Assumed answer: Option 2.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (wizard state.title, Configure step, Review step)
+- Status: resolved
+- Resolution: Option 2 — "Assignment Title" text input added to step 3 Configure (above the configuration grid). Pre-populated from DraftAssignmentDTO.title on successful generate; defaults to "[Mode] Assignment" (e.g., "Practice Assignment") on graceful degradation. Validate 3–100 chars before allowing step 4 navigation (shows inline error if empty or too short/long). Title shown as first row in step 5 Review table. Rationale: mockup T5 authority governs layout/structure; SCREEN_SPECS §22 governs field validation — editable title field satisfies the field authority without violating layout authority (step 3 Configure is the logical home for metadata fields). 2026-05-29.
+
+---
+
 ### Q-39.UI-6 — Sidebar nav: 4-item (Overview/Students/Assignments/Analytics) vs 5-item (add Insights)
 
 - Date raised: 2026-05-29 (Stage 39 prep — T5 layout sketch)

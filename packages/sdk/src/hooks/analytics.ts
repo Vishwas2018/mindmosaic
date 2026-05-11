@@ -1,5 +1,6 @@
 // hooks/analytics.ts → analytics-svc (ADR-0029 prefix: /analytics-svc/analytics/...)
 // Stage 37: Screen 18 — teacher dashboard KPIs, intervention alerts, dismiss/acknowledge.
+// Stage 39: Screen 22 — useGenerateAssignment (generate-assignment endpoint).
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { useMmClient } from '../context.js';
@@ -115,5 +116,42 @@ export function useDismissAlert() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: mmKeys.analytics.all() });
     },
+  });
+}
+
+// Stage 39: POST /analytics/generate-assignment — AI-suggested draft for wizard step 2 pre-populate.
+// Returns DraftAssignmentDTO (analytics-svc/handlers.ts:734). No INSERT — pure suggestion.
+// Q-39.UI-3: caller sends {class_id, mode} only; topic chips are display-only suggestions.
+// Q-39.5: DraftAssignmentDTO has no pathway_id; caller resolves via usePathways().data[0].id.
+const DraftAssignmentDTOSchema = z.object({
+  title: z.string(),
+  description: z.string().nullable(),
+  mode: z.string(),
+  target_skill_ids: z.array(z.string()),
+  target_skill_names: z.array(z.string()),
+  difficulty_range: z.object({ min: z.number(), max: z.number() }).nullable(),
+  item_count: z.number().int(),
+  time_limit_ms: z.number().int().nullable(),
+  due_at: z.string().nullable(),
+  status: z.literal('draft'),
+  auto_generated: z.boolean(),
+  rationale: z.string().nullable(),
+  created_by: z.object({ id: z.string(), display_name: z.string() }),
+  published_at: z.null(),
+});
+export type DraftAssignmentDTO = z.infer<typeof DraftAssignmentDTOSchema>;
+
+export function useGenerateAssignment() {
+  const client = useMmClient();
+  return useMutation({
+    mutationFn: ({ classId, mode }: { classId: string; mode: string }) =>
+      client
+        .post(
+          '/analytics-svc/analytics/generate-assignment',
+          DraftAssignmentDTOSchema,
+          { class_id: classId, mode },
+          crypto.randomUUID(),
+        )
+        .then((r) => r.data),
   });
 }

@@ -1,7 +1,14 @@
 // hooks/assignments.ts → assignments-svc (ADR-0029 prefix: /assignments-svc/assignments/...)
 // Stage 37: Screen 18 Block 6 — assignments widget for teacher dashboard.
-import { useQuery } from '@tanstack/react-query';
+// Stage 39: Screen 22 — full CRUD + tracking hooks for teacher assignment engine.
+import { useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
+import {
+  AssignmentDTOSchema,
+  AssignmentTrackingDTOSchema,
+  type CreateAssignmentRequest,
+} from '@mm/types';
 import { useMmClient } from '../context.js';
 import { mmKeys } from '../keys.js';
 
@@ -70,5 +77,120 @@ export function useAssignmentsForClass(classId: string) {
         )
         .then((r) => r.data),
     enabled: classId.length > 0,
+  });
+}
+
+// Stage 39: Screen 22 — teacher assignment engine hooks.
+
+// GET /assignments/{id} — single assignment detail.
+export function useAssignment(id: string) {
+  const client = useMmClient();
+  return useQuery({
+    queryKey: mmKeys.assignments.byId(id),
+    queryFn: () =>
+      client
+        .get(`/assignments-svc/assignments/${encodeURIComponent(id)}`, AssignmentDTOSchema)
+        .then((r) => r.data),
+    enabled: id.length > 0,
+  });
+}
+
+// GET /assignments/{id}/tracking — per-student completion status.
+export function useAssignmentTracking(id: string) {
+  const client = useMmClient();
+  return useQuery({
+    queryKey: mmKeys.assignments.tracking(id),
+    queryFn: () =>
+      client
+        .get(
+          `/assignments-svc/assignments/${encodeURIComponent(id)}/tracking`,
+          AssignmentTrackingDTOSchema,
+        )
+        .then((r) => r.data),
+    enabled: id.length > 0,
+  });
+}
+
+// POST /assignments — create draft assignment. Idempotency-Key per BUILD_CONTRACT + C-C-D-V C13.
+// useRef generates one stable key per hook mount (safe retry; new key on remount).
+export function useCreateAssignment() {
+  const client = useMmClient();
+  const queryClient = useQueryClient();
+  const idempKey = useRef<string>(crypto.randomUUID());
+  return useMutation({
+    mutationFn: (body: CreateAssignmentRequest) =>
+      client
+        .post(
+          '/assignments-svc/assignments',
+          AssignmentDTOSchema,
+          body,
+          idempKey.current,
+        )
+        .then((r) => r.data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.all() });
+    },
+  });
+}
+
+// PATCH /assignments/{id} — update draft assignment (pre-publish only).
+export function useUpdateAssignment() {
+  const client = useMmClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Partial<CreateAssignmentRequest> }) =>
+      client
+        .patch(
+          `/assignments-svc/assignments/${encodeURIComponent(id)}`,
+          AssignmentDTOSchema,
+          body,
+        )
+        .then((r) => r.data),
+    onSuccess: (_data, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.byId(id) });
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.all() });
+    },
+  });
+}
+
+// POST /assignments/{id}/publish — publish draft. Idempotency-Key per C-C-D-V C13.
+export function usePublishAssignment() {
+  const client = useMmClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      client
+        .post(
+          `/assignments-svc/assignments/${encodeURIComponent(id)}/publish`,
+          AssignmentDTOSchema,
+          {},
+          crypto.randomUUID(),
+        )
+        .then((r) => r.data),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.byId(id) });
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.all() });
+    },
+  });
+}
+
+// POST /assignments/{id}/archive — archive published assignment.
+export function useArchiveAssignment() {
+  const client = useMmClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      client
+        .post(
+          `/assignments-svc/assignments/${encodeURIComponent(id)}/archive`,
+          AssignmentDTOSchema,
+          {},
+          crypto.randomUUID(),
+        )
+        .then((r) => r.data),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.byId(id) });
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.all() });
+    },
   });
 }
