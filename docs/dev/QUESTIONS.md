@@ -9,6 +9,51 @@
 
 ## Resolved
 
+### Q-41.3 — T-discipline canonisation format: CLAUDE.md inline vs standalone file vs both
+
+- Date raised: 2026-05-31 (Stage 41 morning ritual)
+- Asked of: operator (T3 round-trip)
+- Source: Stage 34 retro ("Candidate for canonisation in CLAUDE.md with T3 Option 3 at next audit day"); Stage 38 retro (T5 skipped due to compaction); DAILY_LOG Stages 28–40 discipline timeline
+- Question: Where should T1/T2/T3/T4/T5 implementation-discipline rules be canonised? Options: (A) `docs/dev/ui-discipline.md` standalone only, (B) CLAUDE.md §T-Discipline inline only, (C) both — CLAUDE.md 5-bullet summary + `docs/dev/ui-discipline.md` full rationale + precedent history.
+- Why ambiguous: CLAUDE.md is always loaded at session start (must contain daily-use rules); but CLAUDE.md must stay short/stable. The full rationale + per-rule precedent history is too long for CLAUDE.md but essential for future context.
+- Blocking? no
+- Assumed answer: Option C.
+- Code affected: `CLAUDE.md`, `docs/dev/ui-discipline.md` (new)
+- Status: resolved
+- Resolution: Option C — CLAUDE.md adds a §T-Discipline section with 5-bullet rule summary + push-gate protocol + close-ritual cache-bust directive (≤15 lines total). `docs/dev/ui-discipline.md` (new) carries the full rationale, per-rule precedent history, and Q-* evidence chain from Stages 28–40. CLAUDE.md references the detail file by name. Operator decision 2026-05-31.
+
+---
+
+### Q-41.2 — Phase 1 + Phase 2 git tag push timing
+
+- Date raised: 2026-05-31 (Stage 41 morning ritual)
+- Asked of: operator (T3 round-trip)
+- Source: Stage 27 DAILY_LOG: "Git tag v1-phase-1 created locally. Push pending approval."; PROJECT_STATE.md "Notes for next session"; DEV_PLAN Stage 41 exit criterion: git tag `v1-phase-2-partial`
+- Question: Push `v1-phase-1` and `v1-phase-2-partial` at Stage 41 close, or defer one or both to Stage 49 launch gate?
+- Why ambiguous: v1-phase-1 has been pending since Stage 27 (13 stages ago). Pushing it now alongside v1-phase-2-partial is operationally clean but requires two tag-push approvals in one session. Deferring both to Stage 49 loses point-in-time precision.
+- Blocking? no
+- Assumed answer: Option A — push both at Stage 41 close.
+- Code affected: n/a (git tag ops only)
+- Status: resolved
+- Resolution: Option A — push both `v1-phase-1` (created locally Stage 27, pending since) and `v1-phase-2-partial` (created at Stage 41 close) at Stage 41 close. Two separate tag-push ops, each requiring architect "create the commit" approval equivalent gate. v1-phase-1 points to the commit at Stage 27 close; v1-phase-2-partial points to the Stage 41 audit commit. Operator decision 2026-05-31.
+
+---
+
+### Q-41.1 — Stage 41 exit mode: sandbox-partial Conditional Go vs full gate
+
+- Date raised: 2026-05-31 (Stage 41 morning ritual)
+- Asked of: operator (T3 round-trip)
+- Source: DEV_PLAN Stage 41 deliverables (k6 1000-concurrent, async pipeline p95 < 30s, 24h soak, dashboard p95 < 2s); DEV-20260524-1 (5s SLA deferred to Stage 41 deploy gate); sandbox no Docker constraint
+- Question: Can Stage 41 exit as "sandbox-partial Conditional Go" with numerical SLAs deferred to Stage 48 hardening pass, or must Stage 41 block until a deployed environment is available?
+- Why ambiguous: DEV_PLAN Stage 41 lists numerical SLA deliverables as exit criteria. The sandbox has no Docker and no deployed backend. Blocking indefinitely risks slipping the Phase 4 Stripe slice start. Phase 1 set the precedent: Conditional Go, code-verifiable criteria complete, infrastructure-verifiable criteria deferred.
+- Blocking? yes (exit classification decision)
+- Assumed answer: Option A — sandbox-partial Conditional Go.
+- Code affected: `docs/dev/phase-2-exit-report.md` (new), `docs/dev/PROJECT_STATE.md`
+- Status: resolved
+- Resolution: Option A — Stage 41 exits as **Conditional Go**: all code-verifiable Phase 2 criteria satisfied; four numerical SLAs (k6 1000-concurrent, async pipeline p95 < 30s, dashboard p95 < 2s, dead-letter < 0.5% over 24h soak) deferred to Stage 48 hardening pass. Exact Phase 1 Conditional Go precedent (phase-1-exit-report.md §1 verdict). Git tag `v1-phase-2-partial` created at Stage 41 close. Operator decision 2026-05-31.
+
+---
+
 ### Q-40.6 — Student dashboard greeting sub-line: copy value for dashboardSubheading
 
 - Date raised: 2026-05-11 (Stage 40 T5 checkpoint)
