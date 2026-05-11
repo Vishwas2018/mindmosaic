@@ -2,6 +2,61 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 38 — 2026-05-11 (cont. 2026-05-28)
+
+**Planned (from DEV_PLAN.md Stage 38):** Teacher Student Detail page — SCREEN_SPECS Screen 20; 3 backend endpoints; SDK hooks (useStudentProfile, useTeacherRecentSessions, useStudentAssignments, useFlagForReview); SkillBar horizontal variant; web page; contract tests; Playwright spec. 2-day budget (Days 54–55).
+
+**Actually delivered:**
+
+- Prep commit (3bcf053): Q-38.1–5 + Q-38.UI-1..5 resolved + ISSUE-0030 filed + DEV_PLAN path typo corrected (Q-38.4) + C-C-D-V saved to `docs/prompts/2026-05-28_stage-38.md`.
+- Implementation (c9ce497):
+  - `supabase/migrations/0017_alert_type_manual.sql` (new): `ALTER TYPE alert_type ADD VALUE IF NOT EXISTS 'manual'` — Q-38.6 T2-tightened blocker before analytics-svc handler code.
+  - `supabase/functions/assessment-svc/index.ts`: Q-38.1 — GET /sessions/recent now reads `?student_id=` param and elevates to target student when caller role is teacher/tutor/org_admin/platform_admin/parent. Closes pre-existing Stage 36 gap (`useChildRecentSessions` hook sent param; backend ignored it).
+  - `supabase/functions/users-svc/handlers.ts`: Q-38.2 — `handleGetStudentProfile` handler + `StudentProfileDTO` (includes `class_id` field for Flag-for-Review action). `StudentProfileDTO.class_id` added post-T5 when ActionBar wiring revealed DTO omission.
+  - `supabase/functions/users-svc/index.ts`: route `GET /users/students/{student_id}` — 403/404/500 handling + role extraction.
+  - `supabase/functions/analytics-svc/handlers.ts`: Q-38.5 Option A — `createInterventionAlert` + `CreateAlertBody` interface; inserts `alert_type='manual'`, `severity='medium'`; teacher class ownership via existing `checkTeacherOwnership`. Tenant lookup from `user_profile`.
+  - `supabase/functions/analytics-svc/index.ts`: route `POST /analytics/intervention-alerts` — Bearer-gated before service-role gate; 400 on missing fields; returns 201.
+  - `packages/ui/src/SkillBar/SkillBar.tsx`: Q-38.UI-5 — `layout?: 'vertical' | 'horizontal'` prop; horizontal renders label+bar+pct in flex row.
+  - `packages/ui/src/SkillBar/SkillBar.test.tsx` + `SkillBar.stories.tsx`: +1 test + `Horizontal` story.
+  - `packages/sdk/src/keys.ts`: `users.student(id)`, `sessions.teacherRecent(id)`, `assignments.forStudent(id)`.
+  - `packages/sdk/src/hooks/identity.ts`: `useStudentProfile(studentId)` + `StudentProfileSchema` (Zod, includes `class_id`).
+  - `packages/sdk/src/hooks/session.ts`: `useTeacherRecentSessions(studentId, limit?)`.
+  - `packages/sdk/src/hooks/assignments.ts`: `useStudentAssignments(studentId)` + `StudentAssignmentSchema`.
+  - `packages/sdk/src/hooks/analytics.ts`: `useFlagForReview()` mutation — POST /analytics/intervention-alerts.
+  - Contract tests +6: assessment-svc +2 (listRecentSessions teacher proxy + dispatcher guard), users-svc +2 (handleGetStudentProfile happy path + 403), analytics-svc +2 (createInterventionAlert happy path + 403).
+  - `apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx` (new): full Screen 20 — BreadcrumbHeader, StudentHero (avg_score + last_session), StrandMasteryCard (NAPLAN-only, ISSUE-0030 comment, SkillBar horizontal), MisconceptionsStatTile, AssignmentTable, ScoreTrendSection (EmptyState v1), ActivityFeed (useTeacherRecentSessions), TeacherNotes (localStorage debounced 800ms), ActionBar (Flag for Review + Assign Work; Message Parent omitted per Q-38.UI-4).
+  - `apps/web/playwright/e2e/teacher-student-detail.spec.ts` (new): 2 tests (not-found branch + notes/flag guard on seed env var).
+
+**Time spent:** 2 days (Days 54–55, within budget — split across two sessions)
+
+**Surprises / departures:**
+
+1. **Q-38.6 T2-tightened blocker:** `alert_type` enum missing `'manual'` value. Filed + resolved before analytics-svc handler code; migration 0017 created.
+2. **Stage 36 assessment-svc gap:** `useChildRecentSessions` sent `?student_id=` but backend hardcoded JWT user_id. Q-38.1 fix resolves both parent and teacher use cases.
+3. **`StudentProfileDTO.class_id` absent initially:** C-C-D-V DTO had `{ id, display_name, year_level, class_name, last_session_at, avg_score }` — no `class_id`. ActionBar's `useFlagForReview` requires `class_id`. Added `class_id: string | null` to DTO + handler return + SDK Zod schema post-T5 wiring. No ADR (routine additive fix).
+4. **`SessionSummaryDTO.session_id` not `.id`:** Typecheck caught usage of `s.id` in ActivityFeed; corrected to `s.session_id`. Zero-cost fix caught by pre-commit typecheck gate.
+
+**Decisions made (not in stage):**
+
+- No new ADRs — all decisions covered by Q-38.* resolutions baked into C-C-D-V.
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0030 opened (medium): pathway→strand mapping absent; NAPLAN tab only at Screen 20.
+- Q-38.6 filed + resolved (alert_type 'manual' absent).
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (547 passed / 1 skipped = 548 total) · Build ✅ · RLS ✅ (no new tables)
+
+**Tomorrow — first thing:**
+
+Stage 39 morning ritual. Per DEV_PLAN.md Stage 39 (check DEV_PLAN.md for title + deliverables).
+
 ## Stage 37 — 2026-05-27 (cont. 2026-05-10)
 
 **Planned (from DEV_PLAN.md Stage 37):** Teacher Dashboard — SCREEN_SPECS Screen 18 + Screen 19 companion; 4 backend endpoints (users-svc × 2, analytics-svc × 2); SDK hooks; frontend pages; contract tests. 2-day budget (Days 52–53).

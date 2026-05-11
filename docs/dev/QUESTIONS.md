@@ -129,6 +129,21 @@
 
 ---
 
+### Q-38.6 — alert_type enum missing 'manual' value
+
+- Date raised: 2026-05-11 (Stage 38 implementation — T2-tightened blocker before analytics-svc handler code)
+- Asked of: self (T2-tightened — filed before writing handler)
+- Source: migration 0001_enums_tenancy_auth.sql:101-104 — `alert_type` enum values: `{declining_performance, persistent_misconception, high_fatigue, low_persistence, repair_failure, exceptional_progress}`. Q-38.5 requires inserting `alert_type='manual'`.
+- Question: `alert_type` enum does not include `'manual'`. POST /analytics/intervention-alerts (Q-38.5 Option A) needs to insert `alert_type='manual'`. Add migration or use different field?
+- Why ambiguous: Enum add is non-transactional in PG 12+; requires standalone migration.
+- Blocking? yes — INSERT would throw Postgres enum violation without migration.
+- Assumed answer: Option A — create migration 0017 with `ALTER TYPE alert_type ADD VALUE IF NOT EXISTS 'manual'`.
+- Code affected: `supabase/migrations/0017_alert_type_manual.sql` (new), `supabase/functions/analytics-svc/handlers.ts`
+- Status: resolved
+- Resolution: Option A — migration 0017 created before any analytics-svc handler code written. 2026-05-11.
+
+---
+
 ### Q-38.1 — No teacher-addressable GET /sessions/recent endpoint
 
 - Date raised: 2026-05-28 (Stage 38 prep — T3 round-trip, scope)
