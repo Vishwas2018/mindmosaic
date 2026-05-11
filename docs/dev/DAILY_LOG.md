@@ -2,6 +2,55 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## Stage 39 — 2026-05-11 (Day 54, 3-day budget, delivered in 1 day)
+
+**Planned (from DEV_PLAN.md Stage 39):** Teacher Assignment Engine (Screen 22) — SDK hooks D1–D4 (PathwayDTOSchema id fix, query keys, 6 CRUD+tracking hooks, useGenerateAssignment), list page D5 (tabs: All/Draft/Published/Archived), 5-step wizard D6 (Type→Target→Configure→Schedule→Review+Publish), tracking view D7 (3-stat grid + Archive dialog), ≥10 new tests D8, Playwright spec D9.
+
+**Actually delivered:**
+
+- Prep commit (4722199): Q-39.1–9 + Q-39.UI-1..6 resolved; DEV-20260529-1 (5-step wizard vs 4-step SCREEN_SPECS §22) filed; C-C-D-V saved to `docs/prompts/2026-05-11_stage-39.md`.
+- Implementation (6a9890d): All D1–D9 delivered; 13 files changed, 2439 insertions.
+  - D1: `PathwayDTOSchema` — `id: z.string().uuid()` added (`packages/types/src/index.ts`)
+  - D2: `mmKeys.assignments.byId(id)`, `tracking(id)` added (`packages/sdk/src/keys.ts`)
+  - D3: 6 new SDK hooks — `useAssignment`, `useAssignmentTracking`, `useCreateAssignment` (Idempotency-Key via `useRef`), `useUpdateAssignment`, `usePublishAssignment`, `useArchiveAssignment` (`packages/sdk/src/hooks/assignments.ts`)
+  - D4: `useGenerateAssignment` mutation (`packages/sdk/src/hooks/analytics.ts`)
+  - D5: Assignments list page with 4 tabs (All/Draft/Published/Archived) (`apps/web/src/app/(teacher)/teacher/assignments/page.tsx`)
+  - D6: 5-step wizard — Type→Target→Configure→Schedule→Review+Publish; `toServerMode` mapping at boundary (`'skill'→'skill_drill'`); edit mode via `?edit=` query param; Idempotency-Key stable per mount via `useRef` (`apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx`)
+  - D7: Tracking view — 3-stat grid (Completed/In-Progress/Not Started), per-student table with StatusBadge + score column, Archive dialog (`apps/web/src/app/(teacher)/teacher/assignments/[id]/page.tsx`)
+  - D8: +34 new tests across 3 files — 13 contract (types), 9 hook unit (sdk), 12 copy-unit (web) (`packages/types/src/__tests__/assignments-contract.test.ts`, `packages/sdk/src/__tests__/assignments.test.ts`, `apps/web/src/__tests__/assignments-copy.test.ts`)
+  - D9: Playwright spec — 4 tests, `test.skip`-guarded (`apps/web/playwright/e2e/assignment-engine.spec.ts`)
+  - Copy module extended with tracking + archive + wizard copy (`apps/web/src/copy/assignments.ts`)
+
+**Time spent:** 2 sessions (2026-05-11). 3-day budget. Delivered in 1 day; 2 buffer days banked.
+
+**Surprises / departures:**
+
+- D8 floor was ≥10; delivered 34 — three distinct test files covering contract validation, SDK hook behavior, and copy-module invariants.
+- Pre-commit hook required two attempts: first blocked by `@typescript-eslint/no-unused-vars` on destructuring aliases (`_t`, `_cr`) in types contract test; fixed with inlined object literals.
+- `useSearchParams` in Next.js 14 requires Suspense boundary — `Page` default export wraps inner wizard; inner component uses hook.
+- TypeScript strict cannot infer callback types on `as const` array `.map()`/`.find()` in JSX; fixed with spread + explicit cast pattern throughout wizard (e.g., `([...C.typeCards] as typeof C.typeCards[number][]).map(...)`).
+
+**Decisions made (not in stage):**
+
+- none (all structural choices covered by Q-39.UI-1..6 resolved in prep commit)
+
+**Deviations logged:**
+
+- DEV-20260529-1 — 5-step wizard vs 4-step SCREEN_SPECS §22 (filed in prep commit 4722199)
+
+**Issues opened / closed / questions raised:**
+
+- Q-39.1 through Q-39.9 + Q-39.UI-1 through Q-39.UI-6 — all resolved in prep commit
+- No new OPEN_ISSUES entries
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (581/1) · Build ✅ · RLS ✅ (no new tables)
+
+**Tomorrow — first thing:** Stage 40.
+
+---
+
 ## Stage 38 — 2026-05-28 (Day 54, 2-day budget, delivered in 1 day)
 
 **Planned (from DEV_PLAN.md Stage 38):** Teacher Student Detail page — SCREEN_SPECS Screen 20; 3 backend endpoints; SDK hooks (useStudentProfile, useTeacherRecentSessions, useStudentAssignments, useFlagForReview); SkillBar horizontal variant; web page; contract tests; Playwright spec. 2-day budget (Days 54–55).
