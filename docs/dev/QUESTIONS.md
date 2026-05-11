@@ -9,6 +9,186 @@
 
 ## Resolved
 
+### Q-39.UI-6 — Sidebar nav: 4-item (Overview/Students/Assignments/Analytics) vs 5-item (add Insights)
+
+- Date raised: 2026-05-29 (Stage 39 prep — T5 layout sketch)
+- Asked of: self (T3 Option 3 hybrid)
+- Source: `15-assignment-engine.html` sidebar nav (5 items including Insights); Stage 37/38 teacher pages (4 items)
+- Question: Should Stage 39 add an "Insights" nav item to match the mockup, or preserve the 4-item nav for consistency with existing teacher pages?
+- Why ambiguous: Mockup has 5 nav items; no existing spec section defines an Insights screen for teachers.
+- Blocking? no
+- Assumed answer: 4-item nav; Insights not added.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/page.tsx`, `new/page.tsx`, `[id]/page.tsx`
+- Status: resolved
+- Resolution: 4-item nav (Overview / Students / Assignments / Analytics). Insights omitted — the mockup 5th item is designer speculation with no spec backing; no SCREEN_SPECS §N defines a teacher Insights screen in v1. Nav consistency across all teacher pages preserved. 2026-05-29.
+
+---
+
+### Q-39.UI-5 — Send Reminder checkbox: silent no-op vs disabled with v1.1 tooltip
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve, revised)
+- Source: `15-assignment-engine.html` Schedule step; SCREEN_SPECS §22 tracking actions "Send reminder — Deferred v1.1"
+- Question: Render reminders checkbox as silent no-op on submit, or as disabled with "Available in a future release" tooltip?
+- Why ambiguous: Mockup renders it as an active checkbox. SCREEN_SPECS explicitly marks it v1.1.
+- Blocking? no
+- Assumed answer: Disabled with v1.1 tooltip (UX-honest).
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (Schedule step)
+- Status: resolved
+- Resolution: Checkbox renders in disabled state with tooltip "Available in a future release" — same PHASE-2 pattern as Stage 38 ICAS/Selective tab precedent. Not a silent no-op. UX is honest about v1 scope. 2026-05-29.
+
+---
+
+### Q-39.UI-4 — Attempts Allowed + Start Date: silent-drop vs disabled with tooltip
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve, revised)
+- Source: `15-assignment-engine.html` Configure step (Attempts Allowed select) + Schedule step (Start Date input); `assignments-svc/handlers.ts:CreateBody` (no attempts or start_at field)
+- Question: Render attempts and start date fields as silent no-ops (values dropped before API call), or as disabled with v1.1 tooltip?
+- Why ambiguous: Mockup renders both as active. Neither field has a DB column. Silent-drop is invisible to the user; disabled is honest.
+- Blocking? no
+- Assumed answer: Disabled with v1.1 tooltip.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (Configure + Schedule steps)
+- Status: resolved
+- Resolution: Both fields render in disabled state with tooltip "Available in a future release". Not silently dropped. Only `due_at` and `time_limit_ms` (both in CreateBody) are persisted from the schedule/configure steps. UX-honest; mirrors PHASE-2 disabled pattern. 2026-05-29.
+
+---
+
+### Q-39.UI-3 — Topic chips: UUID resolution required or display-only hints
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve, revised)
+- Source: `15-assignment-engine.html` Target step topic chips (display names only); `analytics-svc/handlers.ts:GenerateAssignmentBody` (target_skill_ids optional); `assignments-svc/handlers.ts:CreateBody` (target_skill_ids: string[])
+- Question: Do topic chips need to resolve to skill_node UUIDs for the generateAssignment call, or can they be display-only hints?
+- Why ambiguous: Passing chip names to generateAssignment as filter hints requires UUID mapping (no skill list hook exists). Passing no UUIDs still works (server picks weakest skills from class analytics).
+- Blocking? no
+- Assumed answer: Display-only with explicit caption; no UUID resolution in v1.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (Target step)
+- Status: resolved
+- Resolution: Topic chips render as visual hints only. Caption placed directly below chip strip: "Suggestions only — auto-generated based on class analytics." generateAssignment called with {class_id, mode} only (no explicit target_skill_ids filter). Draft response provides target_skill_ids for the subsequent createAssignment call. Manual skill UUID resolution deferred v1.1 (no skill list hook; building one exceeds Stage 39 budget). 2026-05-29.
+
+---
+
+### Q-39.UI-2 — Route path: DEV_PLAN (teacher)/assignments/ vs Stage 38 precedent (teacher)/teacher/assignments/
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve)
+- Source: DEV_PLAN.md Stage 39 deliverables (`apps/web/src/app/(teacher)/assignments/page.tsx`); Stage 38 teacher pages (`apps/web/src/app/(teacher)/teacher/students/[id]/page.tsx`); SCREEN_SPECS §22 sub-route URLs (`/teacher/assignments`)
+- Question: DEV_PLAN path omits `teacher/` segment. Should the route be `(teacher)/assignments/` or `(teacher)/teacher/assignments/`?
+- Why ambiguous: Same typo class as Q-38.4 (DEV_PLAN Stage 38 also omitted the teacher/ segment). SCREEN_SPECS URL pattern is authoritative.
+- Blocking? no
+- Assumed answer: `(teacher)/teacher/assignments/` per Stage 38 precedent and SCREEN_SPECS §22 URL `/teacher/assignments`.
+- Code affected: Three new route files: `(teacher)/teacher/assignments/page.tsx`, `new/page.tsx`, `[id]/page.tsx`
+- Status: resolved
+- Resolution: Use `(teacher)/teacher/assignments/` prefix. DEV_PLAN path typo logged as deviation at stage close (same class as Q-38.4 path typo). No ADR needed (mechanical path correction). 2026-05-29.
+
+---
+
+### Q-39.UI-1 — Wizard step count: 5-step mockup vs 4-step SCREEN_SPECS §22
+
+- Date raised: 2026-05-29 (Stage 39 prep — T5 layout sketch, T3 round-trip)
+- Asked of: operator (T3 round-trip — visual authority conflict)
+- Source: `15-assignment-engine.html` (`var STEPS=["Type","Target","Configure","Schedule","Review"]` line 274); SCREEN_SPECS §22 lines 1188–1194 (4-step: Target → Content → Schedule → Review & Publish)
+- Question: Follow mockup 5-step structure (Type → Target → Configure → Schedule → Review) or SCREEN_SPECS 4-step structure (Target → Content → Schedule → Review & Publish)?
+- Why ambiguous: UI_CONTRACT §1.1 names mockup as visual authority; SCREEN_SPECS is the content/field authority. Step grouping falls between the two.
+- Blocking? yes — T3 round-trip; operator must approve before wizard coding begins
+- Assumed answer: 5-step mockup structure. SCREEN_SPECS field validation rules apply unchanged within regrouped steps.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx`
+- Status: resolved
+- Resolution: 5-step mockup structure (Type → Target → Configure → Schedule → Review). SCREEN_SPECS §22 field validation rules (title, targets, due_at, item_count, skills) apply unchanged within regrouped steps; only UI grouping differs. DEV-20260529-1 filed for v1.1 spec reconciliation. T3 round-trip discharged in Stage 39 morning ritual. 2026-05-29.
+
+---
+
+### Q-39.6 — Mode/type mapping from wizard type selection to CreateBody.mode
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve)
+- Source: `15-assignment-engine.html` type keys (`practice`, `diagnostic`, `exam`, `skill`); `assignments-svc/handlers.ts:CreateBody.mode` (string, no enum constraint); SCREEN_SPECS §22 `content_type: skill_based | blueprint_based`
+- Question: Do mockup type keys map 1:1 to CreateBody.mode, or must they be translated to SCREEN_SPECS content_type enum values?
+- Why ambiguous: Mockup and SCREEN_SPECS use different vocabularies for assignment type.
+- Blocking? no
+- Assumed answer: Use mockup type keys directly as mode values. Server accepts any string.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (Type step), `packages/sdk/src/hooks/assignments.ts` (useCreateAssignment)
+- Status: resolved
+- Resolution: Mockup type keys (practice, diagnostic, exam, skill) used directly as CreateBody.mode. assignments-svc parseCreateBody accepts any string; no enum validation. blueprint_based content type (SCREEN_SPECS) deferred v1.1 — no blueprint list endpoint exists; "Blueprint-based" type card not rendered (removed from wizard scope, not disabled, since it has no DB-backed path at all in v1). 2026-05-29.
+
+---
+
+### Q-39.5 — pathway_id source for createAssignment (DraftAssignmentDTO missing the field)
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened, mid-read)
+- Asked of: self (T2 self-resolve)
+- Source: `assignments-svc/handlers.ts:CreateBody` (`pathway_id: string` required UUID FK → `pathway(id)`); `analytics-svc/handlers.ts:734` `DraftAssignmentDTO` (no pathway_id field); `packages/types/src/content.ts:4` `PathwayDTOSchema` (no id field); `supabase/functions/content-svc/handlers.ts:121` (`SELECT 'id, slug, ...'` — server already emits id)
+- Question: How does the wizard obtain a pathway UUID for createAssignment? DraftAssignmentDTO doesn't include it, and PathwayDTOSchema doesn't expose the UUID.
+- Why ambiguous: pathway.id is in the DB and returned by content-svc but stripped by the Zod schema client-side. DraftAssignmentDTO returned by generateAssignment also omits it.
+- Blocking? yes — without pathway_id, createAssignment call fails with 400
+- Assumed answer: Add id: z.string().uuid() to PathwayDTOSchema (additive; no server change). Wizard uses usePathways().data[0].id.
+- Code affected: `packages/types/src/content.ts` (PathwayDTOSchema), `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx`
+- Status: resolved
+- Resolution: Add `id: z.string().uuid()` to PathwayDTOSchema in packages/types/src/content.ts. Content-svc listPathways already selects id (handlers.ts:121); Zod just strips it today. Additive change — no existing consumers break. Wizard calls usePathways(), selects first active pathway (NAPLAN in v1), and passes pathway.id to createAssignment. Committed in the same Stage 39 implementation commit as SDK hooks (D1 before D3 per T2-tightened sequence). 2026-05-29.
+
+---
+
+### Q-39.4 — Publish/archive endpoints: return shape and status code
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve)
+- Source: `assignments-svc/handlers.ts:513` (publishAssignment), `assignments-svc/handlers.ts:607` (archiveAssignment), `assignments-svc/index.ts:209` (dispatcher)
+- Question: Do publish and archive return updated AssignmentDTO or 204? Status 200 or 201?
+- Why ambiguous: Publish is creation-adjacent (materialises assignment_sessions) so 201 might be expected; but the endpoint mutates an existing resource.
+- Blocking? no
+- Assumed answer: Both return updated AssignmentDTO, status 200.
+- Code affected: `packages/sdk/src/hooks/assignments.ts` (usePublishAssignment, useArchiveAssignment)
+- Status: resolved
+- Resolution: publishAssignment → status 200, returns updated AssignmentDTO (handlers.ts:600, jsonOk(result.data, traceId, 200)). archiveAssignment → status 200, returns updated AssignmentDTO (handlers.ts:636). SDK hooks type both responses as AssignmentDTO. 2026-05-29.
+
+---
+
+### Q-39.3 — assignment_target shape for single-student, class-wide, and at-risk modes
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve)
+- Source: `assignments-svc/handlers.ts:253` `CreateBody.targets: Array<{type:'student'|'class', id:string}>`; SCREEN_SPECS §22 Target step (single student / multiple students / class)
+- Question: How do the three wizard "Assign To" modes map to CreateBody.targets? Does at-risk mode have a data source?
+- Why ambiguous: At-risk students require a student UUID list; no dedicated at-risk endpoint is consumed in Stage 39.
+- Blocking? no
+- Assumed answer: Class → [{type:'class', id:classId}]; single student → [{type:'student', id:studentId}]; at-risk → multiple {type:'student'} entries from existing data, fallback to class.
+- Code affected: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (Target step submit logic)
+- Status: resolved
+- Resolution: "Entire Class" → targets=[{type:'class', id:classId}]. "Custom Selection / ?target_student=" → targets=[{type:'student', id:targetStudentId}]. "At-Risk Students" → up to 3 student UUIDs from useTeacherRefresh intervention_alerts data (student_id field); if useTeacherRefresh data unavailable or empty at-risk list, falls back to class target with a UI note "Defaulting to entire class — no at-risk data available." CreateBody.targets supports all three; handler expands class targets to student_ids at publish time. 2026-05-29.
+
+---
+
+### Q-39.2 — Role gate for createAssignment in Stage 39 teacher UI context
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened)
+- Asked of: self (T2 self-resolve)
+- Source: `assignments-svc/handlers.ts:162` `isTeacherOrAdmin = teacher | tutor | org_admin | platform_admin`; Stage 39 UI is teacher-only route
+- Question: Does Stage 39 change the role gate for assignment creation, or use the Stage 33 pattern unchanged?
+- Why ambiguous: Stage 39 adds teacher UI — could the gate need to be teacher-only (not tutor/admin)?
+- Blocking? no
+- Assumed answer: Stage 33 gate unchanged.
+- Code affected: No backend change; UI route guard is `authenticated teacher` per SCREEN_SPECS §22
+- Status: resolved
+- Resolution: Stage 33 isTeacherOrAdmin gate unchanged. Teacher UI route guard (Next.js middleware) prevents non-teacher access at the page level. Backend handler accepts teacher | tutor | org_admin | platform_admin — this is correct for v1 (tutors and admins can also create assignments). No backend change. 2026-05-29.
+
+---
+
+### Q-39.1 — Idempotency-Key reintroduction scope: client-side send vs full server enforcement
+
+- Date raised: 2026-05-29 (Stage 39 prep — T2-tightened per ISSUE-0023 and DEV-20260523-1)
+- Asked of: self (T2 self-resolve)
+- Source: ISSUE-0023; DEV-20260523-1; `assignments-svc/handlers.ts:301` (parse+log only); SCREEN_SPECS §22 "POST /assignments (draft; idempotency-keyed)"
+- Question: Does Stage 39 reintroduce server-side Idempotency-Key enforcement, or only the client-send side?
+- Why ambiguous: ISSUE-0023 deferred full enforcement to v1.1. Stage 39 is the first UI stage that creates assignments — natural reintroduction point.
+- Blocking? no
+- Assumed answer: Client sends header; server stays log-only. Full enforcement v1.1.
+- Code affected: `packages/sdk/src/hooks/assignments.ts` (useCreateAssignment, usePublishAssignment mutations)
+- Status: resolved
+- Resolution: SDK useCreateAssignment and usePublishAssignment mutations send `Idempotency-Key: crypto.randomUUID()` with each request. Server already accepts and logs the header (DEV-20260523-1 inline comment at handlers.ts:301). No backend change. Full server-side dedup (Option B — idempotency_key column + UNIQUE constraint) stays ISSUE-0023 v1.1. This closes the "client sends required header" compliance gap per arch §4.8 without expanding Stage 39 budget. 2026-05-29.
+
+---
+
 ### Q-38.UI-5 — SkillBar primitive layout: vertical (current) vs horizontal (mockup)
 
 - Date raised: 2026-05-28 (Stage 38 prep — T5 layout sketch)

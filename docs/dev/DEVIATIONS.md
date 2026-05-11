@@ -3,6 +3,20 @@
 > Every deviation from DEV_PLAN.md, in writing.
 > Newest at TOP. Use the template from CLAUDE.md §Templates.
 
+### DEV-20260529-1 — Wizard step structure divergence: 5-step mockup vs 4-step SCREEN_SPECS §22
+
+- Date: 2026-05-29
+- Stage: 39
+- Type: substitution
+- What the stage said: SCREEN_SPECS §22 specifies a 4-step creation wizard: Target → Content → Schedule → Review & Publish.
+- What I actually did: Stage 39 ships a 5-step wizard (Type → Target → Configure → Schedule → Review) per the T5 visual authority document `15-assignment-engine.html`. The mockup was the Claude Design session output and represents the resolved visual interpretation of the spec. All SCREEN_SPECS §22 field validation rules (title 3–100 chars, due_at ≥ now+1h, targets ≥1, skills 1–3 if skill_based, item_count 5–50) apply unchanged within the regrouped steps; only the UI step grouping differs.
+- Why: T5 discipline uses the mockup as the primary visual authority (UI_CONTRACT §1.1). The mockup's 5-step structure produces a better UX: type selection as a dedicated step (step 0) is a standard wizard pattern; splitting target selection and skill configuration into separate steps (Target and Configure) reduces cognitive load per step. SCREEN_SPECS field names and validation rules govern data shape; the mockup governs layout and step grouping. Q-39.UI-1 T3 round-trip discharged — operator approved 5-step structure in Stage 39 morning ritual.
+- Impact on later stages: v1.1 spec reconciliation required — either update SCREEN_SPECS §22 to document the shipped 5-step structure, or refactor the wizard back to 4-step if spec alignment is required. No impact on data model, API shape, or any other stage.
+- Linked: Q-39.UI-1, SCREEN_SPECS §22 lines 1188–1194, `15-assignment-engine.html` STEPS var line 274
+- Resolved by: ongoing (v1.1 spec reconciliation)
+
+---
+
 ### DEV-20260527-1 — Stage 36 close report declared typecheck green via stale turbo cache; 2 failures found at Stage 37 prep time
 
 - Date: 2026-05-27
