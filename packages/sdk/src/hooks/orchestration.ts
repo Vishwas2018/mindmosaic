@@ -22,7 +22,10 @@ export function useLearningPlan(studentId: string) {
     queryKey: mmKeys.orchestration.learningPlan(studentId),
     queryFn: () =>
       client
-        .get('/orchestration-svc/orchestration/plan', LearningPlanDTOSchema)
+        .get(
+          `/orchestration-svc/orchestration/plan/${encodeURIComponent(studentId)}/current`,
+          LearningPlanDTOSchema,
+        )
         .then((r) => r.data),
     enabled: studentId.length > 0,
   });

@@ -55,4 +55,8 @@ export const mmKeys = {
     byId: (id: string) => ['assignments', id] as const,
     tracking: (id: string) => ['assignments', id, 'tracking'] as const,
   },
+  notifications: {
+    all: () => ['notifications'] as const,
+    mine: () => ['notifications', 'mine'] as const,
+  },
 } as const;

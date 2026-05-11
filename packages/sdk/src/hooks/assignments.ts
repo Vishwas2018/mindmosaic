@@ -174,6 +174,29 @@ export function usePublishAssignment() {
   });
 }
 
+// POST /assignments/{id}/start — student starts an assignment session.
+// Idempotency-Key per arch §4.8 + C-C-D-V C5.
+// ISSUE-0023 ongoing: Idempotency-Key accepted + logged server-side; dedup enforcement v1.1.
+export function useStartAssignment() {
+  const client = useMmClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      client
+        .post(
+          `/assignments-svc/assignments/${encodeURIComponent(id)}/start`,
+          z.object({ session_id: z.string(), assignment_session_status: z.string() }),
+          {},
+          crypto.randomUUID(),
+        )
+        .then((r) => r.data),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.forStudent('') });
+      void queryClient.invalidateQueries({ queryKey: mmKeys.assignments.byId(id) });
+    },
+  });
+}
+
 // POST /assignments/{id}/archive — archive published assignment.
 export function useArchiveAssignment() {
   const client = useMmClient();
