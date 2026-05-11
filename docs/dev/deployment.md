@@ -35,6 +35,7 @@ either set explicit values or rely on the default URL pattern below.
 | `ORCHESTRATION_SVC_URL` | jobs-worker + assignments-svc | `${SUPABASE_URL}/functions/v1/orchestration-svc` | ISSUE-0018 |
 | `ASSESSMENT_SVC_URL` | assignments-svc | `${SUPABASE_URL}/functions/v1/assessment-svc` | ISSUE-0018 |
 | `NOTIFICATIONS_SVC_URL` | jobs-worker | `${SUPABASE_URL}/functions/v1/notifications-svc` | ISSUE-0018 |
+| `BILLING_SVC_URL` | jobs-worker | `${SUPABASE_URL}/functions/v1/billing-svc` | ADR-0031 fifth amendment |
 
 **Note on fallback behaviour.** The default fallback (`${SUPABASE_URL}/functions/v1/<name>`)
 is correct for a standard Supabase project where all functions share the same
@@ -51,6 +52,35 @@ values only — never real credentials).
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Same as `SUPABASE_URL` above |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same as `SUPABASE_ANON_KEY` above |
+
+### Stripe / billing-svc vars (Stage 42+)
+
+**Elevated criticality — payment data.** These vars grant the ability to
+process real Stripe events and write to financial audit tables. Guard with
+the same care as `SUPABASE_SERVICE_ROLE_KEY`. Never commit real values;
+`.env.local` is gitignored, `.env.example` has placeholder values only.
+
+| Variable | Consuming service | Notes |
+|---|---|---|
+| `STRIPE_SECRET_KEY` | billing-svc (Edge Function) | `sk_test_…` for dev/staging; `sk_live_…` for production. Single key per Q-42.1 (ADR-0034). |
+| `STRIPE_WEBHOOK_SECRET` | billing-svc (Edge Function) | `whsec_…` from Stripe CLI (`stripe listen`) for local dev; Dashboard > Webhooks for production. ISSUE-0032: single-secret; v1.1 needs dual-secret rotation window. |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | apps/web | `pk_test_…` / `pk_live_…`. Safe to expose to client. |
+| `STRIPE_PRICE_ID_STANDARD_MONTHLY` | apps/web (checkout) | From `scripts/stripe-seed.sh` output. |
+| `STRIPE_PRICE_ID_STANDARD_YEARLY` | apps/web (checkout) | From `scripts/stripe-seed.sh` output. |
+| `STRIPE_PRICE_ID_PREMIUM_MONTHLY` | apps/web (checkout) | From `scripts/stripe-seed.sh` output. |
+| `STRIPE_PRICE_ID_PREMIUM_YEARLY` | apps/web (checkout) | From `scripts/stripe-seed.sh` output. |
+
+**Local dev webhook listening:**
+```bash
+stripe listen --forward-to localhost:54321/functions/v1/billing-svc/billing/webhook/stripe
+```
+The CLI prints the `whsec_…` secret on startup — set it as `STRIPE_WEBHOOK_SECRET` in `.env.local`.
+
+**Seed test products + prices:**
+```bash
+bash scripts/stripe-seed.sh
+```
+Output includes all price IDs. Copy into `.env.local` and Supabase Edge Function env vars.
 
 ### Load test vars (CI activation)
 
@@ -98,6 +128,42 @@ handler will throw a PostgreSQL enum constraint violation on every manual alert
 creation, returning 500 to all teacher flag-for-review actions.
 
 **Linked:** Stage 38 DAILY_LOG retro (e); Q-38.6.
+
+### Migration 0018 — Billing domain tables
+
+**File:** `supabase/migrations/0018_billing.sql`
+
+**Tables:** `subscription`, `billing_customer`, `invoice`, `billing_event`.
+
+**Deploy order requirement:**
+1. Run migration 0018 against the production database BEFORE deploying `billing-svc`.
+2. Verify tables exist: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('subscription', 'billing_customer', 'invoice', 'billing_event');`
+3. THEN deploy `billing-svc` Edge Function.
+
+**If billing-svc is deployed BEFORE migration 0018:** all webhook calls will
+return 500 (relation does not exist). Stripe will retry; catch-up processing
+occurs once migration is applied and `billing_event` idempotency dedups replays.
+
+**Financial audit log constraint (arch §1.3, §8.3):**
+`billing_event` is IMMUTABLE after insert. NEVER run `UPDATE` or `DELETE` on
+`billing_event` rows in production — they are a financial audit log retained 7 years.
+Export to cold storage before any schema changes that touch this table.
+
+**Rollback strategy:**
+```sql
+-- Order must respect foreign keys:
+-- billing_event → invoice → billing_customer → subscription
+DROP TABLE IF EXISTS billing_event;
+DROP TABLE IF EXISTS invoice;
+DROP TABLE IF EXISTS billing_customer;
+DROP TABLE IF EXISTS subscription;
+```
+WARNING: `DROP CASCADE` is irreversible for financial records. Export
+`billing_event` to cold storage before any production DROP.
+
+**Deferred validation:** Migration 0018 has not been run against a real
+PostgreSQL instance in this sandbox (no Docker). Follow the same Docker
+validation steps as migrations 0012–0017 below.
 
 ### Migrations 0012–0017 — Docker integration test required
 

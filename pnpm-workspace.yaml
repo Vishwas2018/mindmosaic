@@ -10,3 +10,4 @@ packages:
   - "supabase/functions/assignments-svc"
   - "supabase/functions/notifications-svc"
   - "supabase/functions/users-svc"
+  - "supabase/functions/billing-svc"

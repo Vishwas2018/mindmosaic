@@ -1,17 +1,19 @@
 /// <reference lib="deno.ns" />
 /**
  * jobs-worker — Stage 29. Amended Stage 34 (ADR-0031 fourth amendment).
+ * Amended Stage 42 (ADR-0031 fifth amendment): pipeline.feature_flag_propagate → billing-svc.
  *
  * Generic job-dispatch runtime (ADR-0031). Called by pg_cron every minute
  * (cron registration: deploy-time step, see DEV_PLAN Stage 28 notes).
  * Accepts POST requests; returns a BatchResult JSON.
  *
  * Routes (job_type → owning service):
- *   pipeline.causal.evaluate_full  → intelligence-svc    POST /intelligence/pipeline/causal-full
- *   pipeline.predictive_refresh    → intelligence-svc    POST /intelligence/pipeline/predictive-refresh
- *   pipeline.teacher_refresh       → analytics-svc       POST /analytics/pipeline/teacher-refresh
- *   pipeline.orchestration_replan  → orchestration-svc   POST /orchestration/pipeline/orchestration-replan
- *   notification.create            → notifications-svc   POST /notifications/pipeline/create
+ *   pipeline.causal.evaluate_full        → intelligence-svc    POST /intelligence/pipeline/causal-full
+ *   pipeline.predictive_refresh          → intelligence-svc    POST /intelligence/pipeline/predictive-refresh
+ *   pipeline.teacher_refresh             → analytics-svc       POST /analytics/pipeline/teacher-refresh
+ *   pipeline.orchestration_replan        → orchestration-svc   POST /orchestration/pipeline/orchestration-replan
+ *   notification.create                  → notifications-svc   POST /notifications/pipeline/create
+ *   pipeline.feature_flag_propagate      → billing-svc         POST /billing/pipeline/flag-propagate
  *
  * Service env:
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
@@ -19,6 +21,7 @@
  *   ANALYTICS_SVC_URL       (default: ${SUPABASE_URL}/functions/v1/analytics-svc)
  *   ORCHESTRATION_SVC_URL   (default: ${SUPABASE_URL}/functions/v1/orchestration-svc)
  *   NOTIFICATIONS_SVC_URL   (default: ${SUPABASE_URL}/functions/v1/notifications-svc)
+ *   BILLING_SVC_URL         (default: ${SUPABASE_URL}/functions/v1/billing-svc)
  *   JOB_WORKER_BATCH_SIZE   (default: 10)
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -41,6 +44,9 @@ const ORCHESTRATION_SVC_URL =
 const NOTIFICATIONS_SVC_URL =
   Deno.env.get('NOTIFICATIONS_SVC_URL') ??
   `${SUPABASE_URL}/functions/v1/notifications-svc`;
+const BILLING_SVC_URL =
+  Deno.env.get('BILLING_SVC_URL') ??
+  `${SUPABASE_URL}/functions/v1/billing-svc`;
 const BATCH_SIZE = parseInt(Deno.env.get('JOB_WORKER_BATCH_SIZE') ?? '10', 10);
 
 function buildRouteMap(): RouteMap {
@@ -59,6 +65,9 @@ function buildRouteMap(): RouteMap {
     },
     'notification.create': {
       url: `${NOTIFICATIONS_SVC_URL}/notifications/pipeline/create`,
+    },
+    'pipeline.feature_flag_propagate': {
+      url: `${BILLING_SVC_URL}/billing/pipeline/flag-propagate`,
     },
   };
 }
