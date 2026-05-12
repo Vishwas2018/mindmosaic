@@ -9,6 +9,66 @@
 
 ## Resolved
 
+### Q-44.4 — `sessions.monthly_limit`: numeric feature written as config field (self-resolve)
+
+- Date raised: 2026-06-03 (Stage 44 prep, T2-tightened)
+- Asked of: self (T3 Option 3 — self-resolve)
+- Source: Spec §20.3.1 feature registry (`sessions.monthly_limit`: Free=10, Standard/Premium=unlimited); `feature_flag.config jsonb` field
+- Question: How should the `sessions.monthly_limit` feature be written to `feature_flag`? It is numeric (10/unlimited), not a simple boolean.
+- Why ambiguous: `feature_flag.enabled` is boolean; the limit value requires the `config` field. Schema confirms `config jsonb` is used for numeric parameters (seeds `05_feature_flags.sql` precedent: `{"year_levels":[5],"subjects":["numeracy"]}`).
+- Blocking? no
+- Assumed answer: `feature_key='sessions.monthly_limit'`, `enabled=true`, `config={"max_sessions_per_month":10}` for Free; `enabled=true`, `config=null` for Standard and Premium (null = unlimited).
+- Code affected: `supabase/functions/billing-svc/handlers.ts` (FEATURE_REGISTRY const + handleFlagPropagate)
+- Status: resolved
+- Resolution: T3 self-resolve confirmed. `config=null` for unlimited aligns with existing config-as-jsonb pattern. Stage 44 contract tests verify Free vs Standard/Premium config shape (≥2 tests).
+
+---
+
+### Q-44.3 — `pathway.*` wildcard: single literal key with config vs per-pathway rows (T3 round-trip)
+
+- Date raised: 2026-06-03 (Stage 44 prep)
+- Asked of: operator (T3 round-trip — blocking)
+- Source: Spec §20.3.1 registry (`pathway.*`: Free=1 pathway, Standard=2 pathways, Premium=All); `feature_flag.feature_key text` (exact match); spec gating check uses exact `lookup(feature_flags, tenant_id, feature_key)`
+- Question: Should propagation write a single `pathway.*` literal key with a `config: { max_pathways }` field, or one row per concrete pathway key (e.g., `pathway.naplan_y5_numeracy`, `pathway.icas_math_c`) with enabled=true/false per tier?
+- Why ambiguous: Spec uses `pathway.*` as a category entry with numeric limit ("1 pathway / 2 pathways / All"), not a Boolean. A literal wildcard key requires gating code to interpret `config.max_pathways`; per-pathway rows require enumerating all pathway identifiers and updating on new pathway additions.
+- Blocking? yes
+- Assumed answer: Option A — single `pathway.*` literal key, `config={"max_pathways":1}` for Free, `{"max_pathways":2}` for Standard, `config=null` for Premium (unlimited). Simpler; avoids backfill on new pathway additions.
+- Code affected: `supabase/functions/billing-svc/handlers.ts` (FEATURE_REGISTRY const), gating check callers
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-03. Single `pathway.*` literal key per spec §20.3.1 verbatim. `config={"max_pathways":1|2|null}`; null=unlimited. Per-pathway rows rejected — would force backfill on every new pathway addition. Contract tests verify ≥3 pathway config shapes (Free/Standard/Premium).
+
+---
+
+### Q-44.2 — Feature key registry: §20.3.1 keys vs seed G2 keys (self-resolve)
+
+- Date raised: 2026-06-03 (Stage 44 prep, T2-tightened)
+- Asked of: self (T3 Option 3 — self-resolve)
+- Source: Spec §20.3.1 feature registry; `supabase/seeds/05_feature_flags.sql` (G2 pre-Stripe keys: `naplan_y5`, `icas_math_y5`, `skill_practice`, `parent_dashboard`); DEV_PLAN Stage 44 ("UPSERT feature_flag rows per Spec §20.3.1 registry")
+- Question: Which feature key set should `handleFlagPropagate` use — the §20.3.1 registry keys or the seed-file G2 convenience keys?
+- Why ambiguous: Seeds file uses simplified pre-Stripe keys; spec §20.3.1 defines a comprehensive registry with different key names. DEV_PLAN explicitly cites §20.3.1.
+- Blocking? no
+- Assumed answer: §20.3.1 registry keys are authoritative for the propagation handler. Seeds are G2 dev scaffolding only.
+- Code affected: `supabase/functions/billing-svc/handlers.ts` (FEATURE_REGISTRY const)
+- Status: resolved
+- Resolution: T3 self-resolve confirmed. `FEATURE_REGISTRY` const uses §20.3.1 keys (`pathway.*`, `mode.*`, `intelligence.*`, `teacher.*`, `orchestration.*`, `sessions.monthly_limit`). Seeds file `05_feature_flags.sql` remains unchanged as G2 dev convenience only. Arch §11.2 confirms Stage 42+ = Stripe webhook + propagation job as authoritative writers.
+
+---
+
+### Q-44.1 — `user_role` enum missing `'system'` value: migration 0019 required (T3 round-trip)
+
+- Date raised: 2026-06-03 (Stage 44 prep)
+- Asked of: operator (T3 round-trip — blocking)
+- Source: Spec §25.5 ("admin_action_log entry records the propagation with `actor_role='system'`"); migration 0001:18–20 (`user_role ENUM = ('student', 'parent', 'teacher', 'tutor', 'org_admin', 'platform_admin')`); Q-42.7 (actor_id FK constraint, Option A recommended)
+- Question: `user_role` ENUM does not contain `'system'`. Writing `actor_role='system'` to `admin_action_log` will throw a DB enum violation. The sentinel `user_profile` row (Q-42.7 Option A) also needs `role='system'`. Is a new migration (`ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'system'`) acceptable?
+- Why ambiguous: `user_role` is used across multiple tables and policies. Adding a new value is a one-way DDL operation (like migration 0017). Must confirm scope expansion (new migration 0019) is acceptable before implementation.
+- Blocking? yes
+- Assumed answer: Option A — migration 0019: `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'system'` + sentinel `user_profile` row with UUID `'00000000-0000-0000-0000-000000000001'`, `role='system'`, `ON CONFLICT (id) DO NOTHING` for idempotency. Confirms and closes Q-42.7.
+- Code affected: `supabase/migrations/0019_user_role_system.sql` (new), `supabase/functions/billing-svc/handlers.ts` (handleFlagPropagate actor_role + actor_id), `docs/dev/deployment.md` (migration 0019 note)
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-03. Migration 0019: `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'system'` (one-way DDL, same class as migration 0017). Sentinel `user_profile` row: `id='00000000-0000-0000-0000-000000000001'`, `role='system'`, insert `ON CONFLICT (id) DO NOTHING`. T1 pre-read at impl must enumerate `user_profile` NOT NULL columns; file Q-44.5 if any column cannot be satisfied by a plausible sentinel value. Closes Q-42.7 Stage 42 deferral.
+
+---
+
 ### Q-43.6 — Plan catalog data source: hardcoded const vs DB table (self-resolve)
 
 - Date raised: 2026-06-02 (Stage 43 prep, T2-tightened)
@@ -110,7 +170,7 @@
 - Assumed answer: Stage 42 stub defers admin_action_log write. Stage 44 resolves.
 - Code affected: `supabase/functions/billing-svc/handlers.ts` (handleFlagPropagateStub + Stage 44 implementation)
 - Status: resolved
-- Resolution: Stage 42 stub handler (`handleFlagPropagateStub`) does NOT write to `admin_action_log` — it logs the job receipt via structured logger with `// Stage 44 pending` marker. This satisfies the "not a silent no-op" requirement without violating the FK constraint. Stage 44 must resolve by choosing one of: (A) add a sentinel system `user_profile` row in seeds (simplest, deterministic UUID like `00000000-0000-0000-0000-000000000000`); (B) make `actor_id` nullable with a CHECK that either `actor_id IS NOT NULL OR actor_role = 'system'`; (C) use a dedicated `system_action_log` table for non-human actors. Option A recommended (precedent: most systems have a system user row). Self-resolved per T3 Option 3. Stage 44 round-trip if Option A not acceptable.
+- Resolution: Stage 42 stub handler (`handleFlagPropagateStub`) does NOT write to `admin_action_log` — it logs the job receipt via structured logger with `// Stage 44 pending` marker. This satisfies the "not a silent no-op" requirement without violating the FK constraint. Stage 44 full resolution: Q-44.1 (operator-approved 2026-06-03) — migration 0019 `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'system'` + sentinel `user_profile` row (`id='00000000-0000-0000-0000-000000000001'`, `role='system'`, `ON CONFLICT (id) DO NOTHING`). `handleFlagPropagate` writes `admin_action_log` with `actor_id='00000000-0000-0000-0000-000000000001'`, `actor_role='system'`. Options B and C rejected. Closed Stage 44 via Q-44.1.
 
 ---
 

@@ -165,6 +165,35 @@ WARNING: `DROP CASCADE` is irreversible for financial records. Export
 PostgreSQL instance in this sandbox (no Docker). Follow the same Docker
 validation steps as migrations 0012–0017 below.
 
+### Migration 0019 — `ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'system'`
+
+**File:** `supabase/migrations/0019_user_role_system.sql`
+
+**Constraint:** `ALTER TYPE ... ADD VALUE` is non-transactional in PostgreSQL 12+.
+It cannot be rolled back inside a transaction (same class as migration 0017). Once
+applied, removing the value requires `DROP TYPE ... CASCADE` + `CREATE TYPE` +
+re-adding all dependent columns — a destructive operation. Use `IF NOT EXISTS` for
+idempotent replay.
+
+**Deploy order requirement:**
+1. Run migration 0019 against the production database.
+2. Wait for migration to commit (verify with `SELECT enum_range(NULL::user_role)` —
+   must include `'system'`).
+3. THEN deploy `billing-svc` code that calls `handleFlagPropagate`
+   (`supabase/functions/billing-svc/handlers.ts` — `handleFlagPropagate` inserts
+   `admin_action_log` row with `actor_role='system'`).
+
+**If billing-svc is deployed BEFORE migration 0019:** `handleFlagPropagate` will
+throw a PostgreSQL enum constraint violation on every `pipeline.feature_flag_propagate`
+dispatch, returning 500 and causing the jobs-worker to dead-letter the job.
+
+**Sentinel row:** Migration 0019 also inserts the sentinel `user_profile` row
+(`id='00000000-0000-0000-0000-000000000001'`, `role='system'`) with
+`ON CONFLICT (id) DO NOTHING` for idempotency. This row satisfies the
+`admin_action_log.actor_id` NOT NULL FK constraint for system pipeline writes (Q-42.7 / Q-44.1).
+
+**Linked:** Stage 44 DAILY_LOG; Q-44.1; Q-42.7.
+
 ### Migrations 0012–0017 — Docker integration test required
 
 Migrations 0012 through 0017 have not been run against a real PostgreSQL
