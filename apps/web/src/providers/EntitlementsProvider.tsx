@@ -1,16 +1,18 @@
 'use client'
-// PHASE-2: entitlements fetched from /users/me; stubbed free tier for now
 import { createContext, useContext, type ReactNode } from 'react'
+import { useSubscription } from '@mm/sdk'
+import type { SubscriptionTier } from '@mm/types'
 
 interface EntitlementsContextValue {
-  tier: 'free' | 'standard' | 'premium'
+  tier: SubscriptionTier
 }
 
 const EntitlementsContext = createContext<EntitlementsContextValue>({ tier: 'free' })
 
 export function EntitlementsProvider({ children }: { children: ReactNode }) {
+  const { data } = useSubscription()
   return (
-    <EntitlementsContext.Provider value={{ tier: 'free' }}>
+    <EntitlementsContext.Provider value={{ tier: data?.tier ?? 'free' }}>
       {children}
     </EntitlementsContext.Provider>
   )

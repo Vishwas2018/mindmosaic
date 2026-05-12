@@ -6,8 +6,10 @@ export default async function ParentLayout({ children }: { children: ReactNode }
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
 
-  if (!session || session.user.app_metadata?.['role'] !== 'parent') {
-    redirect('/login')
+  // Stage 45 Q-45.5: extend guard to allow org_admin alongside parent
+  const role = session?.user.app_metadata?.['role']
+  if (!session || !(role === 'parent' || role === 'org_admin')) {
+    redirect('/dashboard') // Stage 45 Q-45.4: redirect authenticated non-parents to dashboard
   }
 
   return <>{children}</>
