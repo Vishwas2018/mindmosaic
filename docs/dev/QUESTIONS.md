@@ -9,6 +9,21 @@
 
 ## Resolved
 
+### Q-44.5 — Sentinel `user_profile` row requires `tenant_id NOT NULL`: sentinel `tenant` row needed (T3 schema)
+
+- Date raised: 2026-06-03 (Stage 44 impl, T2-tightened — T1 pre-read)
+- Asked of: operator (T3 round-trip — blocking for D1 migration 0019)
+- Source: migration 0001:318 (`user_profile.tenant_id uuid NOT NULL REFERENCES tenant(id) ON DELETE CASCADE`); Q-44.1 (sentinel user_profile `id='00000000-0000-0000-0000-000000000001'`, `role='system'`)
+- Question: `user_profile.tenant_id` is NOT NULL with FK to `tenant`. The Q-44.1 sentinel user_profile row needs a valid `tenant_id`. No system tenant row exists. Should migration 0019 also insert a sentinel `tenant` row (`id='00000000-0000-0000-0000-000000000000'`, `name='System'`, `slug='__system__'`) to satisfy the FK?
+- Why ambiguous: The original Q-44.1 approval anticipated a sentinel `user_profile` row only. Adding a sentinel `tenant` row is new scope. `tenant.type CHECK ('family', 'school', 'tutor_centre')` does not include a 'system' type — need confirmation that `type='family'` (or a new CHECK value) is acceptable for the sentinel.
+- Blocking? yes — for D1 (migration 0019) only. D2/D3/D4 (handler body + route + tests) can proceed in parallel using the fixed sentinel UUID.
+- Assumed answer: Option A — add sentinel tenant row (`id='00000000-0000-0000-0000-000000000000'`, `name='System'`, `slug='__system__'`, `type='family'`) + sentinel user_profile row (`id='00000000-0000-0000-0000-000000000001'`, `tenant_id='00000000-0000-0000-0000-000000000000'`, `role='system'`, `display_name='System'`). Both `ON CONFLICT DO NOTHING`. Minimal schema addition; no new enum value needed for `tenant.type` ('family' is acceptable as a nominal placeholder for a system non-tenant).
+- Code affected: `supabase/migrations/0019_user_role_system.sql`
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-03. Migration 0019 inserts: (1) sentinel `tenant` row (`id='00000000-0000-0000-0000-000000000000'`, `name='System'`, `slug='__system__'`, `type='family'` — with SQL comment "type='family' arbitrary; slug '__system__' is the sentinel identifier") `ON CONFLICT (id) DO NOTHING`; (2) sentinel `user_profile` row (`id='00000000-0000-0000-0000-000000000001'`, `tenant_id='00000000-0000-0000-0000-000000000000'`, `role='system'`, `display_name='System'`) `ON CONFLICT (id) DO NOTHING`. `tenant.type` remains a 3-value enum; `type='family'` is the nominal placeholder. No schema change to `tenant` required.
+
+---
+
 ### Q-44.4 — `sessions.monthly_limit`: numeric feature written as config field (self-resolve)
 
 - Date raised: 2026-06-03 (Stage 44 prep, T2-tightened)

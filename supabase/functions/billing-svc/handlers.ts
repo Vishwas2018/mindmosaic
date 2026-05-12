@@ -5,7 +5,7 @@ import { withIdempotency, type IdempotencyDbClient } from '../_shared/idempotenc
  *
  * Implements:
  *   handleStripeWebhook  — POST /billing/webhook/stripe
- *   handleFlagPropagateStub — POST /billing/pipeline/flag-propagate (Stage 44 pending)
+ *   handleFlagPropagate  — POST /billing/pipeline/flag-propagate (Q-42.6, Q-44.1–4)
  *
  * Webhook flow (Q-42.6 resolution):
  *   1. req.text() FIRST — raw body before any JSON parse (arch §3.4.1)
@@ -285,11 +285,103 @@ export async function resolveSubscriptionState(opts: ResolveStateOpts): Promise<
   }
 }
 
-// ─── Stage 44 pending stub ─────────────────────────────────────────────────────
+// ─── Feature flag propagation (Q-42.6, Q-42.7, Q-44.1–4, ADR-0034 Decision 4) ──
+
+// Sentinel system user satisfying admin_action_log.actor_id NOT NULL FK (Q-44.1).
+// Inserted by migration 0019 with ON CONFLICT DO NOTHING.
+export const SENTINEL_SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
+
+interface FeatureEntry {
+  feature_key: string;
+  enabled: boolean;
+  config: Record<string, unknown> | null;
+}
+
+// Feature registry per spec §20.3.1. Single source of truth for tier → flags mapping.
+// pathway.*: config.max_pathways (Q-44.3); sessions.monthly_limit: config.max_sessions_per_month (Q-44.4).
+export const FEATURE_REGISTRY: Record<string, FeatureEntry[]> = {
+  free: [
+    { feature_key: 'pathway.*',                   enabled: true,  config: { max_pathways: 1 } },
+    { feature_key: 'mode.exam',                   enabled: true,  config: null },
+    { feature_key: 'mode.challenge',              enabled: false, config: null },
+    { feature_key: 'mode.repair',                 enabled: false, config: null },
+    { feature_key: 'intelligence.foundation',     enabled: true,  config: null },
+    { feature_key: 'intelligence.behaviour',      enabled: false, config: null },
+    { feature_key: 'intelligence.causal',         enabled: false, config: null },
+    { feature_key: 'intelligence.predictive',     enabled: false, config: null },
+    { feature_key: 'intelligence.stretch',        enabled: false, config: null },
+    { feature_key: 'intelligence.cross_pathway',  enabled: false, config: null },
+    { feature_key: 'teacher.analytics',           enabled: false, config: null },
+    { feature_key: 'teacher.auto_groups',         enabled: false, config: null },
+    { feature_key: 'teacher.intervention_alerts', enabled: false, config: null },
+    { feature_key: 'teacher.assignment_builder',  enabled: false, config: null },
+    { feature_key: 'orchestration.exam_countdown',enabled: false, config: null },
+    { feature_key: 'orchestration.long_term_plan',enabled: false, config: null },
+    { feature_key: 'sessions.monthly_limit',      enabled: true,  config: { max_sessions_per_month: 10 } },
+  ],
+  standard: [
+    { feature_key: 'pathway.*',                   enabled: true,  config: { max_pathways: 2 } },
+    { feature_key: 'mode.exam',                   enabled: true,  config: null },
+    { feature_key: 'mode.challenge',              enabled: false, config: null },
+    { feature_key: 'mode.repair',                 enabled: true,  config: null },
+    { feature_key: 'intelligence.foundation',     enabled: true,  config: null },
+    { feature_key: 'intelligence.behaviour',      enabled: true,  config: null },
+    { feature_key: 'intelligence.causal',         enabled: true,  config: null },
+    { feature_key: 'intelligence.predictive',     enabled: false, config: null },
+    { feature_key: 'intelligence.stretch',        enabled: false, config: null },
+    { feature_key: 'intelligence.cross_pathway',  enabled: false, config: null },
+    { feature_key: 'teacher.analytics',           enabled: false, config: null },
+    { feature_key: 'teacher.auto_groups',         enabled: false, config: null },
+    { feature_key: 'teacher.intervention_alerts', enabled: false, config: null },
+    { feature_key: 'teacher.assignment_builder',  enabled: false, config: null },
+    { feature_key: 'orchestration.exam_countdown',enabled: false, config: null },
+    { feature_key: 'orchestration.long_term_plan',enabled: false, config: null },
+    { feature_key: 'sessions.monthly_limit',      enabled: true,  config: null },
+  ],
+  premium: [
+    { feature_key: 'pathway.*',                   enabled: true,  config: null },
+    { feature_key: 'mode.exam',                   enabled: true,  config: null },
+    { feature_key: 'mode.challenge',              enabled: true,  config: null },
+    { feature_key: 'mode.repair',                 enabled: true,  config: null },
+    { feature_key: 'intelligence.foundation',     enabled: true,  config: null },
+    { feature_key: 'intelligence.behaviour',      enabled: true,  config: null },
+    { feature_key: 'intelligence.causal',         enabled: true,  config: null },
+    { feature_key: 'intelligence.predictive',     enabled: true,  config: null },
+    { feature_key: 'intelligence.stretch',        enabled: true,  config: null },
+    { feature_key: 'intelligence.cross_pathway',  enabled: true,  config: null },
+    { feature_key: 'teacher.analytics',           enabled: true,  config: null },
+    { feature_key: 'teacher.auto_groups',         enabled: false, config: null },
+    { feature_key: 'teacher.intervention_alerts', enabled: false, config: null },
+    { feature_key: 'teacher.assignment_builder',  enabled: false, config: null },
+    { feature_key: 'orchestration.exam_countdown',enabled: true,  config: null },
+    { feature_key: 'orchestration.long_term_plan',enabled: true,  config: null },
+    { feature_key: 'sessions.monthly_limit',      enabled: true,  config: null },
+  ],
+  institutional: [
+    { feature_key: 'pathway.*',                   enabled: true,  config: null },
+    { feature_key: 'mode.exam',                   enabled: true,  config: null },
+    { feature_key: 'mode.challenge',              enabled: true,  config: null },
+    { feature_key: 'mode.repair',                 enabled: true,  config: null },
+    { feature_key: 'intelligence.foundation',     enabled: true,  config: null },
+    { feature_key: 'intelligence.behaviour',      enabled: true,  config: null },
+    { feature_key: 'intelligence.causal',         enabled: true,  config: null },
+    { feature_key: 'intelligence.predictive',     enabled: true,  config: null },
+    { feature_key: 'intelligence.stretch',        enabled: true,  config: null },
+    { feature_key: 'intelligence.cross_pathway',  enabled: true,  config: null },
+    { feature_key: 'teacher.analytics',           enabled: true,  config: null },
+    { feature_key: 'teacher.auto_groups',         enabled: true,  config: null },
+    { feature_key: 'teacher.intervention_alerts', enabled: true,  config: null },
+    { feature_key: 'teacher.assignment_builder',  enabled: true,  config: null },
+    { feature_key: 'orchestration.exam_countdown',enabled: true,  config: null },
+    { feature_key: 'orchestration.long_term_plan',enabled: true,  config: null },
+    { feature_key: 'sessions.monthly_limit',      enabled: true,  config: null },
+  ],
+};
 
 export interface FlagPropagateOpts {
   traceId: string;
   tenantId?: string;
+  client: BillingDbClient;
 }
 
 export interface FlagPropagateResult {
@@ -297,21 +389,75 @@ export interface FlagPropagateResult {
   data: Record<string, unknown>;
 }
 
-export function handleFlagPropagateStub(opts: FlagPropagateOpts): FlagPropagateResult {
-  // Stage 44 pending — full feature_flag propagation implemented in Stage 44.
-  // Q-42.7: admin_action_log write deferred (actor_id NOT NULL vs actor_role='system'
-  // — no sentinel system user yet; Stage 44 resolves with Option A: sentinel user).
-  // This stub is auditable via structured logger (not a silent no-op).
-  return {
-    status: 200,
-    data: {
-      received: true,
-      // Stage 44 pending
-      note: 'feature_flag propagation deferred to Stage 44',
-      trace_id: opts.traceId,
-      tenant_id: opts.tenantId ?? null,
-    },
-  };
+export async function handleFlagPropagate(opts: FlagPropagateOpts): Promise<FlagPropagateResult> {
+  const { traceId, tenantId, client } = opts;
+
+  if (!tenantId) {
+    return { status: 400, data: { error: { code: 'BAD_REQUEST', message: 'tenant_id required', trace_id: traceId } } };
+  }
+
+  // Read subscription tier; missing row → free tier (Q-43.5 precedent)
+  const subResult = await client.from('subscription').select('tier').eq('tenant_id', tenantId).maybeSingle();
+  if (subResult.error !== null) {
+    return { status: 500, data: { error: { code: 'INTERNAL_ERROR', message: subResult.error.message, trace_id: traceId } } };
+  }
+  const tier = (subResult.data?.['tier'] as string | undefined) ?? 'free';
+  const registry: FeatureEntry[] = FEATURE_REGISTRY[tier] ?? FEATURE_REGISTRY['free'] ?? [];
+
+  // Identify admin_override-protected keys — must not be overwritten (arch §11.2)
+  const existingResult = await client
+    .from('feature_flag')
+    .select('feature_key,source')
+    .eq('tenant_id', tenantId)
+    .order('feature_key', { ascending: true })
+    .limit(100);
+
+  const adminOverrideKeys = new Set<string>(
+    (existingResult.data ?? [])
+      .filter(row => row['source'] === 'admin_override')
+      .map(row => row['feature_key'] as string),
+  );
+
+  // UPSERT subscription-tier flags, skipping admin_override-protected keys
+  let propagated = 0;
+  for (const entry of registry) {
+    if (adminOverrideKeys.has(entry.feature_key)) continue;
+    const upsertResult = await client.from('feature_flag').upsert(
+      {
+        tenant_id: tenantId,
+        feature_key: entry.feature_key,
+        enabled: entry.enabled,
+        config: entry.config,
+        source: 'subscription',
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'tenant_id,feature_key' },
+    );
+    if (upsertResult.error !== null) {
+      return { status: 500, data: { error: { code: 'INTERNAL_ERROR', message: upsertResult.error.message, trace_id: traceId } } };
+    }
+    propagated++;
+  }
+
+  // Audit entry (spec §25.5 — actor_role='system' via migration 0019 sentinel user)
+  const logResult = await client
+    .from('admin_action_log')
+    .insert({
+      actor_id: SENTINEL_SYSTEM_USER_ID,
+      actor_role: 'system',
+      action: 'feature_flag_propagate',
+      entity_type: 'tenant',
+      entity_id: tenantId,
+      payload: { tier, propagated_count: propagated },
+      trace_id: traceId,
+    })
+    .select('id');
+
+  if (logResult.error !== null) {
+    return { status: 500, data: { error: { code: 'INTERNAL_ERROR', message: logResult.error.message, trace_id: traceId } } };
+  }
+
+  return { status: 200, data: { propagated, tenant_id: tenantId, trace_id: traceId } };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

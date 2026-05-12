@@ -12,7 +12,7 @@
  *
  * Endpoints (Stage 42):
  *   POST /billing/webhook/stripe          [Stripe-Signature only] Stripe webhook receiver.
- *   POST /billing/pipeline/flag-propagate [service-role only]     Stage 44 pending stub.
+ *   POST /billing/pipeline/flag-propagate [service-role only]     Feature flag propagation (Stage 44).
  *
  * ISSUE-0032: single STRIPE_WEBHOOK_SECRET; v1.1 needs dual-secret rotation window.
  * ISSUE-0033: GET /billing/invoices uses LIMIT 50 + truncated flag; cursor pagination v1.1.
@@ -25,7 +25,7 @@ import { log } from '../_shared/logger.ts';
 import { verifyBearer } from '../_shared/auth.ts';
 import {
   handleStripeWebhook,
-  handleFlagPropagateStub,
+  handleFlagPropagate,
   handleGetPlans,
   handleCreateCheckout,
   handleCreatePortalSession,
@@ -191,14 +191,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── POST /billing/pipeline/flag-propagate — service-role only ─────────
-    // Stage 44 pending — dispatched by jobs-worker (ADR-0031 fifth amendment).
+    // Dispatched by jobs-worker (ADR-0031 fifth amendment). Stage 44.
     if (method === 'POST' && path === '/billing/pipeline/flag-propagate') {
       const rawBody: unknown = await req.json();
       const tenantId =
         rawBody !== null && typeof rawBody === 'object' && 'tenant_id' in rawBody
           ? ((rawBody as Record<string, unknown>)['tenant_id'] as string | undefined)
           : undefined;
-      const result = handleFlagPropagateStub({ traceId, tenantId });
+      const result = await handleFlagPropagate({ traceId, tenantId, client: db as unknown as BillingDbClient });
       status = result.status;
       return jsonOk(result.data, traceId, result.status);
     }

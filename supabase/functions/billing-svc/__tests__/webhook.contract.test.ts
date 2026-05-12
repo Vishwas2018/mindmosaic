@@ -16,12 +16,11 @@
  *   Event state machine (8): checkout.session.completed, subscription.created/updated/deleted,
  *     invoice.paid/payment_failed, customer.updated, unknown
  *   Edge cases (3): no customer field, arch §3.4.1 sig-first, 50-event replay
- *   handleFlagPropagateStub (2): with tenantId, without tenantId
+ *   Stage 44: handleFlagPropagate tests moved to stage44.contract.test.ts
  */
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import {
   handleStripeWebhook,
-  handleFlagPropagateStub,
   type BillingDbClient,
   type StripeClient,
   type WebhookHandlerOpts,
@@ -551,22 +550,3 @@ describe('handleStripeWebhook — edge cases', () => {
   });
 });
 
-// ─── handleFlagPropagateStub ──────────────────────────────────────────────────
-
-describe('handleFlagPropagateStub', () => {
-  it('returns 200 with Stage 44 pending note and tenantId propagated', () => {
-    const result = handleFlagPropagateStub({ traceId: TRACE_ID, tenantId: TENANT_ID });
-    expect(result.status).toBe(200);
-    expect(result.data['received']).toBe(true);
-    expect(typeof result.data['note']).toBe('string');
-    expect((result.data['note'] as string).toLowerCase()).toContain('stage 44');
-    expect(result.data['tenant_id']).toBe(TENANT_ID);
-    expect(result.data['trace_id']).toBe(TRACE_ID);
-  });
-
-  it('returns 200 with tenant_id null when tenantId omitted', () => {
-    const result = handleFlagPropagateStub({ traceId: TRACE_ID });
-    expect(result.status).toBe(200);
-    expect(result.data['tenant_id']).toBeNull();
-  });
-});
