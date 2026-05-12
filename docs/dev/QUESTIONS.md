@@ -9,6 +9,126 @@
 
 ## Resolved
 
+### Q-45.8 — `EntitlementsContextValue` type: include `'institutional'` tier?
+
+- Date raised: 2026-06-04 (Stage 45 prep, T1 pre-read)
+- Asked of: self (T3 Option 3 — self-resolve)
+- Source: `apps/web/src/providers/EntitlementsProvider.tsx` (current type `'free'|'standard'|'premium'`); `SubscriptionTierSchema` includes `'institutional'`
+- Question: Should `EntitlementsContextValue.tier` be widened to include `'institutional'` to match `SubscriptionTierSchema`, or remain narrowed to the 3 self-serve tiers?
+- Why ambiguous: `institutional` tier exists in the data model but is not self-serve in v1 (no checkout path; manual Stripe invoice). UI consumers using `useEntitlements()` may not handle a 4th tier value.
+- Blocking? no
+- Assumed answer: Widen to full `SubscriptionTierSchema` (`'free'|'standard'|'premium'|'institutional'`). Consumers use `?? 'free'` fallback. No existing consumers to break (zero call sites). Future-proof for institutional tenant access.
+- Code affected: `apps/web/src/providers/EntitlementsProvider.tsx`
+- Status: resolved
+- Resolution: Option A (widen) confirmed by operator 2026-06-04. `EntitlementsContextValue.tier` widened to match `SubscriptionTierSchema`. `useSubscription().data?.tier ?? 'free'` used as live value.
+
+---
+
+### Q-45.7 — Billing details card (name/email/country/currency): include or omit?
+
+- Date raised: 2026-06-04 (Stage 45 prep, R5 mockup analysis)
+- Asked of: operator
+- Source: `docs/mockups/04-billing.html` renderBilling() — shows name/email/country/currency grid; `SubscriptionDTO` has no billing address fields
+- Question: Should the Billing tab include a billing details card (name, email, country, currency) as shown in the mockup, or omit it since no API endpoint provides this data?
+- Why ambiguous: Mockup shows the card prominently. `SubscriptionDTO` (and no other billing-svc endpoint) provides billing address. Fetching from Stripe API would require scope expansion.
+- Blocking? no
+- Assumed answer: Omit billing details card. Stripe Customer Portal handles name/address/email updates. Consistent with SAQ A (portal handles all billing data management). Mockup is visual reference only (UI_CONTRACT §1.1).
+- Code affected: `apps/web/src/app/(parent)/billing/page.tsx`
+- Status: resolved
+- Resolution: Omit confirmed by operator 2026-06-04. Billing details card absent from Stage 45 Billing tab. Portal redirect covers all billing detail updates.
+
+---
+
+### Q-45.6 — Payment method last-4/expiry display vs portal-only CTA
+
+- Date raised: 2026-06-04 (Stage 45 prep, R5 + R12)
+- Asked of: operator
+- Source: SCREEN_SPECS §17 Billing tab: "Payment method card: last-4 + expiry"; `SubscriptionDTO` has no payment method fields; ADR-0034 Decision 5 (SAQ A)
+- Question: Should the Billing tab display payment method last-4 and expiry (requires Stripe API call from billing-svc + SubscriptionDTO extension), or show "Manage payment method" button only (portal redirect)?
+- Why ambiguous: Mockup shows Mastercard ending in 4242 + expiry. Displaying this is consistent UX. But fetching payment method from Stripe is scope expansion; and SAQ A keeps card data off MindMosaic domain.
+- Blocking? no
+- Assumed answer: Option A — portal-button only ("Manage payment method" CTA → useCreatePortalSession → portal_url redirect). No last-4/expiry displayed. Consistent with SAQ A scope. SCREEN_SPECS wording is aspirational.
+- Code affected: `apps/web/src/app/(parent)/billing/page.tsx`
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-04. Payment method card shows "Managed via Stripe · Update your card details in the portal" note + [Manage payment method] button only. No card data displayed in MindMosaic UI.
+
+---
+
+### Q-45.5 — `(parent)/layout.tsx` missing `org_admin` role in guard
+
+- Date raised: 2026-06-04 (Stage 45 prep, R3 SCREEN_SPECS §17)
+- Asked of: self (T3 Option 3 — self-resolve)
+- Source: SCREEN_SPECS §17 guard: "authenticated parent (or org_admin for school tenants)"; `apps/web/src/app/(parent)/layout.tsx:9` — `role !== 'parent'` only
+- Question: Should the `(parent)/layout.tsx` role guard be extended to include `org_admin`, or should billing have its own separate guard?
+- Why ambiguous: Extending the layout guard makes all `(parent)` routes (parent dashboard) accessible to org_admin, which may not be intended. A targeted fix in billing page only is more precise.
+- Blocking? no (no org_admin users in v1 MVP launch)
+- Assumed answer: Option A — extend layout: `role !== 'parent' && role !== 'org_admin'`. Correct per spec for all parent-group routes. Institutional tier (org_admin) is post-launch; adding org_admin to the guard now is forward-compatible and trivially safe.
+- Code affected: `apps/web/src/app/(parent)/layout.tsx`
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-04. Layout guard updated to `!(role === 'parent' || role === 'org_admin')` — parent AND org_admin can access all (parent) group routes.
+
+---
+
+### Q-45.4 — Authenticated non-parent redirect target: `/login` vs `/dashboard`
+
+- Date raised: 2026-06-04 (Stage 45 prep, R8 session-selection upgrade CTA analysis)
+- Asked of: operator (T3 round-trip — UX decision)
+- Source: `apps/web/src/app/(parent)/layout.tsx:11` — `redirect('/login')`; session-selection page lines 91/284 link authenticated students to `/billing`
+- Question: When an authenticated non-parent hits a `(parent)` group route (e.g., a student who clicked "Upgrade to unlock"), should the redirect target be `/login` (current) or `/dashboard` (student home)?
+- Why ambiguous: Redirecting authenticated users to `/login` is confusing UX — they ARE logged in. `/dashboard` is their correct home. The fix is trivial but the decision confirms intent: is the billing page intentionally parent-only (with students redirected to their home), or should students see a read-only plans view?
+- Blocking? yes — UX correctness for upgrade CTAs
+- Assumed answer: Option B — redirect authenticated non-parents to `/dashboard`. Students who click "Upgrade to unlock" see their dashboard with no message; the CTA effectively becomes parent-only in v1. Add inline `// Stage 45 Q-45.4` comment at redirect site.
+- Code affected: `apps/web/src/app/(parent)/layout.tsx`
+- Status: resolved
+- Resolution: Option B confirmed by operator 2026-06-04. `redirect('/login')` → `redirect('/dashboard')` for authenticated non-parents. Inline `// Stage 45 Q-45.4` comment. Students who click upgrade CTA are returned to dashboard (not confused by login page while already logged in).
+
+---
+
+### Q-45.3 — `/billing/subscription/cancel` spec path vs `/billing/cancel` implementation
+
+- Date raised: 2026-06-04 (Stage 45 prep, R3 SCREEN_SPECS §17 + R4 spec §25.6)
+- Asked of: self (T3 Option 3 — self-resolve)
+- Source: SCREEN_SPECS §17 Actions table: `POST /billing/subscription/cancel`; spec §25.6: "Users cancel via `POST /billing/subscription/cancel`"; billing-svc Stage 43 handler: `POST /billing/cancel`; `useCancelSubscription` SDK hook: `/billing-svc/billing/cancel`
+- Question: Should Stage 45 use the SDK path (`/billing/cancel`) or the spec path (`/billing/subscription/cancel`)? Are they equivalent (billing-svc alias) or is one wrong?
+- Why ambiguous: Spec and SCREEN_SPECS use the `/subscription/cancel` sub-path; implementation uses the flat `/cancel` path. The SDK is authoritative for UI; no alias exists in billing-svc.
+- Blocking? no
+- Assumed answer: Option A — use SDK as-is (`useCancelSubscription` → `/billing/cancel`). Spec/SCREEN_SPECS path is documentation drift from Stage 42/43 naming evolution. File as DEV-20260604-1 for v1.1 spec reconciliation. No billing-svc route change needed.
+- Code affected: `apps/web/src/app/(parent)/billing/page.tsx` (uses `useCancelSubscription` hook — correct path)
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-04. SDK path `/billing/cancel` is authoritative. Spec drift documented in DEV-20260604-1. No alias route added. v1.1 spec reconciliation: update spec §25.6 + SCREEN_SPECS §17 to match implementation.
+
+---
+
+### Q-45.2 — E2e exit criteria: "full upgrade flow passes in Stripe test mode"
+
+- Date raised: 2026-06-04 (Stage 45 prep, R2 DEV_PLAN Stage 45)
+- Asked of: operator (T3 round-trip — blocking for exit criteria)
+- Source: DEV_PLAN Stage 45 exit criteria: "Full upgrade flow e2e passes in Stripe test mode"
+- Question: How should this exit criterion be interpreted? Stripe-hosted Checkout redirect cannot be automated in Playwright without Stripe CLI + test-mode webhooks. Is this criterion achievable within the 2-day Stage 45 budget?
+- Why ambiguous: Full Stripe E2E (checkout redirect → payment → webhook → entitlement) requires Stripe CLI infrastructure not available in the sandbox. A literal reading blocks Stage 45 completion.
+- Blocking? yes (as literally stated)
+- Assumed answer: Option A — reinterpret as: (1) contract tests pass for all billing handlers + billing page unit tests; (2) manual Stripe test-mode verification documented as a manual checklist in deployment.md; (3) Playwright test added under existing `test:e2e` opt-in gate (test.skip-guarded, not blocking CI). DEV_PLAN exit criterion satisfied by this interpretation.
+- Code affected: `apps/web/src/__tests__/billing.page.test.tsx`; `docs/dev/deployment.md` (manual sign-off checklist)
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-04. Contract tests + unit tests + manual sign-off checklist. Playwright E2e spec added under `test:e2e` opt-in gate. DEV_PLAN exit criteria reinterpreted: "full upgrade flow" = end-to-end contract coverage + manual test-mode verification.
+
+---
+
+### Q-45.1 — Stripe Elements: DEV_PLAN/SCREEN_SPECS wording vs ADR-0034 Decision 5 (SAQ A)
+
+- Date raised: 2026-06-04 (Stage 45 prep, §N trap R2 + R3)
+- Asked of: operator (T3 round-trip — blocking)
+- Source: DEV_PLAN Stage 45: "payment method (Stripe Elements)"; SCREEN_SPECS §17 Billing tab: "payment method (Stripe Elements)"; ADR-0034 Decision 5 (accepted 2026-06-01): "SAQ A — Stripe-hosted Checkout only. No Stripe Elements in v1."
+- Question: Which is binding — DEV_PLAN/SCREEN_SPECS "Stripe Elements" wording, or ADR-0034 Decision 5 (SAQ A)?
+- Why ambiguous: DEV_PLAN and SCREEN_SPECS explicitly mention "Stripe Elements". ADR-0034 is an accepted ADR post-dating both documents, explicitly deciding against Elements for PCI-scope reasons.
+- Blocking? yes — determines entire checkout/payment UX model
+- Assumed answer: Option A — ADR-0034 Decision 5 is binding. DEV_PLAN/SCREEN_SPECS "Stripe Elements" wording is pre-ADR draft language that was superseded when ADR-0034 was accepted. Checkout = redirect to Stripe-hosted page (`checkout_url`). Payment method update = portal redirect (`portal_url`). No Stripe.js, no card form in MindMosaic UI.
+- Code affected: `apps/web/src/app/(parent)/billing/page.tsx`; `apps/web/src/providers/EntitlementsProvider.tsx`
+- Status: resolved
+- Resolution: Option A confirmed by operator 2026-06-04. ADR-0034 Decision 5 governs. No Stripe Elements, no `@stripe/stripe-js`, no `loadStripe` in apps/web. All checkout via `useCreateCheckout` → `window.location.href = checkout_url`. All payment method management via `useCreatePortalSession` → `window.location.href = portal_url`.
+
+---
+
 ### Q-44.5 — Sentinel `user_profile` row requires `tenant_id NOT NULL`: sentinel `tenant` row needed (T3 schema)
 
 - Date raised: 2026-06-03 (Stage 44 impl, T2-tightened — T1 pre-read)

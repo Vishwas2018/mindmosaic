@@ -3,6 +3,20 @@
 > Every deviation from DEV_PLAN.md, in writing.
 > Newest at TOP. Use the template from CLAUDE.md §Templates.
 
+### DEV-20260604-1 — Spec §25.6 + SCREEN_SPECS §17 cancel path `/billing/subscription/cancel` vs implementation `/billing/cancel`
+
+- Date: 2026-06-04
+- Stage: 45
+- Type: substitution
+- What the stage said: Spec §25.6 + SCREEN_SPECS §17 Actions table specify `POST /billing/subscription/cancel` (and `?undo=true` variant) as the cancellation endpoint.
+- What I actually did: billing-svc Stage 43 implemented the handler at `POST /billing/cancel` (no `/subscription/` path segment). `useCancelSubscription` SDK hook calls `/billing-svc/billing/cancel`. Stage 45 billing page uses the SDK hook — therefore calls `/billing/cancel`.
+- Why: During Stage 43 implementation, the flat `/billing/cancel` path was chosen for consistency with the other billing endpoints (`/billing/checkout`, `/billing/portal`, `/billing/subscription`). The spec's `/billing/subscription/cancel` sub-path was not noticed as a conflict at Stage 43 prep (Q-43.* questions focused on other ambiguities). Discovered at Stage 45 prep as a §N trap.
+- Impact on later stages: Stage 46 (cancellation flow UI) also uses `useCancelSubscription` — same path; no Stage 46 impact. v1.1 spec reconciliation needed: update spec §25.6 + SCREEN_SPECS §17 to document the actual `POST /billing/cancel` path. No data model or functional impact.
+- Linked: Q-45.3, `supabase/functions/billing-svc/handlers.ts` (`handleCancelSubscription`), `supabase/functions/billing-svc/index.ts` (route at `path === '/billing/cancel'`), `packages/sdk/src/hooks/billing.ts` (`useCancelSubscription`)
+- Resolved by: v1.1 spec reconciliation (update spec §25.6 + SCREEN_SPECS §17 to `/billing/cancel`)
+
+---
+
 ### DEV-20260530-2 — Student assignments "Review" button: plain navigate vs SCREEN_SPECS §13 "View history dropdown"
 
 - Date: 2026-05-30
