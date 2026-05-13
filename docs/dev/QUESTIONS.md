@@ -9,6 +9,81 @@
 
 ## Resolved
 
+### Q-48.5 — Playwright spec count: 11 on disk vs 13 in exit report docs
+
+- Date raised: 2026-06-07 (Stage 48 morning ritual)
+- Asked of: self (T1 investigation — DAILY_LOG Stages 19–46)
+- Source: phase-4-exit-report.md §10: "13 specs / 15 tests gated." `find apps/web/playwright/e2e/` returns 11 `.spec.ts` files.
+- Question: Are 2 spec files missing from disk, or was the count in the Phase 2/4 exit reports wrong?
+- Why ambiguous: 11 ≠ 13; real discrepancy; could indicate missing committed files or a documentation error.
+- Blocking? yes — for Playwright gate assertion at Stage 49 launch.
+- Assumed answer: Documentation error (Phase 2 exit report overcounted).
+- Code affected: `docs/dev/phase-2-exit-report.md` §10, `docs/dev/phase-4-exit-report.md` §10
+- Status: resolved
+- Resolution: **DAILY_LOG T1 investigation complete (2026-06-07).** Spec file names confirmed in DAILY_LOG deliverables for Stage 19 (`session-flow`), Stage 22b (`practice-flow`), Stage 23 (`exam-flow`), Stage 24 (`results-flow`), Stage 25 (`dashboard-flow`), Stage 36 (`parent-dashboard`), Stage 37 (`teacher-dashboard`), Stage 38 (`teacher-student-detail`), Stage 39 (`assignment-engine`), Stage 40 (`student-assignments`), Stage 46 (`billing-cancel`) = **11 files, matching on-disk count exactly.** Phase 2 exit report overcounted by 2 (most likely included Phase 1 Stages 22b–25 additions in its "+7 Phase 2 delta" tally); Phase 4 exit report carries the same +2 error forward. No missing files on disk. **On-disk ground truth = 11 specs / 15 tests.** ISSUE-0035 filed at Stage 48 close commit for documentation correction in both exit reports (low severity). Playwright gate at Stage 49: 11 specs / 15 tests; all gated on deployed env.
+
+---
+
+### Q-48.4 — 24h soak: defer entirely vs short-duration proxy
+
+- Date raised: 2026-06-07 (Stage 48 morning ritual)
+- Asked of: self (T3 default — non-blocking)
+- Source: DEV_PLAN Stage 48: "Check `pipeline.dead_letter.count` over 24h — must be 0."
+- Question: Defer to deployed staging window entirely, or run a shorter proxy check in Docker-hosted Supabase?
+- Why ambiguous: DEV_PLAN Stage 48 lists it as a deliverable; Stage 49 launch gate also owns it. Docker-hosted Supabase could host a brief soak, but without real async pipeline traffic the check is not meaningful.
+- Blocking? no (Stage 49 launch gate item 3 owns it)
+- Assumed answer: Defer entirely. No proxy.
+- Code affected: `docs/dev/stage-48-exit-report.md` §5
+- Status: resolved
+- Resolution: Operator confirmed 2026-06-07. **Defer 24h soak entirely. No proxy.** Docker-hosted Supabase will not have meaningful async pipeline traffic; a short-duration soak produces no useful signal. Log in Stage 48 exit report §5 as environment-gated. Stage 49 launch gate item 3 owns this check.
+
+---
+
+### Q-48.3 — k6 billing script: author now vs defer entirely
+
+- Date raised: 2026-06-07 (Stage 48 morning ritual)
+- Asked of: self (T3 default — non-blocking)
+- Source: `k6/session-loop.js` covers create/respond/submit (3 core SLAs). No script for Stripe billing webhook p95 ≤300ms or flag propagation p95 ≤30s.
+- Question: Author `k6/billing-webhook.js` as deploy-ready artefact now (no execution), or defer script authoring to launch-window entirely?
+- Why ambiguous: Authoring without execution produces unvalidated code; but deferring pushes authoring into the launch-window which is higher-pressure.
+- Blocking? no
+- Assumed answer: Author now. Same pattern as `k6/session-loop.js` (authored before k6 binary was available in this environment).
+- Code affected: `k6/billing-webhook.js` (new)
+- Status: resolved
+- Resolution: Operator confirmed 2026-06-07. **Author `k6/billing-webhook.js` as deploy-ready artefact.** No execution in Stage 48 (k6 binary not in PATH). Covers Stripe webhook p95 ≤300ms (BUILD_CONTRACT §8 line 99) and flag propagation p95 ≤30s (BUILD_CONTRACT §10 async pipeline budget). Binary required at Stage 49 launch-window for actual measurement.
+
+---
+
+### Q-48.2 — Docker migrations: npx supabase@2.98.2 vs skip
+
+- Date raised: 2026-06-07 (Stage 48 morning ritual)
+- Asked of: self (T3 default — non-blocking fallback documented)
+- Source: Phase 2/4 §9 checklists: `supabase start && supabase db reset && supabase test db` for migrations 0012–0020. `supabase` CLI not in PATH; Docker daemon running; `npx supabase@2.98.2` available.
+- Question: Use `npx supabase@2.98.2` to run the Docker migration + pgTAP test, or skip and defer to deployed environment?
+- Why ambiguous: `npx` version pin (2.98.2) may not match the project's Supabase project version; incompatible CLI could fail or produce incorrect results.
+- Blocking? no (fallback defer is documented)
+- Assumed answer: Attempt `npx supabase`; version-compatibility check first; fallback defer.
+- Code affected: Docker local run; `docs/dev/PROJECT_STATE.md` pgTAP row update if successful
+- Status: resolved
+- Resolution: Operator confirmed 2026-06-07. **Attempt `npx supabase@2.98.2`** after confirming version is compatible with the project config (`supabase/config.toml`). If incompatible or run fails, log outcome as "supabase CLI not available — migration run deferred to deployed environment" in PROJECT_STATE and DAILY_LOG. Do not force-run an incompatible CLI.
+
+---
+
+### Q-48.1 — Stage 48 scope: Conditional Go sandbox subset vs full DEV_PLAN "All checks green"
+
+- Date raised: 2026-06-07 (Stage 48 morning ritual)
+- Asked of: operator
+- Source: DEV_PLAN Stage 48 exit criteria: "Zero blockers. All checks green." R6 capability check reveals k6 binary absent, supabase CLI absent, Stripe env vars absent — 11 of 16 pre-deploy checklist items environment-gated.
+- Question: Does Stage 48 close with Conditional Go (sandbox items green, deployed-env items documented as deferred to Stage 49) or does "All checks green" require all 16 checklist items including k6/Playwright/soak/Stripe?
+- Why ambiguous: Exit criteria wording is absolute ("All checks green") but Conditional Go pattern has been applied at Phase 1 close, Phase 2 close, and Phase 4 close for identical environment-gated blockers. Stage 49 launch gate explicitly owns k6/soak/Stripe/backup items.
+- Blocking? yes — governs exit report verdict, commit structure, and what constitutes done.
+- Assumed answer: Conditional Go sandbox subset. Phase 1/2/4 precedent. Stage 49 launch gate owns deployed-env items.
+- Code affected: `docs/dev/stage-48-exit-report.md` §1 verdict
+- Status: resolved
+- Resolution: Operator confirmed 2026-06-07. **Conditional Go sandbox subset per Phase 1/2/4 precedent.** Deployed-env items (k6 execution, Playwright 11 specs, 24h soak, Stripe E2E, backup drill, 8 numerical SLA measurements) defer to Stage 49 launch-window operational verification. Stage 48 closes when all sandbox-achievable items are green: pnpm audit, validate-content.ts, .env.example audit, axe-core run, Docker migration run (if npx supabase compatible), 3-consecutive-commits criterion, k6/billing-webhook.js authored.
+
+---
+
 ### Q-47.3 — Commit structure: single audit commit vs two commits
 
 - Date raised: 2026-06-06 (Stage 47 morning ritual)

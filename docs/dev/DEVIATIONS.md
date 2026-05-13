@@ -3,6 +3,20 @@
 > Every deviation from DEV_PLAN.md, in writing.
 > Newest at TOP. Use the template from CLAUDE.md §Templates.
 
+### DEV-20260606-2 — Mid-session pull required at Stage 47 morning ritual (Codespace sync drift)
+
+- Date: 2026-06-06
+- Stage: 47
+- Type: substitution (process discipline)
+- What the stage said: Stage 47 morning ritual assumes local HEAD = most recently pushed work (`30d8b17`, Stage 46 close). Morning ritual reads PROJECT_STATE + DAILY_LOG to orient before any authoring.
+- What I actually did: Initial `git log --oneline -15` in this Codespace showed Stage 45 (`9f64625`) as HEAD — Stage 46 commits (`229d630 · 3aace88 · 30d8b17`) had been pushed to `origin/main` in a prior session but not pulled into this Codespace's working copy. Required `git pull` (Fast-forward) to sync before Stage 47 work could begin. `HEAD@{1}: pull: Fast-forward` in G23 reflog baseline.
+- Why: Codespace environment was not automatically synced with `origin/main` between sessions. Stage 46 was committed and pushed in a previous session; Stage 47 opened in a new Codespace that had not fetched the remote changes.
+- Impact on later stages: None. State corrected before any Stage 47 authoring began. Discipline note for all future sessions: run `git fetch origin && git status` before reading PROJECT_STATE to confirm local HEAD matches `origin/main`.
+- Linked: Stage 47 reflog G23 (`HEAD@{1}: pull: Fast-forward`); pre-Stage-48 audit G23 baseline
+- Resolved by: Resolved at Stage 47 morning ritual (pull applied). Filed Stage 48 prep per roadmap.
+
+---
+
 ### DEV-20260606-1 — Tag name drift: DEV_PLAN `v1-phase-4-slice` → shipped as `v1-phase-4-partial`
 
 - Date: 2026-06-06
