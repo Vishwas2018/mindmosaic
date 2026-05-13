@@ -587,7 +587,7 @@ SELECT is(
 
 SELECT is(
   has_function_privilege('anon',
-    'public.create_session_response_atomic(uuid, integer, uuid, jsonb, boolean, real, real, jsonb, real, integer)',
+    'public.create_session_response_atomic(uuid, integer, uuid, jsonb, boolean, real, real, jsonb, real, integer, jsonb)',
     'execute'),
   false,
   'G16.4: create_session_response_atomic REVOKE FROM PUBLIC — anon cannot execute'
@@ -657,7 +657,8 @@ SELECT lives_ok(
       '{"time_to_answer_ms":5000,"time_to_first_action_ms":1000,
         "items_since_session_start":1,"time_since_session_start_ms":5000}'::jsonb,
       0.25::real,
-      0
+      0,
+      '{}'::jsonb
     )$$,
   'G17.1: create_session_response_atomic with expected_version=1 succeeds'
 );
@@ -685,7 +686,8 @@ SELECT throws_ok(
       '{"time_to_answer_ms":3000,"time_to_first_action_ms":800,
         "items_since_session_start":2,"time_since_session_start_ms":8000}'::jsonb,
       0.25::real,
-      0
+      0,
+      '{}'::jsonb
     )$$,
   'P0001',
   'VERSION_CONFLICT',

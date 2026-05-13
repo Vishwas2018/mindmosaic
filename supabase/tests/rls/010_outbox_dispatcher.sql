@@ -60,7 +60,7 @@ SELECT is(
   'G_behavioral.1: empty outbox returns 0');
 
 -- =============================================================================
--- TEST DATA SETUP — 99 session.submitted + 1 assignment.published = 100 events
+-- TEST DATA SETUP — 99 session.submitted + 1 assignment_assigned = 100 events
 -- outbox_event has no tenant_id or student_id FKs — no dependent seed rows needed.
 -- =============================================================================
 
@@ -77,7 +77,7 @@ VALUES (
   '00000000-0000-0000-0010-000000000010',
   'assignment',
   '00000000-0000-0000-0010-000000000010',
-  'assignment.published',
+  'assignment_assigned',
   '{}'::jsonb
 );
 
@@ -103,7 +103,7 @@ SELECT ok(
   'G_behavioral.3: session.submitted events produce pipeline.run_sync job_queue rows');
 
 -- =============================================================================
--- G_behavioral.4 — assignment.published produces notification.create job with correct key
+-- G_behavioral.4 — assignment_assigned produces notification.create job with correct key
 -- =============================================================================
 
 SELECT ok(
@@ -112,7 +112,7 @@ SELECT ok(
     WHERE job_type        = 'notification.create'
       AND idempotency_key = 'outbox:00000000-0000-0000-0010-000000000010'
   ),
-  'G_behavioral.4: assignment.published produces notification.create row with correct idempotency_key');
+  'G_behavioral.4: assignment_assigned produces notification.create row with correct idempotency_key');
 
 -- =============================================================================
 -- G_behavioral.5 — processed_at set on all 100 drained events

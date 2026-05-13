@@ -9,6 +9,21 @@
 
 ## Resolved
 
+### Q-48.6 — pgTAP failures against 0001–0020: fix or defer?
+
+- Date raised: 2026-06-07 (Stage 48 D7 pgTAP run)
+- Asked of: self (T3 Option 3 self-resolve — tight implementation detail)
+- Source: `supabase test db` output — 3 of 10 test files failed against local DB with migrations 0001–0020
+- Question: Fix the 3 failing pgTAP test files in Stage 48, or file as issues and defer to Stage 49?
+- Why ambiguous: Stage 48 is "no feature delivery"; but test fixes for schema drift caused by committed migrations are arguably in-scope hardening work.
+- Blocking? yes — PROJECT_STATE pgTAP row cannot show "green" if tests fail against 0001–0020
+- Assumed answer: Fix now (sandbox-achievable, well-understood changes, no structural decisions required).
+- Code affected: `supabase/tests/rls/004_sessions_events.sql`, `supabase/tests/rls/007_new_domains.sql`, `supabase/tests/rls/010_outbox_dispatcher.sql`
+- Status: resolved
+- Resolution: **Self-resolved per T3 Option 3 (2026-06-07).** All 3 files fixed in Stage 48 impl commit. (1) `004`: REVOKE check + G17/G18 calls updated to 11-arg signature per migration 0012. (2) `007`: `framework_config` + `pathway` seed rows added; assignment INSERT updated with `pathway_id` per migration 0015. (3) `010`: `assignment.published` → `assignment_assigned` per migration 0016 / Q-34.1. pgTAP reruns at 451/451. ISSUE-0036 filed. No test assertion counts changed.
+
+---
+
 ### Q-48.5 — Playwright spec count: 11 on disk vs 13 in exit report docs
 
 - Date raised: 2026-06-07 (Stage 48 morning ritual)

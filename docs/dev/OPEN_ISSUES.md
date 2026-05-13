@@ -5,6 +5,44 @@
 
 ## Open
 
+### ISSUE-0036 — pgTAP test/schema drift for migrations 0012, 0015, 0016 (resolved at Stage 48)
+
+- Status: open → resolved at Stage 48 impl commit
+- Severity: medium (blocked pgTAP from running against current schema; regression in test coverage)
+- Reported: 2026-06-07 (Stage 48 — D7 pgTAP run)
+- Area: tests (supabase/tests/rls/)
+- Tags: pgtap · migrations · regression · schema-drift
+
+**Summary.** Running `npx supabase test db` against the local database with migrations 0001–0020 applied revealed 3 failing test files: `004_sessions_events.sql`, `007_new_domains.sql`, `010_outbox_dispatcher.sql`. The failures were caused by test/schema drift introduced by migrations 0012, 0015, and 0016, which were never validated against pgTAP (last clean run was 451/451 against 0001–0013 on 2026-05-03).
+
+**Root causes:**
+- `004_sessions_events.sql` — Migration 0012 widened `create_session_response_atomic` from 10-arg to 11-arg (added `p_engine_state jsonb`). Test called old 10-arg signature at lines 590, 649–661, 677–688.
+- `007_new_domains.sql` — Migration 0015 added `pathway_id uuid NOT NULL REFERENCES pathway(id)` to `assignment`. Test seed data omitted `pathway_id` (also lacked prerequisite `framework_config` + `pathway` rows).
+- `010_outbox_dispatcher.sql` — Migration 0016 replaced dead `assignment.published` event_type branch with `assignment_assigned` (Q-34.1). Test seed data still used old `assignment.published` string.
+
+**Fix.** All 3 test files updated in Stage 48 impl commit:
+- `004`: REVOKE check and G17/G18 calls updated to 11-arg signature (added `'{}'::jsonb` as `p_engine_state`).
+- `007`: Added `framework_config` + `pathway` seed rows (UUIDs `...-0008-000000000090/91`); assignment INSERT updated with `pathway_id`.
+- `010`: Event type updated to `assignment_assigned`; description comments updated.
+
+**Outcome.** pgTAP reruns at 451/451 (Files=10, Tests=451, Result: PASS). Test count unchanged from prior clean run — same assertions, updated to match current schema.
+
+---
+
+### ISSUE-0035 — Playwright spec count documentation error in Phase 2/4 exit reports
+
+- Status: open
+- Severity: low
+- Reported: 2026-06-07 (Stage 48 — Q-48.5 resolution)
+- Area: tests (documentation)
+- Tags: playwright · documentation · exit-report
+
+**Summary.** `docs/dev/phase-2-exit-report.md` §10 claims 12 Playwright specs; `docs/dev/phase-4-exit-report.md` §10 claims 13 specs. On-disk count is 11 files in `apps/web/playwright/e2e/`. The Phase 2 exit report overcounted by including Phase 1 Stages (22b–25) spec additions in its "+7 Phase 2 delta" tally; the Phase 4 report inherits this +2 error. All 11 on-disk spec files are accounted for via DAILY_LOG deliverables. No missing files.
+
+**Fix (documentation):** Update both exit reports to reflect 11 specs / 15 tests as ground truth. Low severity — no code is affected; Playwright gate at Stage 49 will use the correct on-disk count.
+
+---
+
 ### ISSUE-0034 — `access_downgraded` notification: single-parent fanout only in v1
 
 - Status: open

@@ -48,6 +48,14 @@ SELECT plan(72);
 -- TEST DATA SETUP (run as postgres — RLS bypassed)
 -- =============================================================================
 
+-- pathway_id FK required by migration 0015; framework_config required by pathway FK (migration 0003)
+INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint)
+VALUES ('00000000-0000-0000-0008-000000000090', 'naplan', 'v_stage8_test', '{}', '{}', '{}', '{}', '{}');
+
+INSERT INTO pathway (id, slug, display_name, exam_family, program, framework_config_id, engine_type, year_levels, required_feature_key)
+VALUES ('00000000-0000-0000-0008-000000000091', 'stage8-test-pathway', 'Stage8 Test Pathway',
+        'naplan', 'numeracy', '00000000-0000-0000-0008-000000000090', 'adaptive', '{5}', 'pathway.feature.stage8.test');
+
 INSERT INTO tenant (id, name, slug, type, region) VALUES
   ('00000000-0000-0000-0008-000000000099', 'Stage8 Tenant A', 'stage8-a', 'family', 'au-syd'),
   ('00000000-0000-0000-0008-000000000098', 'Stage8 Tenant B', 'stage8-b', 'family', 'au-syd');
@@ -61,13 +69,14 @@ INSERT INTO class_group (id, tenant_id, teacher_id, name) VALUES
   ('00000000-0000-0000-0008-000000000020', '00000000-0000-0000-0008-000000000099',
    '00000000-0000-0000-0008-000000000002', 'Stage8 Class');
 
-INSERT INTO assignment (id, tenant_id, created_by, title, mode, target_skill_ids, item_count, status)
+INSERT INTO assignment (id, tenant_id, created_by, title, mode, target_skill_ids, item_count, status, pathway_id)
 VALUES (
   '00000000-0000-0000-0008-000000000010',
   '00000000-0000-0000-0008-000000000099',
   '00000000-0000-0000-0008-000000000002',
   'Stage8 Assignment', 'practice',
-  ARRAY[gen_random_uuid()], 5, 'published'
+  ARRAY[gen_random_uuid()], 5, 'published',
+  '00000000-0000-0000-0008-000000000091'
 );
 
 INSERT INTO assignment_target (assignment_id, student_id)
