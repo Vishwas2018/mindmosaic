@@ -31,11 +31,19 @@ import {
   selectItems,
   searchContent,
   getActiveSkillGraph,
+  createItem,
+  updateItem,
+  createItemVersion,
+  transitionItemLifecycle,
+  listItemVersions,
+  createStimulus,
+  updateStimulus,
   type DbClient,
 } from '../handlers.ts';
 import {
   createMockSupabase,
   type MockResponses,
+  type MockSupabaseExtras,
 } from '../../_test-helpers/mock-supabase.ts';
 
 // ─── Test constants ─────────────────────────────────────────────────────────
@@ -54,7 +62,7 @@ const WATERMARK_COST_MEAN_MS_GATE = 50;
 
 function mockClient(
   responses: MockResponses,
-): DbClient & { from: ReturnType<typeof vi.fn> } {
+): DbClient & { from: ReturnType<typeof vi.fn> } & MockSupabaseExtras {
   return createMockSupabase<DbClient>(responses);
 }
 
@@ -684,5 +692,370 @@ describe('skill-graph-cache — contract', () => {
     const elapsedMs = performance.now() - start;
     const meanMs = elapsedMs / WATERMARK_COST_ITERATIONS;
     expect(meanMs).toBeLessThan(WATERMARK_COST_MEAN_MS_GATE);
+  });
+});
+
+// ─── Content authoring — v1.1 Stage 1 ────────────────────────────────────────
+
+const ITEM_ADMIN_STUB = {
+  id: 'item-uuid-1',
+  source_item_id: null,
+  stimulus_id: null,
+  response_type: 'multiple_choice',
+  skill_ids: ['sk-1'],
+  difficulty: 0.4,
+  discrimination: null,
+  expected_time_secs: null,
+  year_levels: [5],
+  exam_families: ['naplan'],
+  programs: [],
+  countries: [],
+  curricula: [],
+  bloom_level: null,
+  lifecycle: 'draft',
+  is_active: false,
+  current_version: 1,
+  created_at: '2026-05-14T00:00:00.000Z',
+  updated_at: '2026-05-14T00:00:00.000Z',
+};
+
+const VERSION_STUB = {
+  item_id: 'item-uuid-1',
+  version: 2,
+  stem: { kind: 'plain_text', value: 'What is 2 + 2?' },
+  response_config: { options: ['3', '4', '5', '6'] },
+  distractor_rationale: null,
+  explanation: null,
+  metadata: { author_id: 'author-uuid' },
+  difficulty: 0.4,
+  discrimination: null,
+  is_current: true,
+  supersedes: 1,
+  created_at: '2026-05-14T00:00:00.000Z',
+};
+
+const STIMULUS_STUB = {
+  id: 'stim-uuid-1',
+  type: 'passage',
+  content: { text: 'Once upon a time...' },
+  source_attribution: null,
+  year_levels: [5],
+  exam_families: ['naplan'],
+  is_active: true,
+  created_at: '2026-05-14T00:00:00.000Z',
+};
+
+describe('content-svc — POST /content/items (createItem)', () => {
+  it('returns ItemAdminDTO with lifecycle=draft on valid body', async () => {
+    const client = mockClient({
+      item: { data: ITEM_ADMIN_STUB, error: null },
+    });
+    const result = await createItem(client, {
+      response_type: 'multiple_choice',
+      skill_ids: ['sk-1'],
+      difficulty: 0.4,
+      year_levels: [5],
+      exam_families: ['naplan'],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.lifecycle).toBe('draft');
+    expect(result.data.response_type).toBe('multiple_choice');
+    expect(result.data.skill_ids).toEqual(['sk-1']);
+  });
+
+  it('returns 422 VALIDATION_ERROR when required fields missing', async () => {
+    const client = mockClient({});
+    const result = await createItem(client, {
+      response_type: '',
+      skill_ids: [],
+      difficulty: 0.4,
+      year_levels: [5],
+      exam_families: ['naplan'],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(422);
+    expect(result.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+describe('content-svc — PATCH /content/items/{id} (updateItem)', () => {
+  it('returns updated ItemAdminDTO when item exists', async () => {
+    const updated = { ...ITEM_ADMIN_STUB, difficulty: 0.7 };
+    const client = mockClient({
+      item: [
+        { data: { id: 'item-uuid-1' }, error: null },   // exists check
+        { data: updated, error: null },                  // update + select
+      ],
+    });
+    const result = await updateItem(client, 'item-uuid-1', { difficulty: 0.7 });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.difficulty).toBe(0.7);
+  });
+
+  it('returns 404 when item does not exist', async () => {
+    const client = mockClient({
+      item: { data: null, error: null },
+    });
+    const result = await updateItem(client, 'missing-id', { difficulty: 0.5 });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(404);
+    expect(result.code).toBe('NOT_FOUND');
+  });
+});
+
+describe('content-svc — POST /content/items/{id}/versions (createItemVersion)', () => {
+  it('inserts version 2 with is_current=true and flips prior version (atomic writer contract)', async () => {
+    const client = mockClient({
+      item: [
+        { data: { id: 'item-uuid-1' }, error: null },   // exists check
+        { data: null, error: null },                     // sync current_version update
+      ],
+      item_version: [
+        { data: [{ version: 1 }], error: null },         // MAX(version) query
+        { data: null, error: null },                     // flip is_current=false
+        { data: VERSION_STUB, error: null },             // insert new version
+      ],
+    });
+    const result = await createItemVersion(
+      client,
+      'item-uuid-1',
+      {
+        stem: { kind: 'plain_text', value: 'What is 2 + 2?' },
+        response_config: { options: ['3', '4', '5', '6'] },
+        difficulty: 0.4,
+        supersedes: 1,
+      },
+      'author-uuid',
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.version).toBe(2);
+    expect(result.data.is_current).toBe(true);
+    expect(result.data.metadata).toMatchObject({ author_id: 'author-uuid' });
+    // Verify flip was called (item_version queried 3 times: max, flip, insert)
+    expect((client as ReturnType<typeof mockClient>).callCounts()['item_version']).toBe(3);
+  });
+
+  it('returns 422 VALIDATION_ERROR when stem is missing', async () => {
+    const client = mockClient({});
+    const result = await createItemVersion(
+      client,
+      'item-uuid-1',
+      { stem: null as unknown as Record<string, unknown>, response_config: {}, difficulty: 0.4 },
+      'author-uuid',
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(422);
+    expect(result.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 404 when item does not exist', async () => {
+    const client = mockClient({
+      item: { data: null, error: null },
+    });
+    const result = await createItemVersion(
+      client,
+      'missing-id',
+      { stem: {}, response_config: {}, difficulty: 0.4 },
+      'author-uuid',
+    );
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(404);
+  });
+});
+
+// ─── FSM transitions (spec §15.3 verbatim — 6 legal edges) ───────────────────
+
+describe('content-svc — PATCH /content/items/{id}/lifecycle (transitionItemLifecycle)', () => {
+  function makeLifecycleClient(currentLifecycle: string) {
+    return mockClient({
+      item: [
+        { data: { id: 'item-uuid-1', lifecycle: currentLifecycle }, error: null },
+        { data: null, error: null },  // update
+      ],
+    });
+  }
+
+  it('draft → review (valid edge)', async () => {
+    const result = await transitionItemLifecycle(makeLifecycleClient('draft'), 'item-uuid-1', { lifecycle: 'review' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.lifecycle).toBe('review');
+  });
+
+  it('review → active (valid edge)', async () => {
+    const result = await transitionItemLifecycle(makeLifecycleClient('review'), 'item-uuid-1', { lifecycle: 'active' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.lifecycle).toBe('active');
+  });
+
+  it('active → monitored (valid edge)', async () => {
+    const result = await transitionItemLifecycle(makeLifecycleClient('active'), 'item-uuid-1', { lifecycle: 'monitored' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.lifecycle).toBe('monitored');
+  });
+
+  it('active → retired (valid edge)', async () => {
+    const result = await transitionItemLifecycle(makeLifecycleClient('active'), 'item-uuid-1', { lifecycle: 'retired' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.lifecycle).toBe('retired');
+  });
+
+  it('monitored → active (valid edge)', async () => {
+    const result = await transitionItemLifecycle(makeLifecycleClient('monitored'), 'item-uuid-1', { lifecycle: 'active' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.lifecycle).toBe('active');
+  });
+
+  it('monitored → retired (valid edge)', async () => {
+    const result = await transitionItemLifecycle(makeLifecycleClient('monitored'), 'item-uuid-1', { lifecycle: 'retired' });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.lifecycle).toBe('retired');
+  });
+
+  it('draft → retired returns 422 INVALID_TRANSITION (excluded by spec §15.3)', async () => {
+    const client = mockClient({
+      item: { data: { id: 'item-uuid-1', lifecycle: 'draft' }, error: null },
+    });
+    const result = await transitionItemLifecycle(client, 'item-uuid-1', { lifecycle: 'retired' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(422);
+    expect(result.code).toBe('INVALID_TRANSITION');
+  });
+
+  it('same-state draft → draft returns 422 INVALID_TRANSITION', async () => {
+    const client = mockClient({
+      item: { data: { id: 'item-uuid-1', lifecycle: 'draft' }, error: null },
+    });
+    const result = await transitionItemLifecycle(client, 'item-uuid-1', { lifecycle: 'draft' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(422);
+    expect(result.code).toBe('INVALID_TRANSITION');
+  });
+
+  it('review → monitored returns 422 INVALID_TRANSITION (no edge in spec §15.3)', async () => {
+    const client = mockClient({
+      item: { data: { id: 'item-uuid-1', lifecycle: 'review' }, error: null },
+    });
+    const result = await transitionItemLifecycle(client, 'item-uuid-1', { lifecycle: 'monitored' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(422);
+    expect(result.code).toBe('INVALID_TRANSITION');
+  });
+
+  it('retired → draft returns 422 INVALID_TRANSITION (retired has no outgoing edges)', async () => {
+    const client = mockClient({
+      item: { data: { id: 'item-uuid-1', lifecycle: 'retired' }, error: null },
+    });
+    const result = await transitionItemLifecycle(client, 'item-uuid-1', { lifecycle: 'draft' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(422);
+    expect(result.code).toBe('INVALID_TRANSITION');
+  });
+
+  it('returns 404 when item does not exist', async () => {
+    const client = mockClient({
+      item: { data: null, error: null },
+    });
+    const result = await transitionItemLifecycle(client, 'missing-id', { lifecycle: 'review' });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(404);
+  });
+});
+
+describe('content-svc — GET /content/items/{id}/versions (listItemVersions)', () => {
+  it('returns ItemVersionDTO[] ordered by version desc', async () => {
+    const client = mockClient({
+      item: { data: { id: 'item-uuid-1' }, error: null },
+      item_version: { data: [VERSION_STUB], error: null },
+    });
+    const result = await listItemVersions(client, 'item-uuid-1');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]!.version).toBe(2);
+  });
+
+  it('returns 404 when item does not exist', async () => {
+    const client = mockClient({
+      item: { data: null, error: null },
+    });
+    const result = await listItemVersions(client, 'missing-id');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(404);
+  });
+});
+
+describe('content-svc — POST /content/stimuli (createStimulus)', () => {
+  it('returns StimulusAdminDTO on valid body', async () => {
+    const client = mockClient({
+      stimulus: { data: STIMULUS_STUB, error: null },
+    });
+    const result = await createStimulus(client, {
+      type: 'passage',
+      content: { text: 'Once upon a time...' },
+      year_levels: [5],
+      exam_families: ['naplan'],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.type).toBe('passage');
+    expect(result.data.id).toBe('stim-uuid-1');
+  });
+
+  it('returns 422 VALIDATION_ERROR when type is missing', async () => {
+    const client = mockClient({});
+    const result = await createStimulus(client, {
+      type: '',
+      content: { text: 'test' },
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(422);
+    expect(result.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+describe('content-svc — PATCH /content/stimuli/{id} (updateStimulus)', () => {
+  it('returns updated StimulusAdminDTO when stimulus exists', async () => {
+    const updated = { ...STIMULUS_STUB, is_active: false };
+    const client = mockClient({
+      stimulus: [
+        { data: { id: 'stim-uuid-1' }, error: null },  // exists check
+        { data: updated, error: null },                  // update + select
+      ],
+    });
+    const result = await updateStimulus(client, 'stim-uuid-1', { is_active: false });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.is_active).toBe(false);
+  });
+
+  it('returns 404 when stimulus does not exist', async () => {
+    const client = mockClient({
+      stimulus: { data: null, error: null },
+    });
+    const result = await updateStimulus(client, 'missing-stim', { is_active: false });
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected error');
+    expect(result.status).toBe(404);
+    expect(result.code).toBe('NOT_FOUND');
   });
 });

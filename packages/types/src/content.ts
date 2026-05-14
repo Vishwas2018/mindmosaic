@@ -39,3 +39,124 @@ export const ItemDTOSchema = z.object({
   sequence_number: z.number().int(),
 });
 export type ItemDTO = z.infer<typeof ItemDTOSchema>;
+
+// ─── Content authoring schemas (v1.1-S1) ────────────────────────────────────
+
+export const ItemAdminDTOSchema = z.object({
+  id: z.string().uuid(),
+  source_item_id: z.string().nullable(),
+  stimulus_id: z.string().nullable(),
+  response_type: z.string(),
+  skill_ids: z.array(z.string()),
+  difficulty: z.number(),
+  discrimination: z.number().nullable(),
+  expected_time_secs: z.number().int().nullable(),
+  year_levels: z.array(z.number().int()),
+  exam_families: z.array(z.string()),
+  programs: z.array(z.string()),
+  countries: z.array(z.string()),
+  curricula: z.array(z.string()),
+  bloom_level: z.string().nullable(),
+  lifecycle: z.enum(['draft', 'review', 'active', 'monitored', 'retired']),
+  is_active: z.boolean(),
+  current_version: z.number().int(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type ItemAdminDTO = z.infer<typeof ItemAdminDTOSchema>;
+
+export const ItemCreateDTOSchema = z.object({
+  source_item_id: z.string().nullable().optional(),
+  stimulus_id: z.string().nullable().optional(),
+  response_type: z.string().min(1),
+  skill_ids: z.array(z.string()).min(1),
+  difficulty: z.number(),
+  discrimination: z.number().nullable().optional(),
+  expected_time_secs: z.number().int().nullable().optional(),
+  year_levels: z.array(z.number().int()).min(1),
+  exam_families: z.array(z.string()).min(1),
+  programs: z.array(z.string()).optional(),
+  countries: z.array(z.string()).optional(),
+  curricula: z.array(z.string()).optional(),
+  bloom_level: z.string().nullable().optional(),
+});
+export type ItemCreateDTO = z.infer<typeof ItemCreateDTOSchema>;
+
+export const ItemUpdateDTOSchema = z.object({
+  source_item_id: z.string().nullable().optional(),
+  stimulus_id: z.string().nullable().optional(),
+  skill_ids: z.array(z.string()).min(1).optional(),
+  difficulty: z.number().optional(),
+  discrimination: z.number().nullable().optional(),
+  expected_time_secs: z.number().int().nullable().optional(),
+  year_levels: z.array(z.number().int()).min(1).optional(),
+  exam_families: z.array(z.string()).min(1).optional(),
+  programs: z.array(z.string()).optional(),
+  countries: z.array(z.string()).optional(),
+  curricula: z.array(z.string()).optional(),
+  bloom_level: z.string().nullable().optional(),
+  is_active: z.boolean().optional(),
+});
+export type ItemUpdateDTO = z.infer<typeof ItemUpdateDTOSchema>;
+
+export const ItemVersionDTOSchema = z.object({
+  item_id: z.string().uuid(),
+  version: z.number().int(),
+  stem: z.record(z.string(), z.unknown()),
+  response_config: z.record(z.string(), z.unknown()),
+  distractor_rationale: z.record(z.string(), z.unknown()).nullable(),
+  explanation: z.record(z.string(), z.unknown()).nullable(),
+  metadata: z.record(z.string(), z.unknown()),
+  difficulty: z.number(),
+  discrimination: z.number().nullable(),
+  is_current: z.boolean(),
+  supersedes: z.number().int().nullable(),
+  created_at: z.string(),
+});
+export type ItemVersionDTO = z.infer<typeof ItemVersionDTOSchema>;
+
+export const ItemVersionCreateDTOSchema = z.object({
+  stem: z.record(z.string(), z.unknown()),
+  response_config: z.record(z.string(), z.unknown()),
+  distractor_rationale: z.record(z.string(), z.unknown()).nullable().optional(),
+  explanation: z.record(z.string(), z.unknown()).nullable().optional(),
+  difficulty: z.number(),
+  discrimination: z.number().nullable().optional(),
+  supersedes: z.number().int().nullable().optional(),
+});
+export type ItemVersionCreateDTO = z.infer<typeof ItemVersionCreateDTOSchema>;
+
+export const ItemLifecycleTransitionDTOSchema = z.object({
+  lifecycle: z.enum(['draft', 'review', 'active', 'monitored', 'retired']),
+});
+export type ItemLifecycleTransitionDTO = z.infer<typeof ItemLifecycleTransitionDTOSchema>;
+
+export const StimulusAdminDTOSchema = z.object({
+  id: z.string().uuid(),
+  type: z.string(),
+  content: z.record(z.string(), z.unknown()),
+  source_attribution: z.string().nullable(),
+  year_levels: z.array(z.number().int()),
+  exam_families: z.array(z.string()),
+  is_active: z.boolean(),
+  created_at: z.string(),
+});
+export type StimulusAdminDTO = z.infer<typeof StimulusAdminDTOSchema>;
+
+export const StimulusCreateDTOSchema = z.object({
+  type: z.string().min(1),
+  content: z.record(z.string(), z.unknown()),
+  source_attribution: z.string().nullable().optional(),
+  year_levels: z.array(z.number().int()).optional(),
+  exam_families: z.array(z.string()).optional(),
+});
+export type StimulusCreateDTO = z.infer<typeof StimulusCreateDTOSchema>;
+
+export const StimulusUpdateDTOSchema = z.object({
+  content: z.record(z.string(), z.unknown()).optional(),
+  source_attribution: z.string().nullable().optional(),
+  year_levels: z.array(z.number().int()).optional(),
+  exam_families: z.array(z.string()).optional(),
+  is_active: z.boolean().optional(),
+});
+export type StimulusUpdateDTO = z.infer<typeof StimulusUpdateDTOSchema>;

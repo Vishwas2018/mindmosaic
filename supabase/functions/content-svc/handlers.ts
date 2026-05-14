@@ -44,6 +44,8 @@ export type DbBuilder = {
   order: (col: string, opts?: { ascending?: boolean }) => DbBuilder;
   limit: (n: number) => DbBuilder;
   range: (from: number, to: number) => DbBuilder;
+  insert: (row: Record<string, unknown>) => DbBuilder;
+  update: (patch: Record<string, unknown>) => DbBuilder;
   maybeSingle: () => Promise<{ data: unknown | null; error: { message: string } | null }>;
   single: () => Promise<{ data: unknown | null; error: { message: string } | null }>;
 } & Promise<{ data: unknown[] | null; count: number | null; error: { message: string } | null }>;
@@ -578,6 +580,413 @@ export async function searchContent(
     sequence_number: 1,
   }));
   return ok({ items, total: items.length, page });
+}
+
+// ─── Content authoring — lifecycle FSM (spec §15.3 verbatim) ─────────────────
+// 6 legal edges; draft→retired explicitly excluded (Q-1.1-1.2, ADR-0035 §Decision 3).
+
+const LIFECYCLE_EDGES: Readonly<Record<string, readonly string[]>> = {
+  draft:     ['review'],
+  review:    ['active'],
+  active:    ['monitored', 'retired'],
+  monitored: ['active', 'retired'],
+  retired:   [],
+};
+
+// ─── Content authoring — DTOs ────────────────────────────────────────────────
+
+export interface ItemAdminDTO {
+  id: string;
+  source_item_id: string | null;
+  stimulus_id: string | null;
+  response_type: string;
+  skill_ids: string[];
+  difficulty: number;
+  discrimination: number | null;
+  expected_time_secs: number | null;
+  year_levels: number[];
+  exam_families: string[];
+  programs: string[];
+  countries: string[];
+  curricula: string[];
+  bloom_level: string | null;
+  lifecycle: string;
+  is_active: boolean;
+  current_version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ItemVersionDTO {
+  item_id: string;
+  version: number;
+  stem: Record<string, unknown>;
+  response_config: Record<string, unknown>;
+  distractor_rationale: Record<string, unknown> | null;
+  explanation: Record<string, unknown> | null;
+  metadata: Record<string, unknown>;
+  difficulty: number;
+  discrimination: number | null;
+  is_current: boolean;
+  supersedes: number | null;
+  created_at: string;
+}
+
+export interface StimulusAdminDTO {
+  id: string;
+  type: string;
+  content: Record<string, unknown>;
+  source_attribution: string | null;
+  year_levels: number[];
+  exam_families: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+// ─── Content authoring — input body types ────────────────────────────────────
+
+export interface ItemCreateBody {
+  source_item_id?: string | null;
+  stimulus_id?: string | null;
+  response_type: string;
+  skill_ids: string[];
+  difficulty: number;
+  discrimination?: number | null;
+  expected_time_secs?: number | null;
+  year_levels: number[];
+  exam_families: string[];
+  programs?: string[];
+  countries?: string[];
+  curricula?: string[];
+  bloom_level?: string | null;
+}
+
+export interface ItemUpdateBody {
+  source_item_id?: string | null;
+  stimulus_id?: string | null;
+  skill_ids?: string[];
+  difficulty?: number;
+  discrimination?: number | null;
+  expected_time_secs?: number | null;
+  year_levels?: number[];
+  exam_families?: string[];
+  programs?: string[];
+  countries?: string[];
+  curricula?: string[];
+  bloom_level?: string | null;
+  is_active?: boolean;
+}
+
+export interface ItemVersionCreateBody {
+  stem: Record<string, unknown>;
+  response_config: Record<string, unknown>;
+  distractor_rationale?: Record<string, unknown> | null;
+  explanation?: Record<string, unknown> | null;
+  difficulty: number;
+  discrimination?: number | null;
+  supersedes?: number | null;
+}
+
+export interface ItemLifecycleBody {
+  lifecycle: string;
+}
+
+export interface StimulusCreateBody {
+  type: string;
+  content: Record<string, unknown>;
+  source_attribution?: string | null;
+  year_levels?: number[];
+  exam_families?: string[];
+}
+
+export interface StimulusUpdateBody {
+  content?: Record<string, unknown>;
+  source_attribution?: string | null;
+  year_levels?: number[];
+  exam_families?: string[];
+  is_active?: boolean;
+}
+
+// ─── createItem ───────────────────────────────────────────────────────────────
+
+const ITEM_ADMIN_COLS =
+  'id, source_item_id, stimulus_id, response_type, skill_ids, difficulty, discrimination, ' +
+  'expected_time_secs, year_levels, exam_families, programs, countries, curricula, ' +
+  'bloom_level, lifecycle, is_active, current_version, created_at, updated_at';
+
+export async function createItem(
+  client: DbClient,
+  body: ItemCreateBody,
+): Promise<HandlerResult<ItemAdminDTO>> {
+  if (
+    typeof body.response_type !== 'string' || body.response_type.length === 0 ||
+    !Array.isArray(body.skill_ids) || body.skill_ids.length === 0 ||
+    typeof body.difficulty !== 'number' ||
+    !Array.isArray(body.year_levels) || body.year_levels.length === 0 ||
+    !Array.isArray(body.exam_families) || body.exam_families.length === 0
+  ) {
+    return err(422, 'VALIDATION_ERROR', 'response_type, skill_ids, difficulty, year_levels, exam_families required');
+  }
+
+  const row: Record<string, unknown> = {
+    response_type: body.response_type,
+    skill_ids: body.skill_ids,
+    difficulty: body.difficulty,
+    year_levels: body.year_levels,
+    exam_families: body.exam_families,
+    lifecycle: 'draft',
+  };
+  if (body.source_item_id !== undefined) row['source_item_id'] = body.source_item_id;
+  if (body.stimulus_id !== undefined) row['stimulus_id'] = body.stimulus_id;
+  if (body.discrimination !== undefined) row['discrimination'] = body.discrimination;
+  if (body.expected_time_secs !== undefined) row['expected_time_secs'] = body.expected_time_secs;
+  if (body.programs !== undefined) row['programs'] = body.programs;
+  if (body.countries !== undefined) row['countries'] = body.countries;
+  if (body.curricula !== undefined) row['curricula'] = body.curricula;
+  if (body.bloom_level !== undefined) row['bloom_level'] = body.bloom_level;
+
+  const result = await (client.from('item').insert(row) as unknown as {
+    select(cols: string): { single(): Promise<{ data: ItemAdminDTO | null; error: { message: string } | null }> };
+  }).select(ITEM_ADMIN_COLS).single();
+
+  if (result.error !== null) return err(500, 'INTERNAL_ERROR', result.error.message);
+  if (result.data === null) return err(500, 'INTERNAL_ERROR', 'insert returned no data');
+  return ok(result.data);
+}
+
+// ─── updateItem ───────────────────────────────────────────────────────────────
+
+export async function updateItem(
+  client: DbClient,
+  itemId: string,
+  body: ItemUpdateBody,
+): Promise<HandlerResult<ItemAdminDTO>> {
+  const check = await (client.from('item').select('id').eq('id', itemId) as unknown as {
+    maybeSingle(): Promise<{ data: { id: string } | null; error: { message: string } | null }>;
+  }).maybeSingle();
+  if (check.error !== null) return err(500, 'INTERNAL_ERROR', check.error.message);
+  if (check.data === null) return err(404, 'NOT_FOUND', `Item '${itemId}' not found`);
+
+  const patch: Record<string, unknown> = {};
+  if (body.source_item_id !== undefined) patch['source_item_id'] = body.source_item_id;
+  if (body.stimulus_id !== undefined) patch['stimulus_id'] = body.stimulus_id;
+  if (body.skill_ids !== undefined) patch['skill_ids'] = body.skill_ids;
+  if (body.difficulty !== undefined) patch['difficulty'] = body.difficulty;
+  if (body.discrimination !== undefined) patch['discrimination'] = body.discrimination;
+  if (body.expected_time_secs !== undefined) patch['expected_time_secs'] = body.expected_time_secs;
+  if (body.year_levels !== undefined) patch['year_levels'] = body.year_levels;
+  if (body.exam_families !== undefined) patch['exam_families'] = body.exam_families;
+  if (body.programs !== undefined) patch['programs'] = body.programs;
+  if (body.countries !== undefined) patch['countries'] = body.countries;
+  if (body.curricula !== undefined) patch['curricula'] = body.curricula;
+  if (body.bloom_level !== undefined) patch['bloom_level'] = body.bloom_level;
+  if (body.is_active !== undefined) patch['is_active'] = body.is_active;
+
+  const result = await (client.from('item').update(patch).eq('id', itemId) as unknown as {
+    select(cols: string): { single(): Promise<{ data: ItemAdminDTO | null; error: { message: string } | null }> };
+  }).select(ITEM_ADMIN_COLS).single();
+
+  if (result.error !== null) return err(500, 'INTERNAL_ERROR', result.error.message);
+  if (result.data === null) return err(500, 'INTERNAL_ERROR', 'update returned no data');
+  return ok(result.data);
+}
+
+// ─── createItemVersion ────────────────────────────────────────────────────────
+
+const ITEM_VERSION_COLS =
+  'item_id, version, stem, response_config, distractor_rationale, explanation, metadata, ' +
+  'difficulty, discrimination, is_current, supersedes, created_at';
+
+export async function createItemVersion(
+  client: DbClient,
+  itemId: string,
+  body: ItemVersionCreateBody,
+  authorId: string,
+): Promise<HandlerResult<ItemVersionDTO>> {
+  if (
+    body.stem === undefined || body.stem === null ||
+    body.response_config === undefined || body.response_config === null ||
+    typeof body.difficulty !== 'number'
+  ) {
+    return err(422, 'VALIDATION_ERROR', 'stem, response_config, and difficulty required');
+  }
+
+  const itemCheck = await (client.from('item').select('id').eq('id', itemId) as unknown as {
+    maybeSingle(): Promise<{ data: { id: string } | null; error: { message: string } | null }>;
+  }).maybeSingle();
+  if (itemCheck.error !== null) return err(500, 'INTERNAL_ERROR', itemCheck.error.message);
+  if (itemCheck.data === null) return err(404, 'NOT_FOUND', `Item '${itemId}' not found`);
+
+  // Determine next version number
+  const maxResult = await (client
+    .from('item_version')
+    .select('version')
+    .eq('item_id', itemId)
+    .order('version', { ascending: false })
+    .limit(1) as unknown as Promise<{
+    data: Array<{ version: number }> | null;
+    error: { message: string } | null;
+  }>);
+  if (maxResult.error !== null) return err(500, 'INTERNAL_ERROR', maxResult.error.message);
+  const nextVersion = ((maxResult.data?.[0]?.version) ?? 0) + 1;
+
+  // Atomic flip: UPDATE prior current row to is_current = false BEFORE INSERT
+  // idx_item_version_current_one enforces at most one current version (ADR-0035 §6,
+  // migration 0002 lines 205–206 writer contract).
+  const flipResult = await (client
+    .from('item_version')
+    .update({ is_current: false })
+    .eq('item_id', itemId)
+    .eq('is_current', true) as unknown as Promise<{ error: { message: string } | null }>);
+  if (flipResult.error !== null) return err(500, 'INTERNAL_ERROR', flipResult.error.message);
+
+  const newRow: Record<string, unknown> = {
+    item_id: itemId,
+    version: nextVersion,
+    stem: body.stem,
+    response_config: body.response_config,
+    metadata: { author_id: authorId },
+    difficulty: body.difficulty,
+    is_current: true,
+  };
+  if (body.distractor_rationale !== undefined) newRow['distractor_rationale'] = body.distractor_rationale;
+  if (body.explanation !== undefined) newRow['explanation'] = body.explanation;
+  if (body.discrimination !== undefined) newRow['discrimination'] = body.discrimination;
+  if (body.supersedes !== undefined) newRow['supersedes'] = body.supersedes;
+
+  const insertResult = await (client.from('item_version').insert(newRow) as unknown as {
+    select(cols: string): { single(): Promise<{ data: ItemVersionDTO | null; error: { message: string } | null }> };
+  }).select(ITEM_VERSION_COLS).single();
+  if (insertResult.error !== null) return err(500, 'INTERNAL_ERROR', insertResult.error.message);
+  if (insertResult.data === null) return err(500, 'INTERNAL_ERROR', 'version insert returned no data');
+
+  // Sync item.current_version
+  const syncResult = await (client
+    .from('item')
+    .update({ current_version: nextVersion })
+    .eq('id', itemId) as unknown as Promise<{ error: { message: string } | null }>);
+  if (syncResult.error !== null) return err(500, 'INTERNAL_ERROR', syncResult.error.message);
+
+  return ok(insertResult.data);
+}
+
+// ─── transitionItemLifecycle ──────────────────────────────────────────────────
+
+export async function transitionItemLifecycle(
+  client: DbClient,
+  itemId: string,
+  body: ItemLifecycleBody,
+): Promise<HandlerResult<{ id: string; lifecycle: string }>> {
+  const target = body.lifecycle;
+  if (typeof target !== 'string' || target.length === 0) {
+    return err(422, 'VALIDATION_ERROR', 'lifecycle field required');
+  }
+
+  const itemResult = await (client.from('item').select('id, lifecycle').eq('id', itemId) as unknown as {
+    maybeSingle(): Promise<{ data: { id: string; lifecycle: string } | null; error: { message: string } | null }>;
+  }).maybeSingle();
+  if (itemResult.error !== null) return err(500, 'INTERNAL_ERROR', itemResult.error.message);
+  if (itemResult.data === null) return err(404, 'NOT_FOUND', `Item '${itemId}' not found`);
+
+  const current = itemResult.data.lifecycle;
+  const allowed = LIFECYCLE_EDGES[current] ?? [];
+  if (!allowed.includes(target)) {
+    return err(422, 'INVALID_TRANSITION', `Transition '${current}→${target}' is not permitted (spec §15.3)`);
+  }
+
+  const updResult = await (client
+    .from('item')
+    .update({ lifecycle: target })
+    .eq('id', itemId) as unknown as Promise<{ error: { message: string } | null }>);
+  if (updResult.error !== null) return err(500, 'INTERNAL_ERROR', updResult.error.message);
+
+  return ok({ id: itemId, lifecycle: target });
+}
+
+// ─── listItemVersions ─────────────────────────────────────────────────────────
+
+export async function listItemVersions(
+  client: DbClient,
+  itemId: string,
+): Promise<HandlerResult<ItemVersionDTO[]>> {
+  const itemCheck = await (client.from('item').select('id').eq('id', itemId) as unknown as {
+    maybeSingle(): Promise<{ data: { id: string } | null; error: { message: string } | null }>;
+  }).maybeSingle();
+  if (itemCheck.error !== null) return err(500, 'INTERNAL_ERROR', itemCheck.error.message);
+  if (itemCheck.data === null) return err(404, 'NOT_FOUND', `Item '${itemId}' not found`);
+
+  const { data, error } = await (client
+    .from('item_version')
+    .select(ITEM_VERSION_COLS)
+    .eq('item_id', itemId)
+    .order('version', { ascending: false }) as unknown as Promise<{
+    data: ItemVersionDTO[] | null;
+    error: { message: string } | null;
+  }>);
+  if (error !== null) return err(500, 'INTERNAL_ERROR', error.message);
+  return ok(data ?? []);
+}
+
+// ─── createStimulus ───────────────────────────────────────────────────────────
+
+const STIMULUS_ADMIN_COLS =
+  'id, type, content, source_attribution, year_levels, exam_families, is_active, created_at';
+
+export async function createStimulus(
+  client: DbClient,
+  body: StimulusCreateBody,
+): Promise<HandlerResult<StimulusAdminDTO>> {
+  if (
+    typeof body.type !== 'string' || body.type.length === 0 ||
+    body.content === undefined || body.content === null
+  ) {
+    return err(422, 'VALIDATION_ERROR', 'type and content required');
+  }
+
+  const row: Record<string, unknown> = {
+    type: body.type,
+    content: body.content,
+  };
+  if (body.source_attribution !== undefined) row['source_attribution'] = body.source_attribution;
+  if (body.year_levels !== undefined) row['year_levels'] = body.year_levels;
+  if (body.exam_families !== undefined) row['exam_families'] = body.exam_families;
+
+  const result = await (client.from('stimulus').insert(row) as unknown as {
+    select(cols: string): { single(): Promise<{ data: StimulusAdminDTO | null; error: { message: string } | null }> };
+  }).select(STIMULUS_ADMIN_COLS).single();
+
+  if (result.error !== null) return err(500, 'INTERNAL_ERROR', result.error.message);
+  if (result.data === null) return err(500, 'INTERNAL_ERROR', 'stimulus insert returned no data');
+  return ok(result.data);
+}
+
+// ─── updateStimulus ───────────────────────────────────────────────────────────
+
+export async function updateStimulus(
+  client: DbClient,
+  stimulusId: string,
+  body: StimulusUpdateBody,
+): Promise<HandlerResult<StimulusAdminDTO>> {
+  const check = await (client.from('stimulus').select('id').eq('id', stimulusId) as unknown as {
+    maybeSingle(): Promise<{ data: { id: string } | null; error: { message: string } | null }>;
+  }).maybeSingle();
+  if (check.error !== null) return err(500, 'INTERNAL_ERROR', check.error.message);
+  if (check.data === null) return err(404, 'NOT_FOUND', `Stimulus '${stimulusId}' not found`);
+
+  const patch: Record<string, unknown> = {};
+  if (body.content !== undefined) patch['content'] = body.content;
+  if (body.source_attribution !== undefined) patch['source_attribution'] = body.source_attribution;
+  if (body.year_levels !== undefined) patch['year_levels'] = body.year_levels;
+  if (body.exam_families !== undefined) patch['exam_families'] = body.exam_families;
+  if (body.is_active !== undefined) patch['is_active'] = body.is_active;
+
+  const result = await (client.from('stimulus').update(patch).eq('id', stimulusId) as unknown as {
+    select(cols: string): { single(): Promise<{ data: StimulusAdminDTO | null; error: { message: string } | null }> };
+  }).select(STIMULUS_ADMIN_COLS).single();
+
+  if (result.error !== null) return err(500, 'INTERNAL_ERROR', result.error.message);
+  if (result.data === null) return err(500, 'INTERNAL_ERROR', 'update returned no data');
+  return ok(result.data);
 }
 
 // ─── /skill-graphs/active ────────────────────────────────────────────────────

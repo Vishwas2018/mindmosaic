@@ -9,6 +9,51 @@
 
 ## Resolved
 
+### Q-1.1-1.9 — GET /content/items/{id}/versions access: platform_admin only or all authenticated?
+
+- Date raised: 2026-05-14 (v1.1-S1 impl)
+- Asked of: self (T3 Option 3 — tight implementation detail; self-resolve permitted with documented default)
+- Source: arch §4.3 (content-svc endpoints); impl prompt D3
+- Question: Should `GET /content/items/{id}/versions` be restricted to `platform_admin` or readable by any authenticated user?
+- Why ambiguous: Read endpoints are typically broader than write endpoints; but version history is internal authoring metadata not intended for students/parents.
+- Blocking? no
+- Assumed answer: Admin-only. Version history exposes authoring metadata (author_id, distractor_rationale, internal difficulty scores) that should not be visible to students/parents.
+- Code affected: `supabase/functions/content-svc/index.ts` (admin route gate); `supabase/functions/content-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution: **Self-resolved (2026-05-14): platform_admin only.** GET /content/items/{id}/versions placed inside the `isAdminWriteRoute` block alongside the other 6 admin endpoints. Rationale: version metadata (author_id in metadata jsonb, distractor_rationale, internal scores) is authoring-internal. Student-visible item content is served by existing `GET /content/items/{id}` (no auth gate beyond Bearer). No ADR needed — tight implementation choice clearly implied by Pattern G strict (ADR-0035).
+
+---
+
+### Q-1.1-1.8 — withIdempotency tenantId fallback for platform_admin (no tenant)
+
+- Date raised: 2026-05-14 (v1.1-S1 impl)
+- Asked of: self (T3 Option 3 — tight implementation detail)
+- Source: arch §4.8 (Idempotency-Key); migration 0004 line 166 (api_idempotency_key.tenant_id)
+- Question: `callerTenantId` returns null for platform_admin users (no row in user_profile with tenant_id set). `withIdempotency` requires a `tenantId: string`. What value should be used as the idempotency scope tenant when callerTenantId is null?
+- Why ambiguous: The tenantId is part of the composite PK in api_idempotency_key, used to scope keys per tenant. platform_admin is a global role with no tenant affiliation.
+- Blocking? no
+- Assumed answer: Fall back to `userId`. Since api_idempotency_key.tenant_id has NO FK constraint (migration 0004 line 30 notes "no FK deps; composite PK includes tenant_id"), any UUID is acceptable. Using userId provides per-user scoping without requiring a real tenant.
+- Code affected: `supabase/functions/content-svc/index.ts` (idempTenantId assignment)
+- Status: resolved
+- Resolution: **Self-resolved (2026-05-14): `const idempTenantId = tenantId ?? userId`.** Migration 0004 line 166 confirms `api_idempotency_key.tenant_id uuid NOT NULL` with no FK. Fallback is safe; composite PK `(tenant_id, idempotency_key, endpoint)` still uniquely scopes keys within the platform_admin user's personal namespace. No ADR needed.
+
+---
+
+### Q-1.1-1.7 — stimulus `updated_at` absent: does "append-only" note in migration 0002 prohibit UPDATE?
+
+- Date raised: 2026-05-14 (v1.1-S1 impl)
+- Asked of: self (T3 Option 3 — tight implementation detail)
+- Source: migration 0002 line 156 comment ("No updated_at: stimulus is append-only / replaced-not-updated in v1"); spec §5.2; impl prompt Q-1.1-1.7
+- Question: Migration 0002 comment says stimulus is "append-only / replaced-not-updated in v1". Does this prohibit an UPDATE policy on the stimulus table in Stage 1? And is `stimulus.updated_at` absent from the schema?
+- Why ambiguous: The v1 comment describes usage pattern, but the authoring spec (v1.1) explicitly includes content mutation. "Append-only" could be a hard rule or a v1-era note.
+- Blocking? no
+- Assumed answer: v1 comment describes v1 usage pattern only (not a hard DB constraint). Stage 1 authoring scope explicitly requires PATCH on stimulus. UPDATE is permitted by schema (no constraint prevents it); no `updated_at` column exists on stimulus table (per migration 0002 line 155 — not a NOT NULL column). `updateStimulus` handler proceeds without updating a non-existent `updated_at` column.
+- Code affected: `supabase/migrations/0021_content_authoring.sql` (stimulus_admin_update policy); `supabase/functions/content-svc/handlers.ts` (updateStimulus handler)
+- Status: resolved
+- Resolution: **Self-resolved (2026-05-14): UPDATE permitted.** Migration 0002 "append-only" is a v1 usage-pattern note, not a DB constraint. Stage 1 authoring spec explicitly includes mutation. `stimulus` schema has no `updated_at` column — `updateStimulus` handler does not attempt to set it. `StimulusAdminDTO` accordingly omits `updated_at`. ADR-0035 §Decision notes (implicit).
+
+---
+
 ### Q-1.1-1.6 — Retire mechanism: lifecycle enum vs hard-delete
 
 - Date raised: 2026-05-14 (v1.1-S1 morning ritual)
