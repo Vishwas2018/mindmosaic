@@ -564,7 +564,7 @@ service-role only in Stage 1; teacher authoring deferred (ADR-0035).
 
 Stage breakdown (branch `v1.1/exam-content`):
 - v1.1-S1: Question Bank Foundation — item + item_version + stimulus CRUD; lifecycle FSM
-- v1.1-S2 through v1.1-S5: TBD (operator will relay prompts per stage)
+- v1.1-S2 through v1.1-S7: see docs/dev/v1.1-phase-plan.md (S1–S5 platform, S6–S7 content operation with copyright constraint)
 
 P1.1–P1.7 definitions below are unchanged.
 

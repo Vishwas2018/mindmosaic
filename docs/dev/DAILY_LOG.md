@@ -2,6 +2,66 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1-S1 — 2026-05-14
+
+**Planned (from DEV_PLAN.md §5.1 v1.1-S1):** Question Bank Foundation — write-side CRUD for item, item_version, stimulus; lifecycle FSM (spec §15.3); Pattern G strict writes; migration 0021 (RLS-only); 8 SDK hooks; 9 Zod schemas.
+
+**Actually delivered:**
+
+- Branch `v1.1/exam-content` (off v1.0.0 tag 9376d98); 3 commits: a7a43d0 prep · e76dbfc impl · this chore
+- `supabase/migrations/0021_content_authoring.sql` (NEW) + down file — 5 RLS policies (item_admin_insert, item_admin_update, item_version_admin_insert, stimulus_admin_insert, stimulus_admin_update); zero DDL; existing 0002 schema; deferred-validation pattern (no Docker) [a7a43d0]
+- `supabase/functions/content-svc/handlers.ts` — 7 handlers (createItem, updateItem, createItemVersion, transitionItemLifecycle, listItemVersions, createStimulus, updateStimulus); DTOs (ItemAdminDTO, ItemVersionDTO, StimulusAdminDTO); LIFECYCLE_EDGES FSM per spec §15.3 (6 edges; draft→retired excluded) [e76dbfc]
+- `supabase/functions/content-svc/index.ts` — 6 write routes + 1 read (listItemVersions); Bearer + platform_admin gate; withIdempotency on all 6 POST/PATCH; `idempTenantId = tenantId ?? userId` (Q-1.1-1.8) [e76dbfc]
+- `packages/types/src/content.ts` — 9 Zod schemas (ItemAdminDTO, ItemVersionDTO, StimulusAdminDTO, ItemCreate/Update, ItemVersionCreate, ItemLifecycleTransition, StimulusCreate/Update) [e76dbfc]
+- `packages/sdk/src/keys.ts` + `hooks/content.ts` — items/stimuli query keys; 8 hooks (useItemAdmin, useItemVersions, useCreateItem, useUpdateItem, useCreateItemVersion, useTransitionItemLifecycle, useCreateStimulus, useUpdateStimulus) [e76dbfc]
+- `supabase/functions/content-svc/__tests__/contract.test.ts` — +24 tests: 6 valid FSM edges, 4 invalid (same-state + draft→retired), atomic is_current flip, CRUD happy-paths [e76dbfc]
+- `supabase/tests/rls/021_content_authoring.sql` — 17 pgTAP assertions: G1×3 RLS enabled, G2×5 policies exist, G3×3 non-admin INSERT denied, G4×3 platform_admin INSERT succeeds, G5×2 platform_admin UPDATE succeeds, G6×1 is_current uniqueness invariant [e76dbfc]
+- `docs/dev/decisions/0035-content-authoring-write-model.md` — status proposed → accepted [this]
+- `DEV_PLAN.md §5.1` — v1.1-S2..S7 TBD → reference docs/dev/v1.1-phase-plan.md [this]
+- `docs/dev/v1.1-phase-plan.md` (NEW) — S1–S7 full phase plan (S1–S5 platform, S6–S7 content operation with copyright constraint) [this]
+- Tests: 696 → 729 (+33: +24 content-svc contract, +9 @mm/types X3 schema-registry auto)
+
+**Time spent:** ~1 day (2 Claude sessions: prep + impl/chore)
+
+**Surprises / departures:**
+
+- Premise correction at prep-read: item/item_version/stimulus already existed from migration 0002; Stage 1 = write-side CRUD only, not new tables. No deliverable impact; filed DEV-20260514-1.
+- TS4111 (noPropertyAccessFromIndexSignature): 33 bracket-notation fixes in handlers.ts for `Record<string, unknown>` property assignments. Caught at typecheck; zero functional impact.
+- `type Out` forward-reference (TS2345): 6 route handlers in index.ts required explicit DTO type aliases instead of inline `typeof result['data']`. Caught at typecheck.
+- `useTransitionItemLifecycle` initially used `ItemAdminDTOSchema`; handler returns `{ id, lifecycle }` only — corrected to `LifecycleResponseSchema` before commit.
+
+**Decisions made (not in stage):**
+
+- Q-1.1-1.7 self-resolved (T3 Option 3): stimulus UPDATE permitted; migration 0002 "append-only" is v1 usage note, not a DB constraint
+- Q-1.1-1.8 self-resolved (T3 Option 3): `idempTenantId = tenantId ?? userId` for platform_admin — api_idempotency_key.tenant_id has no FK; fallback safe
+- Q-1.1-1.9 self-resolved (T3 Option 3): GET /content/items/{id}/versions restricted to platform_admin — version history exposes authoring metadata not visible to students/parents
+- ADR-0035 accepted (proposed at a7a43d0 prep; accepted at this chore close after e76dbfc impl)
+
+**Deviations logged:**
+
+- DEV-20260514-1 (filed at a7a43d0 prep): v1.1 exam-content phase inserted ahead of DEV_PLAN §5.1 P1.1–P1.7
+
+**Issues opened / closed / questions raised:**
+
+- Q-1.1-1.0..9 all resolved (Q-1.1-1.0..1.6 at prep a7a43d0; Q-1.1-1.7..1.9 T2-tightened mid-impl e76dbfc)
+- No new issues opened. No issues closed.
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ (17/17 packages, --force, 0 cached) · Tests ✅ (729/730, 1 pre-existing skip) · pgTAP ⏸ (021_content_authoring.sql on disk; deferred-validation — no Docker in this env) · Build n/a (docs-only chore commit)
+
+**Retrospective:**
+
+- First v1.1 stage. Local Claude Code (VS Code terminal) replaces sandbox — push-relay friction eliminated; full push capability live in session.
+- T1 caught FSM contradiction at prep-read (§15.3 6-edge diagram vs initial linear-FSM default assumption); re-resolved before any code written. Pattern held as designed.
+- Verification-round count discrepancies (test total off by 9; route label read "5 routes:" above 6-item list) caught and corrected before gate phrase. Pre-push verification round working as designed.
+
+**Tomorrow — first thing:**
+
+v1.1-S2 — Practice Exam Composer: read v1.1-phase-plan.md S2 section + arch session-engine refs; check existing session type enum before any implementation.
+
+---
+
 ## Stage 49 — 2026-06-07 (Day 65, 2-day budget per DEV_PLAN, 1-day actual)
 
 **Planned (from DEV_PLAN.md Stage 49):** Launch Gate Review + v1.0.0 Tag — PROJECT_STATE final snapshot; DAILY_LOG final entry; launch gate checklist pass; `git tag -a v1.0.0`.

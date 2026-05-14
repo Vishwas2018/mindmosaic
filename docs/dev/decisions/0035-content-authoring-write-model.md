@@ -1,6 +1,6 @@
 # ADR-0035 — Content Authoring Write Model (item / item_version / stimulus)
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-05-14
 - Stage: v1.1-S1
 - Tags: backend | data | security | dx
@@ -120,5 +120,5 @@ a `metadata->>'author_id'` filter.
 ## Implementation notes
 
 Files: `supabase/functions/content-svc/` · `supabase/migrations/0002_content_skill_graph.sql` (read-only reference)
-Commit: v1.1-S1 impl commit (TBD)
+Commit: e76dbfc (impl) · chore close this commit
 Related: Q-1.1-1.1..1.4, DEV-20260514-1, spec §15.3, migration 0002 lines 161–210
