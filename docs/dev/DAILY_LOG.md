@@ -2,6 +2,65 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1-S3 — 2026-05-15
+
+**Planned (from docs/dev/v1.1-phase-plan.md §S3):** Simulation Exam Mode — backend administration layer that locks a session under realistic test-taking constraints: no back-navigation, no per-response feedback.
+
+**Actually delivered:**
+
+- Branch `v1.1/exam-content`; 3 commits: 560e2d2 prep · 96b19b5 impl · this chore.
+- `packages/types/src/session.ts` — `SimulationParamsSchema` (Zod: `no_back_nav: boolean.default(true)`, `hide_feedback_until_submit: boolean.default(true)`). `CreateSessionRequestSchema` extended additively with `simulation_params?: SimulationParamsSchema`. [96b19b5]
+- `packages/engines/src/contracts.ts` — `LinearEngineStateSchema.simulation_params: SimulationParamsSchema.optional()` for Q-1.1-2.5 round-trip-safety pattern: Zod default `.object()` strips unknown keys; declaring the field preserves it through `respondToSession`'s `EngineStateSchema.safeParse` → RPC re-write cycle. [96b19b5]
+- `packages/engines/src/linear.ts` — `canNavigateBack` gains one state-flag consultation branch: returns false when `state.simulation_params?.no_back_nav === true`; all other behaviour preserved; `AssessmentEngine` interface unchanged; 3 other engine implementations untouched. [96b19b5]
+- `supabase/functions/assessment-svc/handlers.ts` — `createSession` co-folds `simulation_params` alongside `composer_params` (orthogonal, co-applicable); `respondToSession` mutes `is_correct` to null when `hide_feedback_until_submit === true`; real value still flows into atomic RPC + scoring path. [96b19b5]
+- Tests 753 → 770 (+17: 7 @mm/types incl. X3 auto + 3 @mm/engines + 7 assessment-svc). 0 migrations. [96b19b5]
+- `docs/dev/decisions/0037-simulation-exam-mode.md` — status proposed → accepted; §Implementation Notes populated with Gate 1 PASS + Gate 2 EXPOSURE EXISTS verbatim citations. [96b19b5]
+- `docs/dev/QUESTIONS.md` — Q-1.1-3.1..5 resolved at prep (560e2d2) via operator round-trip.
+- `docs/dev/DEVIATIONS.md` — DEV-20260515-2 filed at prep (560e2d2): atomic commit-and-push process fix.
+
+**Time spent:** ~1 day (1 Claude session: morning ritual + prep + impl + chore).
+
+**Surprises / departures:**
+
+- **§N trap caught at morning ritual (parallel to S2).** Phase plan §S3 said "new session mode"; spec §18 'Exam' row Use Case verbatim = "Full practice exam simulation" — `mode='exam'` is the spec-correct home. `mode='challenge'` is "Timed competition, gamification" (leaderboard/gamification) — categorically different product. Caught BEFORE any code via T1 spec read; same escape pattern as S2.
+- **Two impl verification gates resolved at pre-read.** Gate 1 PASS: score path operates purely on `state.planned_items` snapshot; zero `v_item_current` re-fetch in assessment-svc or engines; item-version pin already achieved. Gate 2 EXPOSURE EXISTS: `is_correct` returned per-response at handlers.ts:535; gated to null when `hide_feedback_until_submit === true`; real value preserved at RPC + scoring layer.
+- **Q-1.1-2.5 round-trip-safety pattern applied cleanly (second time).** Same Zod default-object-strip risk from S2: `simulation_params` must be declared on `LinearEngineStateSchema`, not just relied on as jsonb passthrough. Pattern is now established across S2 + S3.
+- **Composer + simulation orthogonal.** Both `composer_params` (S2 assembly layer) and `simulation_params` (S3 administration layer) co-applicable on the same `CreateSessionRequest`; createSession fold: `{ ...baseState, ...(composer ? {composer_params} : {}), ...(simulation ? {simulation_params} : {}) }`.
+
+**Decisions made (not in stage):**
+
+- Q-1.1-3.1 → `mode='exam'` (spec §18 verbatim) — operator-confirmed at prep 560e2d2. ADR-0037 Decision 1.
+- Q-1.1-3.2 → sections deferred (ADR-0037 §Decision 7, sanctioned) — operator-confirmed at prep.
+- Q-1.1-3.3 → state-flag consultation, no interface change (ADR-0037 §Decision 4) — operator-confirmed at prep.
+- Q-1.1-3.4 → Option γ DEFAULT + Option α verification gate — operator-confirmed at prep; Gate 1 PASS at impl pre-read. ADR-0037 Decision 5.
+- Q-1.1-3.5 → student self-serve via existing feature-flag gate — operator-confirmed at prep. ADR-0037 Decision 7.
+- ADR-0037 accepted at impl 96b19b5.
+
+**Deviations logged:**
+
+- DEV-20260515-2 (filed at prep 560e2d2): atomic commit-and-push announcement process fix. Honored at impl 96b19b5 and this chore.
+
+**Issues opened / closed / questions raised:**
+
+- Q-1.1-3.1..5 all resolved at prep 560e2d2 via operator round-trip.
+- No new issues or bugs.
+
+**Quality gates at close:**
+
+- Lint ✅ (17 packages) · Typecheck ✅ (17/17, --force, 0 cached) · Tests ✅ (770 passed / 1 pre-existing skip = 771 total) · pgTAP n/a (0 new migrations) · RLS n/a (existing policies unchanged) · Build n/a (docs-only chore commit)
+
+**Retrospective:**
+
+- **§N trap discipline now battle-tested across S2 + S3.** Same pattern, same catch, same escape via spec verbatim row cite. Two consecutive stages caught; "verbatim cite the §N row at T1 pre-read" is now a proven default worth keeping in every future morning ritual.
+- **Two-gate verification at impl pre-read prevented wrong assumptions.** Gate 1 (item-version pin) and Gate 2 (feedback exposure) were both unknown-until-verified. Stopping to trace the score path at T1 pre-read — before writing any code — eliminated the risk of assuming determinism or assuming feedback was already gated.
+- **Atomic commit-and-push announcement (DEV-20260515-2) applied cleanly.** No premature SHA announcements this stage. The process fix from f72a7a8 held across impl + chore.
+
+**Tomorrow — first thing:**
+
+v1.1-S4 — Teacher Exam Authoring UI. T5 layout discipline activates: mockup-driven layout sketch for operator approval BEFORE component code. Read v1.1-phase-plan §S4 + UI_CONTRACT + existing teacher routes for pattern parity. Expect Q-1.1-4.* on route placement, content-list vs item-authoring vs exam-composer split, draft-autosave, lifecycle FSM affordances.
+
+---
+
 ## ISSUE-0037 remediation (operator side track) — 2026-05-15
 
 Single tight commit on `v1.1/exam-content` (between f72a7a8 and HEAD). Not a stage; no morning ritual, no retros. Two findings during D1 collapsed ISSUE-0037 severity high → info: (1) `git log --all -S "sb_secret_N7UND0UgjKTVK"` returns empty — the `sb_secret_*` literal was never committed; only the operator's local working tree carried it. The single push attempt that included the literal (inside the original v1.1-S2 chore's ISSUE-0037 evidence block) was correctly rejected by GitHub push-protection, then landed clean at f72a7a8 after redaction. (2) `npx supabase start` banner: *"API keys and JWT secrets are shared defaults. Do not use in production."* The exact `sb_publishable_*` + `sb_secret_*` values are CLI shared defaults, byte-identical across every Supabase CLI install with the new key format. Rotation impossible by design.

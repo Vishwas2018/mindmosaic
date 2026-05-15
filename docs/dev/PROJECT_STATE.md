@@ -5,10 +5,10 @@
 
 ## Position
 
-- Last completed stage: v1.1-S2 — Practice Exam Composer (2026-05-15)
-- Next stage: v1.1-S3 — Simulation Exam Mode
+- Last completed stage: v1.1-S3 — Simulation Exam Mode (2026-05-15)
+- Next stage: v1.1-S4 — Teacher Exam Authoring UI
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
-- Active branch: `v1.1/exam-content` — 6 commits ahead of origin/main (9376d98 v1.0.0): c4c868e v1.1-S1 chore · a7a43d0 v1.1-S2 prep · e76dbfc v1.1-S1 impl · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · this chore
+- Active branch: `v1.1/exam-content` — 10 commits ahead of origin/main (9376d98 v1.0.0): a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · this chore
 - Buffer days consumed total: ~16.5 of 26 allocated (DEV_PLAN §3.1) — v1.1 unbudgeted
 - Phase 0 complete: Stages 1–14. Phase 0 buffer at close: 0 of 3 consumed.
 - Phase 1 complete: Stages 15–27 (13 stages). Phase 1 buffer at close: **+2 days banked**.
@@ -23,28 +23,29 @@
 - Stage 49 actual: 1 day (budget: 2 days per DEV_PLAN). **Buffer at v1 close: +10.5 days banked (net unchanged)**.
 - v1.1-S1 actual: ~1 day (v1.1 stages unbudgeted in DEV_PLAN).
 - v1.1-S2 actual: ~1 day (v1.1 stages unbudgeted in DEV_PLAN).
-- Stages closed: **v1: 49/49 closed; v1.1: 2/7 closed (S1, S2 complete)**
+- v1.1-S3 actual: ~1 day (v1.1 stages unbudgeted in DEV_PLAN).
+- Stages closed: **v1: 49/49 closed; v1.1: 3/7 closed (S1, S2, S3 complete)**
 
 ## Test suite
 
 | Suite            | Status       | Count                                                                              | Last run   |
 | ---------------- | ------------ | ---------------------------------------------------------------------------------- | ---------- |
-| Unit             | ✅ green      | 753 passed / 1 skipped (+ 4 Playwright test.skip-guarded)                         | 2026-05-15 |
+| Unit             | ✅ green      | 770 passed / 1 skipped (+ 4 Playwright test.skip-guarded)                         | 2026-05-15 |
 | Integration      | n/a          | n/a                                                                                | n/a        |
 | pgTAP            | ✅ green      | 451/451 (migrations 0001–0020); 021 SQL file on disk (deferred-validation)         | 2026-06-07 |
-| Contract         | ✅ green      | included in 753 Vitest total                                                       | 2026-05-15 |
+| Contract         | ✅ green      | included in 770 Vitest total                                                       | 2026-05-15 |
 | E2E (Vitest)     | ✅ green      | 1/1 (assignments-svc lifecycle)                                                    | 2026-05-23 |
 | E2E (Playwright) | ⚠ opt-in     | 11 specs / 15 tests (gated; all test.skip-guarded; ISSUE-0035)                    | n/a        |
 | RLS              | ✅ green      | 451/451 (53 tables; pgTAP 0001–0020 covers all); 0021 policies deferred-validation | 2026-06-07 |
 | Replay           | ✅ green      | 58/58 assertions + 100 billing-svc replay assertions (2-pass 50-event)            | 2026-06-01 |
 | axe-core         | ✅ green      | 31 test files / 75 assertions — no regressions (Stage 48 sweep)                  | 2026-06-07 |
 
-Unit + contract breakdown (full `pnpm -r run test` output 2026-05-15 v1.1-S2 close):
-135 (@mm/types) + 56 (@mm/sdk) + 75 (@mm/ui) + 115 (@mm/engines) + 9 (@mm/core) + 60 (content-svc) + 36 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 31 (analytics-svc) + 19 (orchestration-svc) + 20 (assignments-svc incl. e2e) + 17 (notifications-svc) + 7 (users-svc) + 55 (apps/web) + 59 (billing-svc) = **753 passed, 1 skipped** (754 total).
+Unit + contract breakdown (full `pnpm -r run test` output 2026-05-15 v1.1-S3 close):
+142 (@mm/types) + 56 (@mm/sdk) + 75 (@mm/ui) + 118 (@mm/engines) + 9 (@mm/core) + 60 (content-svc) + 43 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 31 (analytics-svc) + 19 (orchestration-svc) + 20 (assignments-svc incl. e2e) + 17 (notifications-svc) + 7 (users-svc) + 55 (apps/web) + 59 (billing-svc) = **770 passed, 1 skipped** (771 total).
 
-Delta from v1.1-S1 close (729 passed): **+24** — 8 @mm/types (7 PracticeExamComposerParamsSchema describes + 1 X3 schema-registry auto-test) + 12 content-svc (6 seeded-shuffle unit + 6 composer-branch contract) + 4 assessment-svc (createSession composer wiring incl. analytics-marker persistence + regression guard).
+Delta from v1.1-S2 close (753 passed): **+17** — 7 @mm/types (6 SimulationParamsSchema describes + 1 X3 schema-registry auto-test) + 3 @mm/engines (canNavigateBack simulation-mode tests) + 7 assessment-svc (simulation_params wiring contract tests).
 
-Delta from v1.0.0 baseline (696/697): +57 total since v1.0.0 (+33 v1.1-S1 + +24 v1.1-S2).
+Delta from v1.0.0 baseline (696/697): +74 total since v1.0.0 (+33 v1.1-S1 + +24 v1.1-S2 + +17 v1.1-S3).
 
 ## Quality gates
 
@@ -52,7 +53,7 @@ Delta from v1.0.0 baseline (696/697): +57 total since v1.0.0 (+33 v1.1-S1 + +24 
 | ------------------- | ---------------------------------------------------------------------------------- | ---------- |
 | pnpm lint           | ✅ green (17 packages)                                                             | 2026-05-15 |
 | pnpm typecheck      | ✅ green (17 packages, 0 turbo-cached — --force run per §Close-ritual)            | 2026-05-15 |
-| pnpm test           | ✅ green (753 passed / 1 skipped — 754 total Vitest)                              | 2026-05-15 |
+| pnpm test           | ✅ green (770 passed / 1 skipped — 771 total Vitest)                              | 2026-05-15 |
 | pnpm test:replay    | ✅ green (58/58 assertions)                                                        | 2026-05-16 |
 | pnpm build          | ✅ green (exit 0, 21 routes)                                                       | 2026-05-11 |
 | RLS coverage        | ✅ 53/53 tables enabled + tested (pgTAP 0001–0020 451/451); 0021 deferred         | 2026-06-07 |
@@ -78,44 +79,46 @@ Full table: `docs/dev/perf/measurements.md`.
 
 ## Open items
 
-- ADRs accepted: **36** (ADR-0001 through ADR-0036; ADR-0036 accepted at v1.1-S2 impl close 0bdd43b)
+- ADRs accepted: **37** (ADR-0001 through ADR-0037; ADR-0037 accepted at v1.1-S3 impl close 96b19b5)
 - ADRs proposed: 0
 - Workspaces: **17** — unchanged
 - Issues critical / high / medium / low: **0 / 0 / 8 / 14**
   - Medium (8): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030
   - Low (14): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035
-  - Resolved this session: ISSUE-0037 (downgraded high → info after never-committed + CLI-shared-default findings; full narrative in OPEN_ISSUES.md ## Resolved)
-  - Prior resolved: ISSUE-0005, 0006, 0007, 0008, 0012, 0013, 0018, 0026, 0029, 0036, 0037
-- Migrations: **0001–0021 unchanged** (v1.1-S2 added 0 migrations; Q-1.1-2.1/2.2 zero-migration commitment held)
-- Open questions: **0** — Q-1.1-1.0..9 + Q-1.1-2.1..5 all resolved
+  - Resolved: ISSUE-0005, 0006, 0007, 0008, 0012, 0013, 0018, 0026, 0029, 0036, 0037
+- Migrations: **0001–0021 unchanged** (v1.1-S3 added 0 migrations; Q-1.1-3.1/3.2 zero-migration commitment held)
+- Open questions: **0** — Q-1.1-1.0..9 + Q-1.1-2.1..5 + Q-1.1-3.1..5 all resolved
 - Open bugs: 0
-- Deviations logged: **23 total (9 resolved, 14 open)** — +1 DEV-20260515-1 (T3 protocol breach on Q-1.1-2.5 self-resolve; tracking only) vs v1.1-S1 close
+- Deviations logged: **24 total (9 resolved, 15 open)** — +1 DEV-20260515-2 (atomic commit-and-push process fix; tracking only) vs v1.1-S2 close
   - DEV-20260607-1 accepted — DEV_PLAN "47 stages" count vs delivered 49
   - DEV-20260607-2 accepted — DEV_PLAN Stage 49 "spec §4" citation error
   - DEV-20260514-1 open — v1.1 exam-content phase inserted ahead of P1.1–P1.7 (ADR-0035)
   - DEV-20260515-1 open — T3 protocol breach on Q-1.1-2.5 self-resolve (process-only, no rework)
+  - DEV-20260515-2 open — atomic commit-and-push announcement process fix (tracking only; honored from 560e2d2 onward)
   - Open carries (v1.1): DEV-20260503-2, DEV-20260519-1, DEV-20260522-1, DEV-20260523-1, DEV-20260524-1, DEV-20260526-1, DEV-20260529-1, DEV-20260530-1, DEV-20260530-2, DEV-20260604-1
 - Tag state: `v1-phase-1` pushed (Stage 27). `v1-phase-2-partial` pushed (Stage 41). `v1-phase-4-partial` pushed (Stage 47). **`v1.0.0` on 9376d98 (Stage 49 close commit — push status: unknown — TODO confirm).**
-- Branch: `v1.1/exam-content` HEAD = v1.1-S2 chore close commit (this); 6 commits ahead of origin/main.
+- Branch: `v1.1/exam-content` HEAD = v1.1-S3 chore close commit (this); 10 commits ahead of origin/main.
 
 ## Notes for next session
 
-**v1.1-S3 — Simulation Exam Mode** is next. Before any code:
-- Read `docs/dev/v1.1-phase-plan.md §S3` in full.
-- Read spec §18 'Challenge' row (lines 2619–2624) — timed + strict + scored — closest existing mode. Determine whether `mode='challenge'` fits a simulation exam or whether a genuinely new enum value is needed (would mean migration 0022).
-- Apply §N-trap discipline at the spec read (as v1.1-S2 did with 'practice' vs 'exam').
-- Expect Q-1.1-3.* on mode enum decision; route via T3 round-trip (per DEV-20260515-1 reminder — pre-anticipated ADR contingencies are NOT pre-approval).
-- Read LinearEngine `terminateWithConfig` + `framework_config.time_limit_ms` handling — simulation likely extends timer-strict behaviour rather than introducing a new engine.
+**v1.1-S4 — Teacher Exam Authoring UI** is next. **T5 layout discipline ACTIVATES.**
 
-**Carry-forward (operator follow-ups, NOT v1.1-S3 work):**
+Before any code:
+- Read `docs/dev/v1.1-phase-plan.md §S4` in full.
+- Read `UI_CONTRACT.md` in full — T5 mockup-driven layout sketch required for operator approval BEFORE component code. Mid-impl skeleton checkpoint at end of layout pass (before data wiring) — operator may request adjustments.
+- Read `apps/web/src/app/(teacher)/` existing teacher routes for pattern parity (route structure, auth guards, breadcrumb conventions).
+- Read `SCREEN_SPECS.md` for any S4-relevant screen specifications.
+- S4 consumes S1 (CRUD API) + S2 (composer API); read S1 + S2 contracts to understand what data the UI layer will call.
+- Apply §N-trap discipline at the spec read.
+- Expect Q-1.1-4.* on: route placement, content-list vs item-authoring vs exam-composer view split, draft-autosave behaviour, lifecycle FSM UI affordances (draft → review → published), and whether the teacher-facing composer UI reuses the student-facing session request schema or has its own request shape.
 
-- **ISSUE-0037 — RESOLVED in this session.** Filing assumed a committed `sb_secret_*` credential. Two findings during remediation collapsed the severity to info: (1) `git log --all -S` proves the literal was never committed (only the operator's local working tree carried it); (2) `npx supabase start` banner confirms the keys are CLI shared defaults, not project-exclusive credentials. Rotation impossible by design. Remediation delivered as template-hygiene + defense-in-depth: scrub `.env.local.example` to placeholders, install `.githooks/pre-commit` secret guard, document in `CLAUDE.md §Pre-commit secret guard`. Full narrative in `OPEN_ISSUES.md ## Resolved`. No further operator action required for security.
+**Carry-forward (operator follow-ups, NOT v1.1-S4 work):**
 
 - **`.githooks/pre-commit` activation.** Once per clone: `git config core.hooksPath .githooks`. Same activation as the existing commit-msg hook. Local defense ahead of GitHub push-protection.
 
-- **DEV-20260515-1: T3 fidelity reminder.** For future stages, classify each Q-* at impl T1 as structural-vs-tight-detail BEFORE deciding self-resolve eligibility, even when an ADR pre-frames the answer. ADR pre-anticipation reduces decision risk but does not collapse a structural decision into a tight implementation detail.
+- **DEV-20260515-1: T3 fidelity reminder.** For future stages, classify each Q-* at impl T1 as structural-vs-tight-detail BEFORE deciding self-resolve eligibility, even when an ADR pre-frames the answer.
 
-- **TO FILE at v1.1-S3 chore-close: DEV-20260515-2.** Spurious commit-success report during v1.1-S2 chore-close (2026-05-15): announced "Commit landed: 6b4f53c" before the push completed; push was then rejected by GitHub push-protection (literal `sb_secret_*` in ISSUE-0037 description). Local commit had succeeded but the operator-visible state ("landed on origin") had not. Process fix for future commit + push pairs: announce commit + push as one atomic step, only after both succeed. Tracking only — no rework; final f72a7a8 landed clean after redaction. Operator instruction: file at S3 chore-close, not now.
+- **DEV-20260515-2 honored.** Atomic commit-and-push announcement process fix applied. Continue: announce commit + push as one step, only after both succeed.
 
 **Launch-window operational verification (owner: deploy operator):**
 - Run k6/session-loop.js (500 VU / 1h) + k6/billing-webhook.js against deployed env
