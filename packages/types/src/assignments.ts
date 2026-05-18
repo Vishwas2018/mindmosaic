@@ -5,6 +5,10 @@ import {
   AssignmentSessionStatusSchema,
   UserIdSchema,
 } from './shared.js';
+import {
+  PracticeExamComposerParamsSchema,
+  SimulationParamsSchema,
+} from './session.js';
 
 const DifficultyRangeSchema = z.object({ min: z.number(), max: z.number() });
 
@@ -44,6 +48,8 @@ export const CreateAssignmentRequestSchema = z.object({
   targets: z.array(z.object({ type: z.enum(['student', 'class']), id: z.string() })),
   auto_generated: z.boolean().optional(),
   rationale: z.string().optional(),
+  composer_params: PracticeExamComposerParamsSchema.optional(),
+  simulation_params: SimulationParamsSchema.optional(),
 });
 export type CreateAssignmentRequest = z.infer<typeof CreateAssignmentRequestSchema>;
 

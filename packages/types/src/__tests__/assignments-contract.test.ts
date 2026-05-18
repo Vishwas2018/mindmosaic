@@ -183,3 +183,82 @@ describe('AssignmentDTOSchema', () => {
     if (result.success) expect(result.data.difficulty_range?.max).toBe(0.35);
   });
 });
+
+// ── CreateAssignmentRequestSchema — composer_params + simulation_params (v1.1-S4) ──
+
+const CREATE_REQUEST_EXAM_BASE = {
+  ...CREATE_REQUEST_BASE,
+  mode: 'exam',
+};
+
+const VALID_COMPOSER_PARAMS = {
+  item_count: 20,
+  difficulty_distribution: { easy: 7, mid: 8, hard: 5 },
+  time_limit_ms: 3_600_000,
+};
+
+const VALID_SIMULATION_PARAMS = {
+  no_back_nav: true,
+  hide_feedback_until_submit: true,
+};
+
+describe('CreateAssignmentRequestSchema — composer_params (v1.1-S4)', () => {
+  it('accepts request without composer_params (optional)', () => {
+    expect(CreateAssignmentRequestSchema.safeParse(CREATE_REQUEST_EXAM_BASE).success).toBe(true);
+  });
+
+  it('accepts request with valid composer_params', () => {
+    const result = CreateAssignmentRequestSchema.safeParse({
+      ...CREATE_REQUEST_EXAM_BASE,
+      composer_params: VALID_COMPOSER_PARAMS,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.composer_params?.item_count).toBe(20);
+      expect(result.data.composer_params?.difficulty_distribution.easy).toBe(7);
+    }
+  });
+
+  it('rejects composer_params when difficulty_distribution does not sum to item_count', () => {
+    const result = CreateAssignmentRequestSchema.safeParse({
+      ...CREATE_REQUEST_EXAM_BASE,
+      composer_params: {
+        item_count: 20,
+        difficulty_distribution: { easy: 5, mid: 5, hard: 5 }, // sum=15, not 20
+        time_limit_ms: 3_600_000,
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('CreateAssignmentRequestSchema — simulation_params (v1.1-S4)', () => {
+  it('accepts request without simulation_params (optional)', () => {
+    expect(CreateAssignmentRequestSchema.safeParse(CREATE_REQUEST_EXAM_BASE).success).toBe(true);
+  });
+
+  it('accepts request with valid simulation_params', () => {
+    const result = CreateAssignmentRequestSchema.safeParse({
+      ...CREATE_REQUEST_EXAM_BASE,
+      simulation_params: VALID_SIMULATION_PARAMS,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.simulation_params?.no_back_nav).toBe(true);
+      expect(result.data.simulation_params?.hide_feedback_until_submit).toBe(true);
+    }
+  });
+
+  it('accepts both composer_params and simulation_params together', () => {
+    const result = CreateAssignmentRequestSchema.safeParse({
+      ...CREATE_REQUEST_EXAM_BASE,
+      composer_params: VALID_COMPOSER_PARAMS,
+      simulation_params: VALID_SIMULATION_PARAMS,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.composer_params).toBeDefined();
+      expect(result.data.simulation_params).toBeDefined();
+    }
+  });
+});

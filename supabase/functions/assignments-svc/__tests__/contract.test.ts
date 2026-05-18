@@ -592,3 +592,244 @@ describe('syncAssignmentCompletion', () => {
     expect(updateCall).toBeDefined();
   });
 });
+
+// ─── createAssignment — composer_params + simulation_params (v1.1-S4) ────────
+// Note: the mock proxy chain is insert→select→single; the final captured call has
+// op:'select'. We verify the handler accepts these params (status 201) and uses
+// a custom from-spy to capture the actual insert row args.
+
+function buildClientWithInsertCapture(
+  stubs: Record<string, unknown>,
+  onInsert: (table: string, row: unknown) => void,
+): DbClient & { calls: { table: string; op: string }[] } {
+  const calls: { table: string; op: string }[] = [];
+  const counters: Record<string, number> = {};
+  const fromSpy = vi.fn((table: string) => {
+    const i = counters[table] ?? 0;
+    counters[table] = i + 1;
+    const entry = (stubs as Record<string, unknown>)[table];
+    if (entry === undefined) throw new Error(`mock: unexpected table '${table}'`);
+    const stub = Array.isArray(entry) ? (entry[i] ?? entry[entry.length - 1]) : entry;
+    let capturedOp = 'select';
+    const target = function () {} as unknown as object;
+    const handler: ProxyHandler<object> = {
+      get(_t, prop) {
+        if (prop === 'then') {
+          return (resolve: (v: unknown) => unknown) => {
+            calls.push({ table, op: capturedOp });
+            return resolve(stub);
+          };
+        }
+        if (prop === 'single') {
+          return () => {
+            calls.push({ table, op: capturedOp });
+            return Promise.resolve(stub);
+          };
+        }
+        if (prop === 'insert') {
+          return (row: unknown) => {
+            capturedOp = 'insert';
+            onInsert(table, row);
+            return new Proxy(target, handler);
+          };
+        }
+        if (prop === 'select' || prop === 'update' || prop === 'upsert' || prop === 'delete') {
+          return () => { capturedOp = prop as string; return new Proxy(target, handler); };
+        }
+        return () => new Proxy(target, handler);
+      },
+    };
+    return new Proxy(target, handler) as never;
+  });
+  return { from: fromSpy as never, calls } as never;
+}
+
+describe('createAssignment — composer_params / simulation_params persist (v1.1-S4)', () => {
+  it('createAssignment: persists composer_params in assignment insert row', async () => {
+    const composerParams = {
+      item_count: 20,
+      difficulty_distribution: { easy: 7, mid: 8, hard: 5 },
+      time_limit_ms: 3_600_000,
+    };
+    const insertedRows: Record<string, unknown[]> = {};
+    const db = buildClientWithInsertCapture(
+      {
+        skill_node: [
+          { data: [], error: null },
+          { data: [], error: null },
+        ],
+        assignment: { data: { ...DRAFT_ASSIGNMENT_ROW, composer_params: composerParams, simulation_params: null }, error: null },
+        assignment_target: { data: [], error: null },
+        user_profile: { data: [{ id: TEACHER_ID, display_name: 'Ms Smith', tenant_id: TENANT_ID }], error: null },
+      },
+      (table, row) => {
+        insertedRows[table] = insertedRows[table] ?? [];
+        insertedRows[table]!.push(row);
+      },
+    );
+
+    const result = await createAssignment(
+      {
+        title: 'Exam Assignment', mode: 'exam', pathway_id: PATHWAY_ID,
+        target_skill_ids: [], item_count: 20,
+        targets: [{ type: 'class', id: CLASS_ID }],
+        composer_params: composerParams,
+      },
+      null, TEACHER_CALLER, db,
+    );
+
+    expect(result.status).toBe(201);
+    const assignmentInsert = insertedRows['assignment']?.[0] as Record<string, unknown> | undefined;
+    expect(assignmentInsert).toBeDefined();
+    expect(assignmentInsert!['composer_params']).toEqual(composerParams);
+  });
+
+  it('createAssignment: persists simulation_params in assignment insert row', async () => {
+    const simulationParams = { no_back_nav: true, hide_feedback_until_submit: true };
+    const insertedRows: Record<string, unknown[]> = {};
+    const db = buildClientWithInsertCapture(
+      {
+        skill_node: [
+          { data: [], error: null },
+          { data: [], error: null },
+        ],
+        assignment: { data: { ...DRAFT_ASSIGNMENT_ROW, composer_params: null, simulation_params: simulationParams }, error: null },
+        assignment_target: { data: [], error: null },
+        user_profile: { data: [{ id: TEACHER_ID, display_name: 'Ms Smith', tenant_id: TENANT_ID }], error: null },
+      },
+      (table, row) => {
+        insertedRows[table] = insertedRows[table] ?? [];
+        insertedRows[table]!.push(row);
+      },
+    );
+
+    const result = await createAssignment(
+      {
+        title: 'Exam Assignment', mode: 'exam', pathway_id: PATHWAY_ID,
+        target_skill_ids: [], item_count: 20,
+        targets: [{ type: 'class', id: CLASS_ID }],
+        simulation_params: simulationParams,
+      },
+      null, TEACHER_CALLER, db,
+    );
+
+    expect(result.status).toBe(201);
+    const assignmentInsert = insertedRows['assignment']?.[0] as Record<string, unknown> | undefined;
+    expect(assignmentInsert).toBeDefined();
+    expect(assignmentInsert!['simulation_params']).toEqual(simulationParams);
+  });
+
+  it('createAssignment: null composer_params and simulation_params inserted when absent', async () => {
+    const insertedRows: Record<string, unknown[]> = {};
+    const db = buildClientWithInsertCapture(
+      {
+        skill_node: [
+          { data: [], error: null },
+          { data: [], error: null },
+        ],
+        assignment: { data: { ...DRAFT_ASSIGNMENT_ROW, composer_params: null, simulation_params: null }, error: null },
+        assignment_target: { data: [], error: null },
+        user_profile: { data: [{ id: TEACHER_ID, display_name: 'Ms Smith', tenant_id: TENANT_ID }], error: null },
+      },
+      (table, row) => {
+        insertedRows[table] = insertedRows[table] ?? [];
+        insertedRows[table]!.push(row);
+      },
+    );
+
+    const result = await createAssignment(
+      {
+        title: 'Practice', mode: 'practice', pathway_id: PATHWAY_ID,
+        target_skill_ids: [], item_count: 10,
+        targets: [{ type: 'class', id: CLASS_ID }],
+      },
+      null, TEACHER_CALLER, db,
+    );
+
+    expect(result.status).toBe(201);
+    const assignmentInsert = insertedRows['assignment']?.[0] as Record<string, unknown> | undefined;
+    expect(assignmentInsert).toBeDefined();
+    expect(assignmentInsert!['composer_params']).toBeNull();
+    expect(assignmentInsert!['simulation_params']).toBeNull();
+  });
+});
+
+// ─── startAssignment — forwards composer_params + simulation_params (v1.1-S4) ─
+
+describe('startAssignment — forwards composer_params / simulation_params (v1.1-S4)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('startAssignment: forwards composer_params from assignment row to assessment-svc', async () => {
+    const newSessionId = 'ns000000-0000-4000-8000-000000000002';
+    const composerParams = {
+      item_count: 20,
+      difficulty_distribution: { easy: 7, mid: 8, hard: 5 },
+      time_limit_ms: 3_600_000,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { session_id: newSessionId } }),
+      }),
+    );
+
+    const rowWithParams = {
+      ...PUBLISHED_ASSIGNMENT_ROW,
+      composer_params: composerParams,
+      simulation_params: null,
+    };
+
+    const db = buildClient({
+      assignment: { data: [rowWithParams], error: null },
+      assignment_session: [
+        { data: [{ assignment_id: ASSIGNMENT_ID, student_id: STUDENT_ID, tenant_id: TENANT_ID, session_id: null, status: 'pending', completed_at: null, created_at: '2026-05-23T00:00:00.000Z', updated_at: '2026-05-23T00:00:00.000Z' }], error: null },
+        { data: [], error: null },
+      ],
+    });
+
+    await startAssignment(ASSIGNMENT_ID, STUDENT_ID, 'Bearer tok', null, 'trace-s4-1', db, 'http://assessment-svc');
+
+    const fetchMock = vi.mocked(fetch);
+    const [, opts] = fetchMock.mock.calls[0]!;
+    const reqBody = JSON.parse((opts as RequestInit).body as string) as Record<string, unknown>;
+    expect(reqBody['composer_params']).toEqual(composerParams);
+    expect(reqBody['simulation_params']).toBeUndefined();
+  });
+
+  it('startAssignment: forwards simulation_params from assignment row to assessment-svc', async () => {
+    const newSessionId = 'ns000000-0000-4000-8000-000000000003';
+    const simulationParams = { no_back_nav: true, hide_feedback_until_submit: true };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { session_id: newSessionId } }),
+      }),
+    );
+
+    const rowWithParams = {
+      ...PUBLISHED_ASSIGNMENT_ROW,
+      composer_params: null,
+      simulation_params: simulationParams,
+    };
+
+    const db = buildClient({
+      assignment: { data: [rowWithParams], error: null },
+      assignment_session: [
+        { data: [{ assignment_id: ASSIGNMENT_ID, student_id: STUDENT_ID, tenant_id: TENANT_ID, session_id: null, status: 'pending', completed_at: null, created_at: '2026-05-23T00:00:00.000Z', updated_at: '2026-05-23T00:00:00.000Z' }], error: null },
+        { data: [], error: null },
+      ],
+    });
+
+    await startAssignment(ASSIGNMENT_ID, STUDENT_ID, 'Bearer tok', null, 'trace-s4-2', db, 'http://assessment-svc');
+
+    const fetchMock = vi.mocked(fetch);
+    const [, opts] = fetchMock.mock.calls[0]!;
+    const reqBody = JSON.parse((opts as RequestInit).body as string) as Record<string, unknown>;
+    expect(reqBody['simulation_params']).toEqual(simulationParams);
+    expect(reqBody['composer_params']).toBeUndefined();
+  });
+});

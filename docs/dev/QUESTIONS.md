@@ -9,6 +9,27 @@
 
 ## Resolved
 
+### Q-1.1-4.8 — Should ADR-0038 §Decision 4 "zero migrations" be corrected?
+
+- Date raised: 2026-05-18 (v1.1-S4 pre-push verification)
+- Asked of: self (T2-tightened — implementation discovery)
+- Source: ADR-0038 §Decision 4 Rationale; pre-push V18 migration audit
+- Question: ADR-0038 §Decision 4 rationale states "zero migrations". Pre-push
+  audit found that `difficulty_range` already exists on the assignment table
+  (migration 0015 — semantic float-range field). `composer_params` and
+  `simulation_params` are structurally distinct jsonb fields and are not present
+  in any migration. Do these require a net-new migration, correcting the ADR?
+- Why ambiguous: difficulty_range is a similar jsonb field pattern on assignment;
+  the original rationale may have intended to rely on an existing mechanism.
+- Blocking? yes — handler references non-existent columns
+- Assumed answer: Yes. `difficulty_range` is a semantic field predating S4. The
+  two exam-mode fields are net-new and require migration 0022.
+- Code affected: `supabase/migrations/0022_assignments_composer_fields.sql`,
+  `supabase/functions/assignments-svc/handlers.ts`
+- Status: resolved
+- Resolution: Migration 0022 created (2026-05-18). ADR-0038 §Decision 4 amended
+  with Q-1.1-4.8 correction block.
+
 ### Q-1.1-4.5 — Bank browser depth: item-level list endpoint vs pathway-level stats only?
 
 - Date raised: 2026-05-15 (v1.1-S4 morning ritual)

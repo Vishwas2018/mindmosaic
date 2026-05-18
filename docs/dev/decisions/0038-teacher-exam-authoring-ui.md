@@ -1,6 +1,6 @@
 # ADR-0038 — Teacher Exam Authoring UI model
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-05-15
 - Stage: v1.1-S4
 - Tags: frontend, backend, data
@@ -115,7 +115,7 @@ as the pool. Pathway-level browse is sufficient for the S4 use case.
 
 ## Consequences
 
-- Positive: zero new migrations; zero RLS changes; clean S4 scope boundary; ADR-0035 honoured.
+- Positive: 1 migration (0022 — 2 nullable jsonb columns); zero RLS changes; clean S4 scope boundary; ADR-0035 honoured.
 - Negative: `difficulty_range` and `difficulty_distribution` both live on `CreateAssignmentRequest`
   as acknowledged alternates — duplication to be unified post-launch.
 - Negative: no item-level preview in bank browser — teacher sees pathway name + item count only.
@@ -123,21 +123,54 @@ as the pool. Pathway-level browse is sufficient for the S4 use case.
   + RLS Pattern F per ADR-0035 §Decision 2 Follow-ups. Unify `difficulty_range` /
   `difficulty_distribution` on `CreateAssignmentRequest`.
 
+## Decision 4 amendment (Q-1.1-4.8 — 2026-05-18)
+
+The original §Decision 4 stated "zero migrations" for S4. This was incorrect. Pre-push verification
+(Q-1.1-4.8) surfaced that `difficulty_range` already existed on the `assignment` table as a semantic
+float-range field (migration 0015); `composer_params` and `simulation_params` are structurally
+distinct exam-mode fields (jsonb nullable) and require net-new columns. Migration 0022 (`ALTER TABLE
+assignment ADD COLUMN composer_params jsonb NULL, ADD COLUMN simulation_params jsonb NULL`) was
+added. RLS is unchanged. The "zero migrations" claim in the original rationale is superseded by this
+amendment; all other §Decision 4 reasoning stands.
+
 ## Implementation notes
 
 States matrix mandatory on every data-bound component (UI_CONTRACT lines 547–557; merge-blocker):
-Loading / Empty / Error / 402-upgrade / Content.
+Loading / Empty / Error / 402-upgrade / Content. Named components used on both routes:
+`LoadingState`, `ErrorState`, `EmptyState_`, `UpgradeState`, `PathwayGrid` (/teacher/content)
+and `ComposerForm` (/teacher/content/new).
 
 No new UI primitives by default. Distribution band picker decision deferred to Checkpoint A sketch.
 
 axe-core zero serious/critical on both new routes (DoD per UI_CONTRACT lines 748–759).
+Test: `apps/web/playwright/e2e/exam-content-a11y.spec.ts`.
 
 SCREEN_SPECS gap acknowledged: this ADR + Checkpoint A sketch = de-facto spec for
 `/teacher/content` and `/teacher/content/new`.
 
-Files (projected): `packages/types/src/assignment.ts` · `supabase/functions/assignments-svc/handlers.ts`
-· `packages/sdk/src/hooks/assignments.ts` · `apps/web/src/app/(teacher)/teacher/content/page.tsx`
-· `apps/web/src/app/(teacher)/teacher/content/new/page.tsx`
+Implementation notes addendum (v1.1-S4 post-impl):
 
-Commit: pending impl · Related: ADR-0035, ADR-0036, ADR-0037, Q-1.1-4.1, Q-1.1-4.2,
-Q-1.1-4.3, Q-1.1-4.4, Q-1.1-4.5
+- **examConditions bundling**: simulation_params `{ no_back_nav: true, hide_feedback_until_submit: true }`
+  are always sent as a unit when simulation mode is enabled; the two flags are not independently
+  togglable from the S4 UI (single checkbox). Individual flag control deferred.
+- **submit-disabled UX**: Submit button is `disabled={isPending}` during mutation; `aria-label`
+  switches to `C.submittingLabel` to announce state to assistive technology.
+- **orphan-draft rollback**: On network failure after create, the assignment record is left as
+  `status: 'draft'` with no automatic rollback. Teacher must manually archive via the assignments
+  list. A compensating transaction or optimistic-delete is a post-launch follow-up.
+- **"N items" drop**: `C.itemCountLabel(n)` helper is defined in COPY but not rendered in the
+  bank browser (pathway-level browse has no item count from `usePathways()` response). Reserved
+  for when item-list endpoint ships (ADR-0038 Decision 5 follow-up).
+- **target_skill_ids:[] CHECK semantics**: Empty array `[]` passed as `target_skill_ids` means
+  "all skills within the selected pathway" — the assignments-svc handler interprets absence of
+  skill constraints as full-pathway scope. This matches the CHECK constraint intent; no explicit
+  NULL vs empty-array distinction required at S4.
+
+Files: `packages/types/src/assignments.ts` · `supabase/functions/assignments-svc/handlers.ts`
+· `supabase/migrations/0022_assignments_composer_fields.sql` · `packages/sdk/src/hooks/assignments.ts`
+· `apps/web/src/app/(teacher)/teacher/content/page.tsx`
+· `apps/web/src/app/(teacher)/teacher/content/new/page.tsx`
+· `apps/web/playwright/e2e/exam-content-a11y.spec.ts`
+
+Commit: v1.1-S4 impl · Related: ADR-0035, ADR-0036, ADR-0037, Q-1.1-4.1, Q-1.1-4.2,
+Q-1.1-4.3, Q-1.1-4.4, Q-1.1-4.5, Q-1.1-4.8
