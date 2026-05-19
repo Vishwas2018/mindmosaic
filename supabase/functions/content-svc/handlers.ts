@@ -11,7 +11,8 @@
  * resolution in `/content/select`.
  */
 
-import { ItemCreateDTOSchema, ItemUpdateDTOSchema } from '@mm/types';
+import { ItemCreateDTOSchema, ItemUpdateDTOSchema, type ImportManifest } from '@mm/types';
+import { stemSha } from '../_shared/stemSha.ts';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -1131,5 +1132,133 @@ export async function getActiveSkillGraph(
     id: cache.version.id,
     version: cache.version.version,
     published_at: cache.version.published_at,
+  });
+}
+
+// ─── importItems ──────────────────────────────────────────────────────────────
+
+type ImportItemOutcome = {
+  external_key: string;
+  status: 'ok' | 'rejected' | 'duplicate_stem' | 'duplicate_external_key' | 'intra_manifest_duplicate';
+  item_id?: string;
+  reason?: string;
+};
+
+export type ImportResult = {
+  imported: number;
+  rejected: number;
+  skipped_duplicates: number;
+  total: number;
+  dry_run: boolean;
+  items: ImportItemOutcome[];
+};
+
+export async function importItems(
+  client: DbClient,
+  manifest: ImportManifest,
+  dryRun: boolean,
+  callerId: string,
+): Promise<HandlerResult<ImportResult>> {
+  const items = manifest.items;
+  const outcomes: ImportItemOutcome[] = [];
+  let imported = 0;
+  let rejected = 0;
+  let skippedDuplicates = 0;
+
+  const intraSHASet = new Set<string>();
+  const intraKeyMap = new Map<string, number>();
+
+  for (let i = 0; i < items.length; i++) {
+    const manifestItem = items[i]!;
+    const { external_key, item: itemFields, version: versionFields, stimulus: stimulusFields } = manifestItem;
+
+    // Intra-manifest external_key dedup (Q-1.1-6.8 Option B: intra-manifest only)
+    if (intraKeyMap.has(external_key)) {
+      outcomes.push({
+        external_key,
+        status: 'intra_manifest_duplicate',
+        reason: `external_key already seen at index ${intraKeyMap.get(external_key)!}`,
+      });
+      skippedDuplicates++;
+      continue;
+    }
+    intraKeyMap.set(external_key, i);
+
+    // Intra-manifest stem SHA dedup (Q-1.1-6.7 Option C: intra-manifest only; no cross-DB lookup)
+    const sha = await stemSha(versionFields.stem);
+    if (intraSHASet.has(sha)) {
+      outcomes.push({
+        external_key,
+        status: 'intra_manifest_duplicate',
+        reason: 'stem SHA matches sibling item in this manifest',
+      });
+      skippedDuplicates++;
+      continue;
+    }
+    intraSHASet.add(sha);
+
+    if (dryRun) {
+      outcomes.push({ external_key, status: 'ok' });
+      imported++;
+      continue;
+    }
+
+    // Write path: optional stimulus → item → item_version (per-item; no cross-manifest transaction)
+    let stimulusId: string | undefined;
+    if (stimulusFields !== undefined) {
+      const stimResult = await createStimulus(client, stimulusFields as StimulusCreateBody);
+      if (!stimResult.ok) {
+        outcomes.push({ external_key, status: 'rejected', reason: stimResult.message });
+        rejected++;
+        continue;
+      }
+      stimulusId = stimResult.data.id;
+    }
+
+    const itemResult = await createItem(client, {
+      ...(itemFields as ItemCreateBody),
+      stimulus_id: stimulusId ?? (itemFields as ItemCreateBody).stimulus_id,
+    });
+    if (!itemResult.ok) {
+      outcomes.push({ external_key, status: 'rejected', reason: itemResult.message });
+      rejected++;
+      continue;
+    }
+    const itemId = itemResult.data.id;
+
+    const versionResult = await createItemVersion(
+      client,
+      itemId,
+      {
+        stem: versionFields.stem,
+        response_config: versionFields.response_config,
+        difficulty: versionFields.difficulty,
+        distractor_rationale: versionFields.distractor_rationale,
+        explanation: versionFields.explanation,
+        discrimination: versionFields.discrimination,
+      },
+      callerId,
+    );
+    if (!versionResult.ok) {
+      // Best-effort rollback of the orphaned item insert
+      await (client.from('item') as unknown as {
+        delete(): { eq(col: string, val: unknown): Promise<{ error: { message: string } | null }> };
+      }).delete().eq('id', itemId);
+      outcomes.push({ external_key, status: 'rejected', reason: versionResult.message });
+      rejected++;
+      continue;
+    }
+
+    outcomes.push({ external_key, status: 'ok', item_id: itemId });
+    imported++;
+  }
+
+  return ok({
+    imported,
+    rejected,
+    skipped_duplicates: skippedDuplicates,
+    total: items.length,
+    dry_run: dryRun,
+    items: outcomes,
   });
 }

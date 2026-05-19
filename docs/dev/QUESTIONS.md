@@ -111,6 +111,36 @@ T3 classification: tight detail — implementation invariant within agreed FSM; 
 
 ---
 
+### Q-1.1-6.7 — Cross-DB stem SHA dedup: implement at S6 or defer?
+
+- Date raised: 2026-05-19 (v1.1-S6 Gate I)
+- Asked of: operator
+- Source: Gate I design sketch §4 (dup detection); spec §21.2 (import endpoint); ADR-0041 §Decision 3
+- Question: Should `POST /content/import` check `item_version.stem_sha` against the full DB (cross-import dedup), or only within the submitted manifest (intra-manifest dedup)?
+- Why ambiguous: Cross-DB dedup prevents duplicates across batches; intra-manifest dedup only prevents duplicates within one manifest. At S6 launch the item bank is empty, so cross-DB check operates against an empty set.
+- Blocking? no
+- Assumed answer: Defer; intra-manifest only (Option C)
+- Code affected: `supabase/functions/_shared/stemSha.ts`, `supabase/functions/content-svc/handlers.ts` (importItems — SHA Set, not DB query)
+- Status: resolved
+- Resolution: **Option C — defer cross-DB stem SHA dedup. Intra-manifest SHA Set only at S6. Empty-bank rationale: at launch the item bank contains 0 prior imports; cross-lookup operates against an empty set. Upgrade tracked as ISSUE-0049 extension (or sibling ISSUE-0050). (2026-05-19 operator decision)** ADR-0041 §Decision 3 amendment records both deferrals.
+
+---
+
+### Q-1.1-6.8 — Cross-import external_key dedup: implement at S6 or defer?
+
+- Date raised: 2026-05-19 (v1.1-S6 Gate III)
+- Asked of: operator
+- Source: `ImportManifestItemSchema.external_key` field; Q-1.1-6.7 precedent
+- Question: Should `external_key` be unique across all prior imports (DB lookup), or only within the current manifest (intra-manifest Map)?
+- Why ambiguous: Cross-import dedup prevents re-import of an item already in the bank. At S6 launch the bank is empty. Idempotency-Key replay handles re-submission of the same manifest body.
+- Blocking? no
+- Assumed answer: Defer; intra-manifest only (Option B, consistent with Q-1.1-6.7)
+- Code affected: `supabase/functions/content-svc/handlers.ts` (importItems — `intraKeyMap`, no DB lookup)
+- Status: resolved
+- Resolution: **Option B — defer cross-import external_key dedup. Intra-manifest Map only at S6. `DUPLICATE_EXTERNAL_KEY` outcome code stays in schema/ADR-0041 §Implementation Notes as upgrade path. (2026-05-19 operator decision)** ADR-0041 §Decision 3 amendment records both deferrals.
+
+---
+
 ### Q-1.1-5.6 — Post-submission results: simulation-specific variant or reuse /results/[id]?
 
 - Date raised: 2026-05-18 (v1.1-S5 morning ritual)

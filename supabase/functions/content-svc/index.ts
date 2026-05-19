@@ -11,10 +11,12 @@
  *   GET  /assessment-profiles?exam_family=&year_level=
  *   GET  /content/items/{id}
  *   POST /content/select                     [service-role only]
+ *   POST /content/import                     [platform_admin OR service-role; dual-gate]
  *   GET  /content/search?q=&...              [admin only]
  *   GET  /skill-graphs/active
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { ImportManifestSchema } from '@mm/types';
 import { getTraceId } from '../_shared/trace-id.ts';
 import { jsonOk, jsonError } from '../_shared/error-envelope.ts';
 import { verifyBearer } from '../_shared/auth.ts';
@@ -39,6 +41,8 @@ import {
   listItemVersions,
   createStimulus,
   updateStimulus,
+  importItems,
+  type ImportResult,
   type DbClient as HandlerDbClient,
   type ContentSelectRequest,
   type ItemAdminDTO,
@@ -126,6 +130,75 @@ Deno.serve(async (req: Request) => {
         return jsonError(result.code, result.message, traceId, result.status);
       }
       return jsonOk(result.data, traceId);
+    }
+
+    // ── Dual-auth gate for /content/import (platform_admin Bearer OR service-role) ─
+    if (method === 'POST' && path === '/content/import') {
+      let importCallerId = 'service-role';
+      let importIdempScope = '_service_';
+      const serviceToken = req.headers.get(SERVICE_HEADER);
+      const isServiceRole = serviceToken !== null && serviceToken === SERVICE_ROLE_KEY;
+      if (!isServiceRole) {
+        const importAuth = await verifyBearer(req, db);
+        if (!importAuth) {
+          status = 401;
+          return jsonError('UNAUTHENTICATED', 'Valid Bearer token required', traceId, 401);
+        }
+        const importRole = await callerRole(db, importAuth.user.id);
+        if (importRole !== 'platform_admin') {
+          status = 403;
+          return jsonError('FORBIDDEN', 'platform_admin or service-role required', traceId, 403);
+        }
+        userId = importAuth.user.id;
+        tenantId = (await callerTenantId(db, userId)) ?? undefined;
+        importCallerId = userId;
+        importIdempScope = tenantId ?? userId;
+      }
+
+      const rawBody = await req.text();
+      const bodyJson = JSON.parse(rawBody) as unknown;
+      const parsed = ImportManifestSchema.safeParse(bodyJson);
+      if (!parsed.success) {
+        const first = parsed.error.issues[0]!;
+        status = 422;
+        return jsonError('VALIDATION_ERROR', `${first.path.join('.')}: ${first.message}`, traceId, 422);
+      }
+
+      const dryRun = url.searchParams.get('dry_run') === 'true';
+
+      if (dryRun) {
+        const result = await importItems(handlerClient, parsed.data, true, importCallerId);
+        if (!result.ok) { status = result.status; return jsonError(result.code, result.message, traceId, result.status); }
+        const s = result.data.rejected === 0 ? 200 : result.data.rejected < result.data.total ? 207 : 422;
+        status = s;
+        return jsonOk(result.data, traceId, s);
+      }
+
+      const idempKey = req.headers.get('Idempotency-Key') ?? '';
+      if (idempKey.length === 0) {
+        status = 422;
+        return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422);
+      }
+
+      type OutImport = { ok: true; data: ImportResult } | { ok: false; httpStatus: number; code: string; message: string };
+      const iResult = await withIdempotency<OutImport>({
+        client: db as unknown as IdempotencyDbClient,
+        idempotencyKey: idempKey,
+        tenantId: importIdempScope,
+        endpoint: 'POST /content/import',
+        bodyText: rawBody,
+        handler: async () => {
+          const result = await importItems(handlerClient, parsed.data, false, importCallerId);
+          if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+          const s = result.data.rejected === 0 ? 200 : result.data.rejected < result.data.total ? 207 : 422;
+          return { status: s, data: { ok: true as const, data: result.data } };
+        },
+      });
+      if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+      const outcome = iResult.data;
+      if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+      status = iResult.status;
+      return jsonOk(outcome.data, traceId, status);
     }
 
     // ── Bearer auth for everything else ──────────────────────────────────────

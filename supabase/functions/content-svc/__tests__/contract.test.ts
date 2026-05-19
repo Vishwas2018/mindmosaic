@@ -16,6 +16,7 @@
  * test descriptions.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ImportManifestSchema, type ImportManifest } from '@mm/types';
 import {
   invalidateSkillGraph,
   getSkillGraph,
@@ -38,6 +39,7 @@ import {
   listItemVersions,
   createStimulus,
   updateStimulus,
+  importItems,
   type DbClient,
 } from '../handlers.ts';
 import {
@@ -1393,5 +1395,220 @@ describe('content-svc — POST /content/select (composer branch, v1.1-S2)', () =
     if (!result.ok) throw new Error('expected ok');
     expect(result.data).toHaveLength(1);
     expect(result.data[0]!.item_id).toBe('item-x');
+  });
+});
+
+// ─── POST /content/import (importItems) — v1.1-S6 (ADR-0041) ─────────────────
+
+describe('content-svc — POST /content/import (importItems)', () => {
+  const IMPORT_ITEM_STUB_1 = {
+    id: 'import-item-1', source_item_id: null, stimulus_id: null,
+    response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5,
+    discrimination: null, expected_time_secs: null, year_levels: [5],
+    exam_families: ['naplan'], programs: [], countries: [], curricula: [],
+    bloom_level: null, lifecycle: 'draft', is_active: false, current_version: 1,
+    created_at: '2026-05-19T00:00:00.000Z', updated_at: '2026-05-19T00:00:00.000Z',
+  };
+  const IMPORT_ITEM_STUB_2 = { ...IMPORT_ITEM_STUB_1, id: 'import-item-2', skill_ids: ['sk-2'] };
+  const IMPORT_VER_STUB_1 = {
+    item_id: 'import-item-1', version: 1,
+    stem: { kind: 'plain_text', value: 'What is 2 + 2?' },
+    response_config: { options: ['3', '4', '5', '6'] },
+    distractor_rationale: null, explanation: null, metadata: { author_id: 'import' },
+    difficulty: 0.5, discrimination: null, is_current: true, supersedes: null,
+    created_at: '2026-05-19T00:00:00.000Z',
+  };
+  const IMPORT_VER_STUB_2 = {
+    ...IMPORT_VER_STUB_1, item_id: 'import-item-2',
+    stem: { kind: 'plain_text', value: 'What is 3 + 3?' },
+  };
+
+  // Stubs for one successful item write (no stimulus): 3 item stubs + 3 item_version stubs
+  function itemWriteStubs(
+    itemStub: typeof IMPORT_ITEM_STUB_1,
+    verStub: typeof IMPORT_VER_STUB_1,
+  ) {
+    return {
+      item: [
+        { data: itemStub, error: null },               // createItem insert
+        { data: { id: itemStub.id }, error: null },    // createItemVersion exists check
+        { data: null, error: null },                   // createItemVersion sync current_version
+      ],
+      item_version: [
+        { data: [], error: null },                     // max version (no prior versions → v1)
+        { data: null, error: null },                   // flip is_current=false
+        { data: verStub, error: null },                // insert new version
+      ],
+    };
+  }
+
+  it('returns summary with all items ok on valid manifest (happy path)', async () => {
+    const s1 = itemWriteStubs(IMPORT_ITEM_STUB_1, IMPORT_VER_STUB_1);
+    const s2 = itemWriteStubs(IMPORT_ITEM_STUB_2, IMPORT_VER_STUB_2);
+    const client = mockClient({
+      item: [...s1.item, ...s2.item],
+      item_version: [...s1.item_version, ...s2.item_version],
+    });
+    const manifest: ImportManifest = {
+      manifest_version: '1.0',
+      items: [
+        {
+          external_key: 'key-001', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: { options: ['3', '4', '5', '6'] }, difficulty: 0.5 },
+        },
+        {
+          external_key: 'key-002', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: { options: ['4', '5', '6', '7'] }, difficulty: 0.6 },
+        },
+      ],
+    };
+    const result = await importItems(client, manifest, false, 'import');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.imported).toBe(2);
+    expect(result.data.rejected).toBe(0);
+    expect(result.data.total).toBe(2);
+    expect(result.data.dry_run).toBe(false);
+    expect(result.data.items[0]!.status).toBe('ok');
+    expect(result.data.items[0]!.item_id).toBe('import-item-1');
+    expect(result.data.items[1]!.status).toBe('ok');
+    expect(result.data.items[1]!.item_id).toBe('import-item-2');
+  });
+
+  it('returns partial-failure shape when item DB write fails', async () => {
+    const s1 = itemWriteStubs(IMPORT_ITEM_STUB_1, IMPORT_VER_STUB_1);
+    const client = mockClient({
+      item: [...s1.item, { data: null, error: { message: 'DB write error' } }],
+      item_version: s1.item_version,
+    });
+    const manifest: ImportManifest = {
+      manifest_version: '1.0',
+      items: [
+        {
+          external_key: 'key-001', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
+        },
+        {
+          external_key: 'key-002', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
+        },
+      ],
+    };
+    const result = await importItems(client, manifest, false, 'import');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.imported).toBe(1);
+    expect(result.data.rejected).toBe(1);
+    expect(result.data.total).toBe(2);
+    expect(result.data.items[0]!.status).toBe('ok');
+    expect(result.data.items[1]!.status).toBe('rejected');
+    expect(result.data.items[1]!.reason).toContain('DB write error');
+  });
+
+  it('returns intra_manifest_duplicate when stem SHA matches sibling item', async () => {
+    const s1 = itemWriteStubs(IMPORT_ITEM_STUB_1, IMPORT_VER_STUB_1);
+    const client = mockClient({ item: s1.item, item_version: s1.item_version });
+    const sharedStem = { kind: 'plain_text', value: 'What is 2 + 2?' };
+    const manifest: ImportManifest = {
+      manifest_version: '1.0',
+      items: [
+        {
+          external_key: 'key-001', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: sharedStem, response_config: {}, difficulty: 0.5 },
+        },
+        {
+          external_key: 'key-002', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: sharedStem, response_config: {}, difficulty: 0.6 }, // identical stem
+        },
+      ],
+    };
+    const result = await importItems(client, manifest, false, 'import');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.imported).toBe(1);
+    expect(result.data.skipped_duplicates).toBe(1);
+    expect(result.data.items[0]!.status).toBe('ok');
+    expect(result.data.items[1]!.status).toBe('intra_manifest_duplicate');
+    expect(result.data.items[1]!.reason).toContain('stem SHA');
+  });
+
+  it('schema rejects manifest with copyright_declaration absent (manifest-level 422 gate)', () => {
+    const parseResult = ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [{
+        external_key: 'key-001',
+        // copyright_declaration intentionally omitted — Zod literal('original') must reject
+        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+        version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
+      }],
+    });
+    expect(parseResult.success).toBe(false);
+    if (parseResult.success) throw new Error('expected parse failure');
+    const paths = parseResult.error.issues.map(i => i.path.join('.'));
+    expect(paths.some(p => p.includes('copyright_declaration'))).toBe(true);
+  });
+
+  it('returns intra_manifest_duplicate for second item with same external_key', async () => {
+    const s1 = itemWriteStubs(IMPORT_ITEM_STUB_1, IMPORT_VER_STUB_1);
+    const client = mockClient({ item: s1.item, item_version: s1.item_version });
+    const manifest: ImportManifest = {
+      manifest_version: '1.0',
+      items: [
+        {
+          external_key: 'key-dup', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
+        },
+        {
+          external_key: 'key-dup', // duplicate external_key
+          copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
+        },
+      ],
+    };
+    const result = await importItems(client, manifest, false, 'import');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.imported).toBe(1);
+    expect(result.data.skipped_duplicates).toBe(1);
+    expect(result.data.items[0]!.status).toBe('ok');
+    expect(result.data.items[1]!.status).toBe('intra_manifest_duplicate');
+    expect(result.data.items[1]!.reason).toContain('external_key');
+  });
+
+  it('dry-run returns ok shape with dry_run: true and makes no DB writes', async () => {
+    const client = mockClient({});
+    const manifest: ImportManifest = {
+      manifest_version: '1.0',
+      items: [
+        {
+          external_key: 'key-001', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
+        },
+        {
+          external_key: 'key-002', copyright_declaration: 'original',
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
+        },
+      ],
+    };
+    const result = await importItems(client, manifest, true, 'import');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('expected ok');
+    expect(result.data.imported).toBe(2);
+    expect(result.data.rejected).toBe(0);
+    expect(result.data.dry_run).toBe(true);
+    expect(result.data.items[0]!.status).toBe('ok');
+    expect(result.data.items[1]!.status).toBe('ok');
+    // No DB calls made — mock would throw on any from() call since responses={}
+    expect(Object.keys((client as ReturnType<typeof mockClient>).callCounts())).toHaveLength(0);
   });
 });

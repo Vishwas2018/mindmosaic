@@ -160,3 +160,47 @@ export const StimulusUpdateDTOSchema = z.object({
   is_active: z.boolean().optional(),
 });
 export type StimulusUpdateDTO = z.infer<typeof StimulusUpdateDTOSchema>;
+
+// ─── Bulk import manifest schemas (v1.1-S6) ──────────────────────────────────
+
+export const ImportManifestItemSchema = z.object({
+  external_key: z.string().min(1).max(200),
+  copyright_declaration: z.literal('original'),
+  item: z.object({
+    response_type: z.string().min(1),
+    skill_ids: z.array(z.string()).min(1),
+    difficulty: z.number(),
+    year_levels: z.array(z.number().int()).min(1),
+    exam_families: z.array(z.string()).min(1),
+    source_item_id: z.string().nullable().optional(),
+    stimulus_id: z.string().nullable().optional(),
+    discrimination: z.number().nullable().optional(),
+    expected_time_secs: z.number().int().nullable().optional(),
+    programs: z.array(z.string()).optional(),
+    countries: z.array(z.string()).optional(),
+    curricula: z.array(z.string()).optional(),
+    bloom_level: z.string().nullable().optional(),
+  }),
+  version: z.object({
+    stem: z.record(z.string(), z.unknown()),
+    response_config: z.record(z.string(), z.unknown()),
+    difficulty: z.number(),
+    distractor_rationale: z.record(z.string(), z.unknown()).nullable().optional(),
+    explanation: z.record(z.string(), z.unknown()).nullable().optional(),
+    discrimination: z.number().nullable().optional(),
+  }),
+  stimulus: z.object({
+    type: z.string().min(1),
+    content: z.record(z.string(), z.unknown()),
+    source_attribution: z.string().nullable().optional(),
+    year_levels: z.array(z.number().int()).optional(),
+    exam_families: z.array(z.string()).optional(),
+  }).optional(),
+});
+export type ImportManifestItem = z.infer<typeof ImportManifestItemSchema>;
+
+export const ImportManifestSchema = z.object({
+  manifest_version: z.literal('1.0'),
+  items: z.array(ImportManifestItemSchema).min(1).max(500),
+});
+export type ImportManifest = z.infer<typeof ImportManifestSchema>;
