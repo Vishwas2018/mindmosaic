@@ -1,6 +1,6 @@
 # ADR-0041 — Content Import Pipeline Patterns
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-05-19
 - Stage: v1.1-S6 prep
 - Tags: backend | data | security | dx
@@ -82,6 +82,15 @@ Operational ownership question only; no code option. Owner = operator-side.
    schema. 422 on missing/invalid. The lifecycle FSM `draft → review` gate provides a second
    enforcement layer; the manifest field provides the first.
 3. **Option 1 for S6.** Exact-match SHA on normalised stem JSON. Fuzzy deferred as ISSUE-0049.
+
+   **§Decision 3 amendment (2026-05-19, Gate III):** Cross-DB stem SHA dedup deferred per
+   Q-1.1-6.7 Option C — S6 delivers intra-manifest SHA Set only. Cross-import external_key
+   dedup deferred per Q-1.1-6.8 Option B — S6 delivers intra-manifest Map only. Empty-bank
+   rationale: at S6 launch the item bank contains 0 prior imports; cross-lookup against an
+   empty set has no implementation value. Both `DUPLICATE_STEM` and `DUPLICATE_EXTERNAL_KEY`
+   outcome codes are reserved in the response schema for the upgrade path. Upgrade tracked:
+   ISSUE-0049 (fuzzy/embedding — DB schema + pgvector) + ISSUE-0050 (cross-DB SHA +
+   cross-import external_key — idempotency store extension; distinct upgrade path).
 4. Legal review owner: operator-side. S6 ships templates ready for review. No code gate.
 5. **Carry per ADR-0040.** S6 does not touch assessment-svc write path.
 6. **Draft only.** All imports land as `draft`. No lifecycle override field in manifest.
@@ -123,6 +132,8 @@ break for the ADR-0040 decision boundary.
   endpoint with Idempotency-Key.
 - Follow-ups:
   - ISSUE-0049: fuzzy/embedding-based duplicate detection (post-launch, tracked).
+  - ISSUE-0050: cross-DB exact-match stem SHA dedup + cross-import external_key dedup
+    (Q-1.1-6.7 + Q-1.1-6.8 deferral upgrade path; distinct from ISSUE-0049 fuzzy approach).
   - Legal review of authoring spec templates (operator-side gate before S7.1 — no code action).
   - assessment-svc ISSUE-0042 second half: carry to next assessment-svc touch (ADR-0040).
 
@@ -183,12 +194,21 @@ the previously-created `item_id` without re-inserting. Re-importing the same man
   contract tests ≥5, authoring spec templates, manifest-format.md final) → V1–V11 + "create the commit"
   ADR-0041 status updated to `accepted` at Gate III.
 
+**Implementation tightenings (Gate III):**
+- **T1 — normaliseStem: no case folding.** `normaliseStem(stem)` = `JSON.stringify(sortKeys(stem)).trim()`.
+  No `.toLowerCase()`. Casing is semantic in stem text: mathematical variables (`x`/`X`), chemical
+  notation (`pH`/`PH`), units (`mL`/`ML`). Recorded in `docs/content/manifest-format.md §5`.
+- **T2 — version.supersedes omitted.** `version.supersedes` is not a field in
+  `ImportManifestItemSchema`. Batch import creates fresh `draft` items only. `supersedes` is a
+  separate admin operation for relating a new `item_version` to an existing item — not an import
+  concern.
+
 **Legal review hard gate for S7.1:** Authoring spec templates (`docs/content/specs/`) shipped at Gate III
 ready for legal review. S7.1 batch authoring does not begin until sign-off received. Owner: operator-side.
 No code gate — operational process only. Recorded here for traceability.
 
 Files: `supabase/functions/content-svc/handlers.ts` · `supabase/functions/content-svc/index.ts` ·
 `packages/types/src/content.ts` · `docs/content/manifest-format.md` · `docs/content/specs/`
-Commit: pending S6 impl Gate III
-Related: Q-1.1-6.1, Q-1.1-6.2, Q-1.1-6.3, Q-1.1-6.4, Q-1.1-6.5, Q-1.1-6.6, ADR-0035, ADR-0040,
-ISSUE-0049, spec §21.2, spec §15.3, v1.1-phase-plan.md §S6
+Commit: 28e85e2 (impl) · this chore close
+Related: Q-1.1-6.1, Q-1.1-6.2, Q-1.1-6.3, Q-1.1-6.4, Q-1.1-6.5, Q-1.1-6.6, Q-1.1-6.7, Q-1.1-6.8,
+ADR-0035, ADR-0040, ISSUE-0049, ISSUE-0050, spec §21.2, spec §15.3, v1.1-phase-plan.md §S6

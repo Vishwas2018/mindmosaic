@@ -2,6 +2,67 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1-S6 — 2026-05-19
+
+**Planned (from docs/dev/v1.1-phase-plan.md §S6):** Bulk Content Import Pipeline + Authoring Spec Templates — `POST /content/import` endpoint, manifest format spec, authoring spec templates for S7.1 pilot. First content-operation stage. T5 adapted to backend artefacts (no UI; sketch + skeleton + fill gates per Q-1.1-6.5).
+
+**Actually delivered:**
+
+- Branch `v1.1/exam-content`; 3 commits: 3340c93 prep · 28e85e2 impl · this chore.
+- `POST /content/import` endpoint — dual-auth gate (platform_admin Bearer OR service-role header per ADR-0035 §Decision 2 batch-ingest clause); `ImportManifestSchema.safeParse()` at router boundary per ISSUE-0042 pattern; dry-run mode (`?dry_run=true`) per spec §21.2; Idempotency-Key required on non-dry-run writes. [28e85e2]
+- `supabase/functions/_shared/stemSha.ts` — `normaliseStem` (key-sorted JSON + trim, no case folding — T1 tightening) + `stemSha` (SHA-256 hex). [28e85e2]
+- `packages/types/src/content.ts` — `ImportManifestItemSchema` + `ImportManifestSchema` appended (`manifest_version: z.literal('1.0')`, items min(1) max(500); `copyright_declaration: z.literal('original')` required; `version.supersedes` omitted per T2 tightening). [28e85e2]
+- `supabase/functions/content-svc/handlers.ts` — `importItems` handler: intra-manifest SHA Set + external_key Map dedup in single forward pass, per-item write loop (stimulus → item → item_version), dry-run pass-through, per-item rollback on version create failure (best-effort orphan delete). [28e85e2]
+- `supabase/functions/content-svc/index.ts` — router branch for `POST /content/import`: manifest parse, dual-path (dry-run direct / non-dry-run withIdempotency), 200/207/422 status selection. [28e85e2]
+- `docs/content/manifest-format.md` — full fill §1–§10 (versioning, shape, per-item fields, copyright declaration, dedup model, validation order, response shapes, dry-run, examples). [this chore]
+- `docs/content/specs/naplan-y5-numeracy.md` — pilot authoring template (AC v9.0 strand IDs, difficulty bands, question-type mix, distractor-rationale spec, worked-solution spec, copyright guardrails verbatim). [this chore]
+- ADR-0041 accepted. Q-1.1-6.1..8 all resolved. ISSUE-0050 filed. [this chore]
+- Tests 828 → 839 (+11: +9 content-svc incl. ISSUE-0042 fix 3 + S6 impl 6; +7 apps/web correction; −5 types correction per ISSUE-0048). [28e85e2]
+
+**Time spent:** ~1 day (1 Claude session: morning ritual + Gate I + Gate II skeleton + Gate III fill + chore close).
+
+**Surprises / departures:**
+
+- **T2 gap at context boundary.** Q-1.1-6.7 and Q-1.1-6.8 were resolved in conversation during Gate III fill but not filed in QUESTIONS.md before the session ended (context compaction boundary). Filed at chore-close start before any other edits — T2-tightened discipline flagged and remediated.
+- **delete() cast pattern.** `DbBuilder` type does not expose `delete()`. Rollback of orphaned item row required casting `client.from('item') as unknown as { delete(): ... }` before calling `.delete()`. Consistent with existing cast patterns in handlers.ts (DbBuilder limitation, not a new issue).
+- **Both cross-DB dedup paths deferred (Q-1.1-6.7 + Q-1.1-6.8).** Both cross-DB SHA dedup and cross-import external_key dedup deferred to ISSUE-0050. Empty-bank rationale: 0 prior imports at S6 launch; cross-lookup against empty set has no implementation value. Filed ISSUE-0050 as sibling to ISSUE-0049 (distinct upgrade paths: pgvector DB schema vs idempotency store extension).
+
+**Decisions made (not in stage):**
+
+- Q-1.1-6.7 = Option C — defer cross-DB stem SHA dedup; intra-manifest SHA Set only. ADR-0041 §Decision 3 amendment.
+- Q-1.1-6.8 = Option B — defer cross-import external_key dedup; intra-manifest Map only. ADR-0041 §Decision 3 amendment.
+- T1 tightening: `normaliseStem` has no case folding. Casing is semantic in stem text. Recorded in `manifest-format.md §5`.
+- T2 tightening: `version.supersedes` omitted from `ImportManifestItemSchema`. Batch import creates fresh draft items only. Recorded in ADR-0041 §Implementation Notes.
+- ISSUE-0050 filed as sibling to ISSUE-0049 (two distinct upgrade paths; separate tracking warranted per operator recommendation).
+
+**Deviations logged:**
+
+- DEV-20260515-2 honored on all 3 S6 commits (atomic commit-and-push announcement; tracking only).
+- No new deviations.
+
+**Issues opened / closed / questions raised:**
+
+- Q-1.1-6.7 + Q-1.1-6.8 resolved (T2 gap remediated at chore-close start).
+- Q-1.1-6.1..6 resolved at S6 prep 3340c93 (pre-existing; no retroactive action needed).
+- ADR-0041 accepted at this chore close.
+- ISSUE-0050 filed: cross-import exact-match dedup (Q-1.1-6.7 + Q-1.1-6.8 upgrade path; medium severity; post-launch).
+- No issues closed.
+
+**Quality gates at close:**
+
+- Lint ✅ (17 packages) · Typecheck ✅ (17/17, --force, 0 cached) · Tests ✅ (839 passed / 1 skipped = 840 total) · pgTAP n/a (no new migrations) · RLS n/a (no new tables) · Build n/a (chore close)
+
+**Retrospective:**
+
+- **T5 backend-artefact adaptation (Q-1.1-6.5) worked cleanly.** Sketch → skeleton → fill on backend artefacts (not UI) ran without structural rework across three gates.
+- **Both cross-DB dedup deferrals correct at S6 launch.** Empty-bank rationale makes Q-1.1-6.7 + Q-1.1-6.8 deferral decisions unambiguously correct. ISSUE-0050 provides the upgrade hook without blocking S7.
+- **Legal review gate recorded operationally.** ADR-0041 §Decision 4 + `naplan-y5-numeracy.md §9` carry the S7.1 pre-condition. Traceability chain complete.
+
+**Tomorrow — first thing:**
+v1.1-S7 — Content Authoring & Bank Population. **Gated on legal review** of `docs/content/specs/naplan-y5-numeracy.md` (operator-side prerequisite). Do not begin S7.1 bulk authoring until legal sign-off confirmed.
+
+---
+
 ## v1.1-S5 — 2026-05-18
 
 **Planned (from docs/dev/v1.1-phase-plan.md §S5):** Student Practice + Simulation Flows — student-facing entry routes for composing and launching practice exams (/practice/*) and simulation exams (/exam-sim/*). Consumes S2 (composer API), S3 (simulation), S4 (assignments). T5 three-gate flow. Phase exit review at close.

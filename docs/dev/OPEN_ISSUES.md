@@ -5,6 +5,40 @@
 
 ## Open
 
+### ISSUE-0050 — Cross-import exact-match dedup: cross-DB stem SHA + cross-import external_key
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-19 (v1.1-S6 chore close — Q-1.1-6.7 Option C + Q-1.1-6.8 Option B deferrals)
+- Area: backend (supabase/functions/content-svc/)
+- Tags: content-import · duplicate-detection · post-launch
+
+**Summary.** The S6 import pipeline implements exact-match SHA dedup and external_key dedup within the
+submitted manifest only (intra-manifest). Two cross-boundary dedup paths are deferred:
+
+1. **Cross-DB stem SHA dedup (Q-1.1-6.7 Option C):** Compare each incoming item's `normaliseStem` SHA
+   against `item_version.stem_sha` (or equivalent) for all `is_current = true` rows already in the DB.
+   Would catch re-import of an item already in the bank across distinct manifest submissions.
+   Implementation: requires either storing `stem_sha` in `item_version` (new column, migration) and
+   indexing it, or computing SHAs at batch-start via a `SELECT stem FROM item_version WHERE is_current`.
+   Empty-bank rationale: at S6 launch the bank is empty; cross-lookup has no value.
+
+2. **Cross-import external_key dedup (Q-1.1-6.8 Option B):** Reject items whose `external_key` already
+   appears in a prior successful import. Implementation: requires an `import_external_key` lookup table or
+   extending the idempotency record with per-item `external_key` tracking. Idempotency-Key replay already
+   handles re-submission of the *same manifest*, but a different manifest containing a previously-imported
+   `external_key` would not be caught by idempotency.
+
+Both `DUPLICATE_STEM` and `DUPLICATE_EXTERNAL_KEY` outcome codes are reserved in the response schema
+(`ImportItemOutcome.status`) as upgrade-path hooks.
+
+**Fix (post-launch).** Implement when content bank reaches meaningful size (~100+ items) or when
+cross-batch dedup errors are first observed in S7 operations. Decision between stem_sha DB column vs
+batch-start query deferred to implementation. Coordinate with ISSUE-0049 (fuzzy detection) to avoid
+redundant migrations.
+
+---
+
 ### ISSUE-0049 — Fuzzy/embedding-based duplicate detection in content import pipeline
 
 - Status: open
