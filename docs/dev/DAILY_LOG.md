@@ -2,6 +2,51 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1-S7-prep step 1b — 2026-05-19
+
+**Planned (from Q-1.1-S7-LEGAL-1 Option A operator decision):** Schema provenance — add `authoring_method` Zod enum to `ImportManifestItemSchema`, `ItemVersionCreateDTOSchema`, `ItemVersionDTOSchema` + `NOT NULL` column on `item_version` (migration 0023) + REST handler enforcement. Legal review finding 3.
+
+**Actually delivered:**
+
+- `packages/types/src/content.ts` — `authoring_method: z.enum(['human', 'ai_assisted_human_reviewed'])` added to `ItemVersionDTOSchema`, `ItemVersionCreateDTOSchema`, `ImportManifestItemSchema`. Required field, no `.default()` per Q-1.1-S7-LEGAL-1.4. [bd3a310]
+- `supabase/migrations/0023_item_version_authoring_method.sql` — `ALTER TABLE item_version ADD COLUMN authoring_method text NOT NULL CHECK (authoring_method IN ('human', 'ai_assisted_human_reviewed'))`. NOT NULL, no DEFAULT per Q-1.1-S7-LEGAL-1.3 Option A. Empty-bank safe per Q-1.1-6.7 rationale (0 rows at S6 close). [bd3a310]
+- `supabase/functions/content-svc/handlers.ts` — `authoring_method` added to local `ItemVersionDTO` interface, `ItemVersionCreateBody` interface, `ITEM_VERSION_COLS` SELECT string, validation guard (422 VALIDATION_ERROR on absent), `newRow` insert, `importItems → createItemVersion` pass-through. [bd3a310]
+- Tests 839 → 843 (+4): `schema rejects manifest item with authoring_method absent` · `manifest with authoring_method=ai_assisted_human_reviewed imports ok` · `schema rejects manifest item with invalid authoring_method value` · `returns 422 VALIDATION_ERROR when authoring_method is absent (provenance gate)`. [bd3a310]
+- ADR-0041 §Implementation Notes addendum written. [this chore]
+
+**Time spent:** ~0.5 day (1 Claude session: morning ritual + Q-1.1-S7-LEGAL-1.x T3 round-trip + Gate II skeleton + Gate III fill + chore close).
+
+**Surprises / departures:**
+
+- **Two separate `ItemVersionDTO` definitions.** `content-svc/handlers.ts` defines its own local `ItemVersionDTO` interface (line 742) independent of `@mm/types`. Adding `authoring_method` to `@mm/types` alone did not update the handler's local type — typecheck failure at `result.data.authoring_method` caught the gap at Gate II skeleton. Both definitions must be kept in sync.
+
+**Decisions made (not in stage):**
+
+- Q-1.1-S7-LEGAL-1.1 = as-drafted enum values (`['human', 'ai_assisted_human_reviewed']`). No trademark exposure.
+- Q-1.1-S7-LEGAL-1.2 = no backfill. Bank empty at S6 close (Q-1.1-6.7 confirmed).
+- Q-1.1-S7-LEGAL-1.3 = Option A. NOT NULL, no DEFAULT. Silent defaulting defeats the audit trail.
+- Q-1.1-S7-LEGAL-1.4 = required Zod, no `.default()`. Explicit declaration mandatory at every import and REST call.
+- All four sub-questions filed and resolved in same session — T2-tightened clean.
+
+**Deviations logged:**
+
+- DEV-20260515-2 honored. No new deviations.
+
+**Issues opened / closed / questions raised:**
+
+- Q-1.1-S7-LEGAL-1 and all four sub-questions resolved; recorded in QUESTIONS.md.
+- ADR-0041 §Implementation Notes addendum appended (this chore).
+- No issues opened or closed.
+
+**Quality gates at close:**
+
+- Lint ✅ (17 packages) · Typecheck ✅ (17/17, --force, 0 cached) · Tests ✅ (843 passed / 1 skipped = 844 total) · Migration 0023 SQL on disk (deferred-validation per 0021/0022 pattern) · RLS n/a (no new tables; existing `item_version` policies cover new column) · Build n/a (chore close)
+
+**Tomorrow — first thing:**
+v1.1-S7-prep step 1c — `exam_family` enum rename (Q-1.1-S7-LEGAL-2 Option A, migration 0024). Morning ritual required; new enum values TBD at step 1c start.
+
+---
+
 ## v1.1-S6 — 2026-05-19
 
 **Planned (from docs/dev/v1.1-phase-plan.md §S6):** Bulk Content Import Pipeline + Authoring Spec Templates — `POST /content/import` endpoint, manifest format spec, authoring spec templates for S7.1 pilot. First content-operation stage. T5 adapted to backend artefacts (no UI; sketch + skeleton + fill gates per Q-1.1-6.5).

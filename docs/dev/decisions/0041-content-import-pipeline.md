@@ -212,3 +212,40 @@ Files: `supabase/functions/content-svc/handlers.ts` · `supabase/functions/conte
 Commit: 28e85e2 (impl) · this chore close
 Related: Q-1.1-6.1, Q-1.1-6.2, Q-1.1-6.3, Q-1.1-6.4, Q-1.1-6.5, Q-1.1-6.6, Q-1.1-6.7, Q-1.1-6.8,
 ADR-0035, ADR-0040, ISSUE-0049, ISSUE-0050, spec §21.2, spec §15.3, v1.1-phase-plan.md §S6
+
+---
+
+**Step 1b addendum (2026-05-19) — authoring_method provenance column (Q-1.1-S7-LEGAL-1 Option A):**
+
+Legal review finding 3 identified that `copyright_declaration: 'original'` attests originality but
+provides no machine-readable audit trail for *how* an item was created (human-authored vs.
+AI-assisted-human-reviewed). `docs/content/specs/australian-y5-numeracy.md §9.2` requires human
+originality review for AI-assisted items but had no schema hook to enforce or record compliance.
+
+**Binding decision (Q-1.1-S7-LEGAL-1 Option A, 2026-05-19 operator):** Add
+`authoring_method: z.enum(['human', 'ai_assisted_human_reviewed'])` to `ImportManifestItemSchema`,
+`ItemVersionCreateDTOSchema`, and `ItemVersionDTOSchema`. Add `authoring_method text NOT NULL CHECK
+(authoring_method IN ('human', 'ai_assisted_human_reviewed'))` to `item_version` (migration 0023).
+
+Sub-question resolutions:
+- Q-1.1-S7-LEGAL-1.1: Enum values as-drafted — `'human'` and `'ai_assisted_human_reviewed'`. No
+  trademark exposure; no change from spec-implicit naming.
+- Q-1.1-S7-LEGAL-1.2: No backfill. Item bank contains 0 rows at S6 close (Q-1.1-6.7 rationale
+  confirmed). `NOT NULL` without `DEFAULT` is safe; no existing rows to backfill.
+- Q-1.1-S7-LEGAL-1.3: Option A — `NOT NULL`, no `DEFAULT`. Silent defaulting (e.g., `DEFAULT
+  'human'`) would defeat the audit trail by allowing imports to omit the field without error.
+  Every INSERT is forced to declare authoring provenance explicitly.
+- Q-1.1-S7-LEGAL-1.4: Required Zod field, no `.default()`. Matches Option A constraint at the
+  schema layer: `z.enum([...])` without `.default()` rejects `undefined` at parse time.
+
+Enforcement surfaces: (1) `ImportManifestSchema.safeParse()` at `POST /content/import` router
+boundary — manifest-level 422 on absent/invalid. (2) `createItemVersion` manual validation guard
+— REST-path 422 VALIDATION_ERROR on absent. (3) `item_version` CHECK constraint — DB-layer
+rejection even if the application layer is bypassed.
+
+Note: `item_version` is effectively immutable after insert (no UPDATE path exists in
+`handlers.ts`). `authoring_method` must therefore be declared at INSERT time. The `NOT NULL, no
+DEFAULT` constraint is the correct shape for an immutable provenance field.
+
+Commit: 4453ddc (step 1a, doc-only legal prep) · bd3a310 (step 1b, schema + migration + tests)
+Related: Q-1.1-S7-LEGAL-1, migration 0023

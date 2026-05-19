@@ -5,11 +5,11 @@
 
 ## Position
 
-- Last completed stage: v1.1-S6 — Bulk Content Import Pipeline + Authoring Spec Templates (2026-05-19)
-- Next stage: v1.1-S7 — Content Authoring & Bank Population (gated on legal review of `docs/content/specs/australian-y5-numeracy.md`)
+- Last completed stage: v1.1-S7-prep step 1b — authoring_method provenance (bd3a310, 2026-05-19)
+- Next stage: v1.1-S7-prep step 1c — exam_family enum rename (Q-1.1-S7-LEGAL-2 Option A, migration 0024)
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
-- Active branch: `v1.1/exam-content` — 22 commits ahead of origin/main (9376d98 v1.0.0):
-  a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · this chore
+- Active branch: `v1.1/exam-content` — 24 commits ahead of origin/main (9376d98 v1.0.0):
+  a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · 8c86690 v1.1-S6 chore · 4453ddc S7-prep step 1a · bd3a310 S7-prep step 1b feat · this chore
 - Buffer days consumed total: ~16.5 of 26 allocated (DEV_PLAN §3.1) — v1.1 unbudgeted
 - Phase 0 complete: Stages 1–14. Phase 0 buffer at close: 0 of 3 consumed.
 - Phase 1 complete: Stages 15–27 (13 stages). Phase 1 buffer at close: **+2 days banked**.
@@ -23,13 +23,13 @@
 - Stage 48 actual: 1 day (budget: 4 days per DEV_PLAN). **Effective buffer entering Stage 49: +10.5 days banked**.
 - Stage 49 actual: 1 day (budget: 2 days per DEV_PLAN). **Buffer at v1 close: +10.5 days banked (net unchanged)**.
 - v1.1-S1 through v1.1-S6 actual: ~1 day each. (v1.1 stages unbudgeted in DEV_PLAN.)
-- Stages closed: **v1: 49/49 closed; v1.1: 6/7 closed (S1–S6 complete; S7 in progress)**
+- Stages closed: **v1: 49/49 closed; v1.1: 6/7 closed (S1–S6 complete; S7 in progress — S7-prep step 1a + 1b complete; step 1c next)**
 
 ## Test suite
 
 | Suite            | Status       | Count                                                                                                                              | Last run   |
 | ---------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Unit             | ✅ green      | 839 passed / 1 skipped (+ 4 Playwright axe-core test.skip-guarded via ISSUE-0038)                                                | 2026-05-19 |
+| Unit             | ✅ green      | 843 passed / 1 skipped (+ 4 Playwright axe-core test.skip-guarded via ISSUE-0038)                                                | 2026-05-19 |
 | Integration      | n/a          | n/a                                                                                                                                | n/a        |
 | pgTAP            | ✅ green      | 451/451 (migrations 0001–0020); 0021 + 0022 SQL files on disk (deferred-validation)                                               | 2026-06-07 |
 | Contract         | ✅ green      | included in 839 Vitest total                                                                                                       | 2026-05-19 |
@@ -39,10 +39,10 @@
 | Replay           | ✅ green      | 58/58 assertions + 100 billing-svc replay assertions (2-pass 50-event)                                                            | 2026-06-01 |
 | axe-core         | ✅ green      | 31 Vitest files / 75 assertions (Stage 48 sweep); S4+S5 added 2 Playwright axe-core specs / 4 guarded tests pending ISSUE-0038   | 2026-06-07 |
 
-Unit + contract breakdown (full `pnpm -r run test` 2026-05-19 v1.1-S6 close):
-155 (@mm/types) + 58 (@mm/sdk) + 75 (@mm/ui) + 118 (@mm/engines) + 9 (@mm/core) + 69 (content-svc) + 46 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 31 (analytics-svc) + 19 (orchestration-svc) + 25 (assignments-svc incl. e2e) + 17 (notifications-svc) + 7 (users-svc) + 92 (apps/web) + 59 (billing-svc) = **839 passed, 1 skipped** (840 total).
+Unit + contract breakdown (full `pnpm -r run test` 2026-05-19 v1.1-S7-prep step 1b close):
+155 (@mm/types) + 58 (@mm/sdk) + 75 (@mm/ui) + 118 (@mm/engines) + 9 (@mm/core) + 73 (content-svc) + 46 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 31 (analytics-svc) + 19 (orchestration-svc) + 25 (assignments-svc incl. e2e) + 17 (notifications-svc) + 7 (users-svc) + 92 (apps/web) + 59 (billing-svc) = **843 passed, 1 skipped** (844 total).
 
-Delta from v1.1-S5 close (828 passed): **+11** — +9 content-svc (3 from ISSUE-0042 fix b3eb668 + 6 from S6 import contract tests 28e85e2) + +7 apps/web (count correction per ISSUE-0048) − 5 @mm/types (count correction per ISSUE-0048).
+Delta from v1.1-S6 close (839 passed): **+4** — +4 content-svc (authoring_method provenance tests bd3a310).
 
 Delta from v1.0.0 baseline (696/697): +143 total since v1.0.0 (+33 v1.1-S1 + +24 v1.1-S2 + +17 v1.1-S3 + +25 v1.1-S4 + +33 v1.1-S5 + +11 v1.1-S6).
 
@@ -52,7 +52,7 @@ Delta from v1.0.0 baseline (696/697): +143 total since v1.0.0 (+33 v1.1-S1 + +24
 | ------------------- | ---------------------------------------------------------------------------------- | ---------- |
 | pnpm lint           | ✅ green (17 packages)                                                             | 2026-05-19 |
 | pnpm typecheck      | ✅ green (17 packages, 0 turbo-cached — --force run per §Close-ritual)            | 2026-05-19 |
-| pnpm test           | ✅ green (839 passed / 1 skipped — 840 total Vitest)                              | 2026-05-19 |
+| pnpm test           | ✅ green (843 passed / 1 skipped — 844 total Vitest)                              | 2026-05-19 |
 | pnpm test:replay    | ✅ green (58/58 assertions)                                                        | 2026-05-16 |
 | pnpm build          | ✅ green (exit 0, 21 routes)                                                       | 2026-05-11 |
 | RLS coverage        | ✅ 53/53 tables enabled + tested (pgTAP 0001–0020 451/451); 0021 + 0022 deferred  | 2026-06-07 |
@@ -86,7 +86,7 @@ Full table: `docs/dev/perf/measurements.md`.
   - Medium (15): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0039, ISSUE-0040, ISSUE-0041, ISSUE-0043, ISSUE-0045, ISSUE-0049 (fuzzy dup detection), ISSUE-0050 (cross-import exact-match dedup — Q-1.1-6.7 + Q-1.1-6.8)
   - Low (19): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038 (info), ISSUE-0044, ISSUE-0046, ISSUE-0047, ISSUE-0048
   - Resolved: ISSUE-0005, 0006, 0007, 0008, 0012, 0013, 0018, 0026, 0029, 0036, 0037, **0042** (content-svc scope; b3eb668 2026-05-19)
-- Migrations: **0001–0022** (migrations 0001–0020 pgTAP-verified 451/451; 0021 SQL on disk deferred-validation; 0022 adds composer_params + simulation_params jsonb nullable columns — deferred-validation per 0021 pattern)
+- Migrations: **0001–0023** (migrations 0001–0020 pgTAP-verified 451/451; 0021 SQL on disk deferred-validation; 0022 adds composer_params + simulation_params jsonb nullable columns — deferred-validation per 0021 pattern; 0023 adds authoring_method NOT NULL to item_version — deferred-validation per 0021 pattern)
 - Open questions: **0** — Q-1.1-1.0..9 + Q-1.1-2.1..5 + Q-1.1-3.1..5 + Q-1.1-4.1..8 + Q-1.1-5.1..6 + Q-1.1-6.1..8 all resolved
 - Open bugs: 0
 - Deviations logged: **24 total (9 resolved, 15 open)** — unchanged (no new deviations in S6; DEV-20260515-2 honored)
@@ -101,7 +101,9 @@ Full table: `docs/dev/perf/measurements.md`.
 
 ## Notes for next session
 
-**v1.1-S7 — Content Authoring & Bank Population** is next. **HARD GATE:** S7.1 pilot authoring does not begin until legal review of `docs/content/specs/australian-y5-numeracy.md` is confirmed (operator-side; ADR-0041 §Decision 4). No code action required for the gate itself.
+**v1.1-S7-prep step 1c** is next — `exam_family` enum rename (Q-1.1-S7-LEGAL-2 Option A, migration 0024). Morning ritual required; new enum values TBD at step 1c start. All surfaces updated atomically: DB migration + `packages/types/src/content.ts` + seeds + RLS tests + `apps/web` UI + `content-svc/handlers.ts`.
+
+**v1.1-S7 — Content Authoring & Bank Population** remains gated on: (1) step 1c complete, (2) legal review of `docs/content/specs/australian-y5-numeracy.md` confirmed (operator-side; ADR-0041 §Decision 4). No code action required for the legal gate itself.
 
 **S7.1 sub-batch target:** ~50 NAPLAN-style Year 5 Numeracy original items. Author against `docs/content/specs/australian-y5-numeracy.md` → `POST /content/import` (dry-run first) → lifecycle `draft → review → active`. Idempotency-Key required on all live imports.
 
