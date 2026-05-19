@@ -9,6 +9,108 @@
 
 ## Resolved
 
+### Q-1.1-6.1 — S6 scope: "content operation tooling" — human authoring tools vs automated generation?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual — §N trap)
+- Asked of: operator (T3 structural)
+- Source: v1.1-phase-plan.md §S6 ("content operation tooling"); spec §21.2 (`POST /content/import`)
+- Question: Does "content operation tooling" mean (a) tools FOR human content operators to author/import/QA items, or (b) automated content generation?
+- Why ambiguous: Phase plan uses "tooling" without specifying human vs automated; copyright constraint likely forbids (b).
+- Blocking? yes
+- Assumed answer: (a) tools for human operators — copyright constraint forbids scraping/reproduction
+- Code affected: content-svc/index.ts, handlers.ts (new route)
+- Status: resolved
+- Resolution: **Option A. HTTP endpoint primary. No script in S6 scope. (2026-05-19 T3 round-trip)** §N trap resolved: "content operation tooling" = tools FOR human content operators; copyright constraint forbids automated scraping/reproduction. AI-assisted authoring against spec templates is permitted for original items only.
+
+T3 classification: structural — endpoint shape determines router branch, Idempotency-Key requirement, and Pattern G gate wiring; round-trip required.
+
+---
+
+### Q-1.1-6.2 — Batch import path: `/content/items/batch` (phase plan) vs `POST /content/import` (spec §21.2)?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural)
+- Source: v1.1-phase-plan.md §S6 ("`POST /content/items/batch` or a `scripts/import-items.ts`"); spec §21.2 (`POST /content/import`)
+- Question: Which path is authoritative? Phase plan offers `/content/items/batch` or a script; spec §21.2 names `POST /content/import`.
+- Why ambiguous: Two sources disagree on path; both claim authority.
+- Blocking? yes — path determines router branch in index.ts and SDK endpoint string
+- Assumed answer: spec §21.2 wins
+- Code affected: supabase/functions/content-svc/index.ts (router branch)
+- Status: resolved
+- Resolution: **Option A. `POST /content/import` per spec §21.2. Idempotency-Key required. Pattern G strict (platform_admin + service-role). Phase plan path `/content/items/batch` is non-authoritative; spec wins. (2026-05-19 T3 round-trip)**
+
+T3 classification: structural — path is a contract (SDK, tests, manifest spec all reference it); cannot be corrected after impl commit without breaking callers; round-trip required.
+
+---
+
+### Q-1.1-6.3 — Copyright constraint: validation rules at import boundary (three sub-questions)
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural + tight detail)
+- Source: v1.1-phase-plan.md §Critical constraint; v1.1-phase-plan.md §S6 ("duplicate-similarity check"); spec §21.2
+- Question: (i) Per-item copyright_declaration field required? (ii) Dup check: exact-match only vs fuzzy? (iii) Legal review process owner?
+- Why ambiguous: Phase plan names validation gate and dup check without specifying mechanism; Zod schema alone cannot enforce copyright.
+- Blocking? yes (i, ii); no (iii — ownership, not code)
+- Assumed answer: (i) per-item declaration required; (ii) exact-match SHA for S6; (iii) operator-side
+- Code affected: packages/types/src/content.ts (new manifest schema field); content-svc/handlers.ts (importItems dup check)
+- Status: resolved
+- Resolution: **(i) `copyright_declaration: z.literal('original')` required field in manifest Zod schema. 422 on missing/invalid. (ii) Exact-match SHA of normalised stem JSON for S6. Fuzzy deferred as ISSUE-0049. (iii) Legal review owner: operator-side. ADR-0041 records hard gate for S7.1; not a code workflow item. (2026-05-19 T3 round-trip)**
+
+T3 classification: (i) structural — new required field in manifest schema changes the type contract; round-trip required. (ii) tight detail — implementation depth within agreed validation gate; self-resolve confirmed by operator. (iii) ownership question, not a code decision.
+
+---
+
+### Q-1.1-6.4 — assessment-svc createSession type-assertion gap: fix in S6 or carry?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural)
+- Source: ADR-0040 §Decision (ISSUE-0042 second half carry for assessment-svc); assessment-svc/index.ts:222
+- Question: Does S6 fix the assessment-svc `index.ts:222` `as CreateSessionRequest` type-assertion gap for write-path hygiene parity, or does it stay as carry?
+- Why ambiguous: ADR-0040 declared it non-blocking for S6, but S6 is the last planned platform touch before bulk content authoring begins.
+- Blocking? no
+- Assumed answer: carry per ADR-0040
+- Code affected: none if carry
+- Status: resolved
+- Resolution: **Carry per ADR-0040. S6 does NOT fix assessment-svc gap. (2026-05-19 T3 round-trip)** Adding assessment-svc to S6 scope would violate ADR-0040's decision boundary and add untracked changes to the impl commit footprint.
+
+T3 classification: structural — scope question; expands S6 impl commit if resolved as fix; round-trip required.
+
+---
+
+### Q-1.1-6.5 — T5 gate contradiction: S6 has no UI (PROJECT_STATE.md) vs T5 active (morning ritual)?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural)
+- Source: PROJECT_STATE.md §Notes ("S6 has no UI component — no T5 mockup gate"); morning ritual prompt ("T5 three-gate flow applies")
+- Question: Is there a minimal admin UI in S6 scope? Or is T5 discipline adapted to backend design artefacts?
+- Why ambiguous: Two sources disagree; phase plan §S6 makes no mention of UI.
+- Blocking? yes — determines whether component scaffolding is in scope
+- Assumed answer: no UI; T5 adapted to backend artefacts
+- Code affected: none if no UI; apps/web/ if UI in scope
+- Status: resolved
+- Resolution: **Option A. PROJECT_STATE.md §Notes wins — S6 no UI, no T5 mockup gate. T5 adapted to backend design artefacts: Gate I = API design sketch + manifest format spec + ADR-0041 outline; Gate II = handler skeleton + Zod manifest schema + router branch + test scaffolds (throw stubs); Gate III = fill + V1–V11 → "create the commit". ADR-0041 §Implementation Notes records T5 adaptation. (2026-05-19 T3 round-trip)**
+
+T3 classification: structural — wrong interpretation (adding UI) adds unplanned web package changes to the impl commit; round-trip required.
+
+---
+
+### Q-1.1-6.6 — Lifecycle for imported items: draft only, or manifest lifecycle override allowed?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: self (T3 tight detail — self-resolve confirmed by operator)
+- Source: spec §15.3 (FSM: `draft` is start state); v1.1-phase-plan.md §S7 ("full lifecycle draft → review → active")
+- Question: Can the import manifest optionally specify a target lifecycle (e.g., import directly to `review`)?
+- Why ambiguous: Phase plan implies full lifecycle is S7's concern; lifecycle override would accelerate S7.1 pilot.
+- Blocking? no
+- Assumed answer: all imports land as `draft`; no override
+- Code affected: content-svc/handlers.ts (importItems — no lifecycle field in manifest schema)
+- Status: resolved
+- Resolution: **All imports land as `draft`. No lifecycle override field in manifest. (2026-05-19 T3 self-resolve confirmed by operator)** Lifecycle override would bypass the `draft → review` gate that exists "partly for" copyright enforcement (spec §15.3). Self-resolve defensible on tight-detail grounds; confirmed by operator.
+
+T3 classification: tight detail — implementation invariant within agreed FSM; self-resolve confirmed.
+
+---
+
 ### Q-1.1-5.6 — Post-submission results: simulation-specific variant or reuse /results/[id]?
 
 - Date raised: 2026-05-18 (v1.1-S5 morning ritual)

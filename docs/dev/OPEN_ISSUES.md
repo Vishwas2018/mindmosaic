@@ -5,6 +5,26 @@
 
 ## Open
 
+### ISSUE-0049 — Fuzzy/embedding-based duplicate detection in content import pipeline
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-19 (v1.1-S6 prep — Q-1.1-6.3 ii resolution, ADR-0041 §Decision 3)
+- Area: backend (supabase/functions/content-svc/)
+- Tags: content-import · duplicate-detection · copyright · post-launch
+
+**Summary.** The S6 import pipeline implements exact-match SHA deduplication on normalised stem JSON (ADR-0041 §Decision 3). This catches verbatim duplicate imports (same manifest re-imported) but does not detect near-duplicates or paraphrase-level reproduction — the primary copyright risk from the v1.1-phase-plan.md §Critical constraint. The `draft → review` lifecycle gate is the current enforcement mechanism for paraphrase detection, relying on human review.
+
+Fuzzy/embedding-based similarity would detect near-duplicates mechanically. Two candidate approaches:
+- **(A) pgvector cosine similarity** — embed stem text via an embedding model; store in `item_version.stem_embedding vector(N)` column (new migration + pgvector extension); flag imports with similarity > threshold as `status: "near_duplicate"`.
+- **(B) MinHash/Jaccard shingling** — character-level shingles; approximate similarity without an embedding API; lower accuracy but zero external dependency.
+
+Decision between (A) and (B) deferred to implementation. Value increases with content bank size.
+
+**Fix (post-launch).** Implement Option A or B when content bank exceeds ~500 items or when human review throughput becomes a bottleneck. Coordinate with legal review of threshold definition.
+
+---
+
 ### ISSUE-0048 — PROJECT_STATE.md per-package test count discrepancy
 
 - Status: open
