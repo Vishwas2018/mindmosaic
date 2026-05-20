@@ -228,7 +228,7 @@ VALUES ('11111111-0000-0000-0000-000000000005',
         ARRAY['ffffffff-0000-0000-0000-000000000001']::uuid[],
         0.5,
         ARRAY[5],
-        ARRAY['naplan']::exam_family[],
+        ARRAY['au_numeracy_y5_format']::exam_family[],
         'active',
         '2000-01-01');
 

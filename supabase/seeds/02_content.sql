@@ -14,7 +14,7 @@ VALUES
   '{"title":"Book Sales","headers":["Day","Mon","Tue","Wed"],"rows":[["Count","3","5","4"]]}',
   'MindMosaic seed v1',
   ARRAY[5],
-  ARRAY['naplan','icas']::exam_family[]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[]
 ),
 (
   'a0000002-0000-0000-0000-000000000002',
@@ -22,7 +22,7 @@ VALUES
   '{"text":"A local sports club surveyed 80 members about their favourite activity. 40% chose sports, 25% chose reading, and 35% chose gaming."}',
   'MindMosaic seed v1',
   ARRAY[5],
-  ARRAY['naplan','icas']::exam_family[]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[]
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -169,16 +169,16 @@ BEGIN
 
   -- exam family
   ef := ARRAY[
-    'naplan','naplan','naplan','naplan','naplan',
-    'naplan','naplan','naplan','naplan','naplan',
-    'naplan','naplan','naplan','naplan','naplan',
-    'naplan','naplan','naplan','naplan','naplan',
-    'naplan','naplan','naplan','naplan','naplan',
-    'icas','icas','icas','icas','icas',
-    'icas','icas','icas','icas','icas',
-    'icas','icas','icas','icas','icas',
-    'icas','icas','icas','icas','icas',
-    'icas','icas','icas','icas','icas'
+    'au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format',
+    'au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format',
+    'au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format',
+    'au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format',
+    'au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format','au_numeracy_y5_format',
+    'au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format',
+    'au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format',
+    'au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format',
+    'au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format',
+    'au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format','au_math_paper_c_format'
   ];
 
   -- stems (A is always correct)

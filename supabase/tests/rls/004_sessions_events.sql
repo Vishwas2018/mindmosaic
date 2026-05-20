@@ -107,13 +107,13 @@ INSERT INTO item (id, response_type, skill_ids, difficulty, year_levels, exam_fa
 VALUES
   ('00000000-0000-0000-0004-000000000011', 'mcq',
    ARRAY['00000000-0000-0000-0004-000000000010'::uuid],
-   0.5, ARRAY[5], ARRAY['naplan'::exam_family]),
+   0.5, ARRAY[5], ARRAY['au_numeracy_y5_format'::exam_family]),
   ('00000000-0000-0000-0004-000000000012', 'mcq',
    ARRAY['00000000-0000-0000-0004-000000000010'::uuid],
-   0.6, ARRAY[5], ARRAY['naplan'::exam_family]);
+   0.6, ARRAY[5], ARRAY['au_numeracy_y5_format'::exam_family]);
 
 INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint)
-VALUES ('00000000-0000-0000-0004-000000000013', 'naplan', 'v_s5_test',
+VALUES ('00000000-0000-0000-0004-000000000013', 'au_numeracy_y5_format', 'v_s5_test',
         '{}', '{}', '{}', '{}', '{}');
 
 INSERT INTO blueprint (id, sections)
@@ -121,7 +121,7 @@ VALUES ('00000000-0000-0000-0004-000000000014', '{}');
 
 INSERT INTO assessment_profile (id, exam_family, program, year_level, version,
   framework_config_id, blueprint_id, duration_minutes)
-VALUES ('00000000-0000-0000-0004-000000000015', 'naplan', 'numeracy', 5, 'v_s5_test',
+VALUES ('00000000-0000-0000-0004-000000000015', 'au_numeracy_y5_format', 'numeracy', 5, 'v_s5_test',
         '00000000-0000-0000-0004-000000000013',
         '00000000-0000-0000-0004-000000000014', 45);
 
@@ -132,7 +132,7 @@ VALUES ('00000000-0000-0000-0004-000000000016', 'misconception',
 INSERT INTO pathway (id, slug, display_name, exam_family, program, framework_config_id,
   engine_type, year_levels, required_feature_key)
 VALUES ('00000000-0000-0000-0004-000000000019', 'naplan-numeracy-y5-s5test',
-        'NAPLAN Numeracy Y5 S5', 'naplan', 'numeracy',
+        'NAPLAN Numeracy Y5 S5', 'au_numeracy_y5_format', 'numeracy',
         '00000000-0000-0000-0004-000000000013',
         'adaptive', ARRAY[5], 'pathway.feature.naplan.numeracy_y5');
 

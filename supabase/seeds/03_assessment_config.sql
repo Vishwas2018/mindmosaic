@@ -8,7 +8,7 @@ INSERT INTO framework_config (id, exam_family, version, structure, adaptive_rule
 VALUES
 (
   'a0000005-0000-0000-0000-000000000001',
-  'naplan',
+  'au_numeracy_y5_format',
   'v1',
   '{"engine":"adaptive","min_items":15,"max_items":15,"start_difficulty":0.5,"year_level":5,"stage_count":3}',
   -- adaptive_rules: testlet routing table (Spec §3.2.1, ADR-0024).
@@ -44,7 +44,7 @@ VALUES
 ),
 (
   'a0000005-0000-0000-0000-000000000002',
-  'icas',
+  'au_math_paper_c_format',
   'v1',
   '{"engine":"linear","item_count":25,"time_minutes":60,"year_level":5}',
   null,
@@ -83,7 +83,7 @@ VALUES
   'a0000007-0000-0000-0000-000000000001',
   'naplan-y5-numeracy',
   'NAPLAN Year 5 Numeracy',
-  'naplan', 'NAPLAN', 'AU', 'australian_curriculum_v9',
+  'au_numeracy_y5_format', 'NAPLAN', 'AU', 'australian_curriculum_v9',
   'a0000005-0000-0000-0000-000000000001',
   'adaptive',
   ARRAY[5],
@@ -93,7 +93,7 @@ VALUES
   'a0000007-0000-0000-0000-000000000002',
   'icas-math-y5',
   'ICAS Mathematics Year 5',
-  'icas', 'ICAS', 'AU', 'australian_curriculum_v9',
+  'au_math_paper_c_format', 'ICAS', 'AU', 'australian_curriculum_v9',
   'a0000005-0000-0000-0000-000000000002',
   'linear',
   ARRAY[5],
@@ -107,14 +107,14 @@ INSERT INTO assessment_profile (id, exam_family, program, year_level, version, f
 VALUES
 (
   'a0000008-0000-0000-0000-000000000001',
-  'naplan', 'NAPLAN', 5, '2024',
+  'au_numeracy_y5_format', 'NAPLAN', 5, '2024',
   'a0000005-0000-0000-0000-000000000001',
   'a0000006-0000-0000-0000-000000000001',
   45
 ),
 (
   'a0000008-0000-0000-0000-000000000002',
-  'icas', 'ICAS', 5, '2024',
+  'au_math_paper_c_format', 'ICAS', 5, '2024',
   'a0000005-0000-0000-0000-000000000002',
   'a0000006-0000-0000-0000-000000000002',
   60

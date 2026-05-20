@@ -4,8 +4,8 @@ import { describe, it, expect } from 'vitest';
 import { Select } from './Select.js';
 
 const options = [
-  { value: 'naplan', label: 'NAPLAN Y5 Numeracy' },
-  { value: 'icas', label: 'ICAS Math Paper C' },
+  { value: 'au_numeracy_y5_format', label: 'Numeracy Y5' },
+  { value: 'au_math_paper_c_format', label: 'Math Paper C' },
 ];
 
 describe('Select', () => {

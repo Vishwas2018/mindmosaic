@@ -21,7 +21,7 @@ VALUES (
   'Core numeracy domain — NAPLAN Y5 + ICAS Paper C scope',
   0.0, 1.0,
   ARRAY['remember','understand','apply','analyse']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[],
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[],
   ARRAY[5]
 ) ON CONFLICT (id) DO NOTHING;
 
@@ -36,7 +36,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'strand', 'Number & Algebra', 'number-algebra', 0.0, 1.0,
   ARRAY['remember','understand','apply','analyse']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 ),
 (
   'a0000001-0000-0000-0000-000000000003',
@@ -45,7 +45,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'strand', 'Measurement & Space', 'measurement-space', 0.0, 1.0,
   ARRAY['remember','understand','apply']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 )
 ON CONFLICT (id) DO NOTHING;
 
@@ -60,7 +60,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'skill', 'Place Value', 'place-value', 0.2, 0.9,
   ARRAY['remember','understand','apply']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 ),
 (
   'a0000001-0000-0000-0000-000000000005',
@@ -69,7 +69,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'skill', 'Fractions & Decimals', 'fractions-decimals', 0.2, 0.9,
   ARRAY['understand','apply']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 ),
 (
   'a0000001-0000-0000-0000-000000000006',
@@ -78,7 +78,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'skill', 'Operations', 'operations', 0.2, 0.9,
   ARRAY['apply','analyse']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 ),
 (
   'a0000001-0000-0000-0000-000000000007',
@@ -87,7 +87,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'skill', 'Word Problems', 'word-problems', 0.3, 1.0,
   ARRAY['apply','analyse']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 ),
 (
   'a0000001-0000-0000-0000-000000000008',
@@ -96,7 +96,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'skill', 'Geometry', 'geometry', 0.2, 0.85,
   ARRAY['remember','understand','apply']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 ),
 (
   'a0000001-0000-0000-0000-000000000009',
@@ -105,7 +105,7 @@ VALUES
   'a0000001-0000-0000-0000-000000000001',
   'skill', 'Data Interpretation', 'data-interpretation', 0.3, 1.0,
   ARRAY['understand','analyse']::bloom_level[],
-  ARRAY['naplan','icas']::exam_family[], ARRAY[5]
+  ARRAY['au_numeracy_y5_format','au_math_paper_c_format']::exam_family[], ARRAY[5]
 )
 ON CONFLICT (id) DO NOTHING;
 

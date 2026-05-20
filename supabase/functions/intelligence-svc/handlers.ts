@@ -1227,12 +1227,12 @@ export async function processPredictiveRefresh(
   // 2. Load pathway.
   const pathwayRes = await db
     .from('pathway')
-    .select('id, slug, framework_config_id')
+    .select('id, slug, framework_config_id, exam_family')
     .eq('slug', pathwaySlug)
     .maybeSingle();
   if (pathwayRes.error !== null) return err(500, 'INTERNAL_ERROR', pathwayRes.error.message);
   if (pathwayRes.data === null) return err(404, 'NOT_FOUND', `Pathway '${pathwaySlug}' not found`);
-  const pathway = pathwayRes.data as { id: string; slug: string; framework_config_id: string };
+  const pathway = pathwayRes.data as { id: string; slug: string; framework_config_id: string; exam_family: string };
 
   // 3. Load framework_config (blueprint strands + scoring_rules).
   const frameworkRes = await db
@@ -1255,9 +1255,8 @@ export async function processPredictiveRefresh(
     L5_TARGET_THRESHOLD_DEFAULT;
   const blueprintWeightBySlug = new Map(blueprint.strands.map(s => [s.slug, s.weight]));
 
-  // 4. Load pathway leaf skills (level='skill', filtered by exam family client-side).
-  // Exam family is extracted from pathway slug prefix (v1: 'naplan', 'icas').
-  const examFamily = pathwaySlug.split('-')[0] ?? '';
+  // 4. Load pathway leaf skills (level='skill', filtered by exam_family from pathway record).
+  const examFamily = pathway.exam_family;
   const allSkillsRes = await db
     .from('skill_node')
     .select('id, slug, parent_id, pathway_tags')

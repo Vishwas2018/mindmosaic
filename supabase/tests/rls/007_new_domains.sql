@@ -50,11 +50,11 @@ SELECT plan(72);
 
 -- pathway_id FK required by migration 0015; framework_config required by pathway FK (migration 0003)
 INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint)
-VALUES ('00000000-0000-0000-0008-000000000090', 'naplan', 'v_stage8_test', '{}', '{}', '{}', '{}', '{}');
+VALUES ('00000000-0000-0000-0008-000000000090', 'au_numeracy_y5_format', 'v_stage8_test', '{}', '{}', '{}', '{}', '{}');
 
 INSERT INTO pathway (id, slug, display_name, exam_family, program, framework_config_id, engine_type, year_levels, required_feature_key)
 VALUES ('00000000-0000-0000-0008-000000000091', 'stage8-test-pathway', 'Stage8 Test Pathway',
-        'naplan', 'numeracy', '00000000-0000-0000-0008-000000000090', 'adaptive', '{5}', 'pathway.feature.stage8.test');
+        'au_numeracy_y5_format', 'numeracy', '00000000-0000-0000-0008-000000000090', 'adaptive', '{5}', 'pathway.feature.stage8.test');
 
 INSERT INTO tenant (id, name, slug, type, region) VALUES
   ('00000000-0000-0000-0008-000000000099', 'Stage8 Tenant A', 'stage8-a', 'family', 'au-syd'),

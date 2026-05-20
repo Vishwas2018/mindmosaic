@@ -83,7 +83,7 @@ describe('content-svc — GET /pathways', () => {
             id: 'p1',
             slug: 'naplan-y5-numeracy',
             display_name: 'NAPLAN Y5 Numeracy',
-            exam_family: 'naplan',
+            exam_family: 'au_numeracy_y5_format',
             program: 'NAPLAN',
             year_levels: [5],
             required_feature_key: 'naplan_y5',
@@ -92,7 +92,7 @@ describe('content-svc — GET /pathways', () => {
             id: 'p2',
             slug: 'icas-math-y5',
             display_name: 'ICAS Maths Y5',
-            exam_family: 'icas',
+            exam_family: 'au_math_paper_c_format',
             program: 'ICAS',
             year_levels: [5],
             required_feature_key: 'icas_math_y5',
@@ -140,7 +140,7 @@ describe('content-svc — GET /pathways/{slug}', () => {
           id: 'p1',
           slug: 'naplan-y5-numeracy',
           display_name: 'NAPLAN Y5 Numeracy',
-          exam_family: 'naplan',
+          exam_family: 'au_numeracy_y5_format',
           program: 'NAPLAN',
           year_levels: [5],
           required_feature_key: 'naplan_y5',
@@ -180,7 +180,7 @@ describe('content-svc — GET /assessment-profiles', () => {
         data: [
           {
             id: 'ap1',
-            exam_family: 'naplan',
+            exam_family: 'au_numeracy_y5_format',
             program: 'NAPLAN',
             year_level: 5,
             duration_minutes: 45,
@@ -189,11 +189,11 @@ describe('content-svc — GET /assessment-profiles', () => {
         error: null,
       },
     });
-    const result = await listAssessmentProfiles(client, { exam_family: 'naplan', year_level: 5 });
+    const result = await listAssessmentProfiles(client, { exam_family: 'au_numeracy_y5_format', year_level: 5 });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
     expect(result.data).toHaveLength(1);
-    expect(result.data[0]!.exam_family).toBe('naplan');
+    expect(result.data[0]!.exam_family).toBe('au_numeracy_y5_format');
     expect(result.data[0]!.duration_minutes).toBe(45);
   });
 });
@@ -709,7 +709,7 @@ const ITEM_ADMIN_STUB = {
   discrimination: null,
   expected_time_secs: null,
   year_levels: [5],
-  exam_families: ['naplan'],
+  exam_families: ['au_numeracy_y5_format'],
   programs: [],
   countries: [],
   curricula: [],
@@ -743,7 +743,7 @@ const STIMULUS_STUB = {
   content: { text: 'Once upon a time...' },
   source_attribution: null,
   year_levels: [5],
-  exam_families: ['naplan'],
+  exam_families: ['au_numeracy_y5_format'],
   is_active: true,
   created_at: '2026-05-14T00:00:00.000Z',
 };
@@ -758,7 +758,7 @@ describe('content-svc — POST /content/items (createItem)', () => {
       skill_ids: ['sk-1'],
       difficulty: 0.4,
       year_levels: [5],
-      exam_families: ['naplan'],
+      exam_families: ['au_numeracy_y5_format'],
     });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
@@ -774,7 +774,7 @@ describe('content-svc — POST /content/items (createItem)', () => {
       skill_ids: [],
       difficulty: 0.4,
       year_levels: [5],
-      exam_families: ['naplan'],
+      exam_families: ['au_numeracy_y5_format'],
     });
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('expected error');
@@ -789,7 +789,7 @@ describe('content-svc — POST /content/items (createItem)', () => {
       skill_ids: ['sk-1'],
       difficulty: 0.4,
       year_levels: [5],
-      exam_families: ['naplan'],
+      exam_families: ['au_numeracy_y5_format'],
       discrimination: 'bad' as unknown as number,
     });
     expect(result.ok).toBe(false);
@@ -1081,7 +1081,7 @@ describe('content-svc — POST /content/stimuli (createStimulus)', () => {
       type: 'passage',
       content: { text: 'Once upon a time...' },
       year_levels: [5],
-      exam_families: ['naplan'],
+      exam_families: ['au_numeracy_y5_format'],
     });
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('expected ok');
@@ -1210,7 +1210,7 @@ describe('content-svc — POST /content/select (composer branch, v1.1-S2)', () =
     slug: 'icas-math-y5',
     engine_type: 'linear',
     framework_config_id: 'fc-icas',
-    exam_family: 'icas',
+    exam_family: 'au_math_paper_c_format',
     year_levels: [5],
   };
 
@@ -1374,7 +1374,7 @@ describe('content-svc — POST /content/select (composer branch, v1.1-S2)', () =
           slug: 'icas-math-y5',
           engine_type: 'linear',
           framework_config_id: 'fc-icas',
-          exam_family: 'icas',
+          exam_family: 'au_math_paper_c_format',
           year_levels: [5],
         },
         error: null,
@@ -1427,7 +1427,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
     id: 'import-item-1', source_item_id: null, stimulus_id: null,
     response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5,
     discrimination: null, expected_time_secs: null, year_levels: [5],
-    exam_families: ['naplan'], programs: [], countries: [], curricula: [],
+    exam_families: ['au_numeracy_y5_format'], programs: [], countries: [], curricula: [],
     bloom_level: null, lifecycle: 'draft', is_active: false, current_version: 1,
     created_at: '2026-05-19T00:00:00.000Z', updated_at: '2026-05-19T00:00:00.000Z',
   };
@@ -1477,12 +1477,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: { options: ['3', '4', '5', '6'] }, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: { options: ['4', '5', '6', '7'] }, difficulty: 0.6 },
         },
       ],
@@ -1511,12 +1511,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
         },
       ],
@@ -1541,12 +1541,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: sharedStem, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: sharedStem, response_config: {}, difficulty: 0.6 }, // identical stem
         },
       ],
@@ -1567,7 +1567,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [{
         external_key: 'key-001',
         // copyright_declaration intentionally omitted — Zod literal('original') must reject
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });
@@ -1585,13 +1585,13 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-dup', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-dup', // duplicate external_key
           copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
         },
       ],
@@ -1613,12 +1613,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['naplan'] },
+          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
         },
       ],
@@ -1644,7 +1644,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
         external_key: 'key-001',
         copyright_declaration: 'original',
         // authoring_method intentionally omitted — z.enum without default must reject
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });
@@ -1660,7 +1660,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
       manifest_version: '1.0',
       items: [{
         external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'ai_assisted_human_reviewed',
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });
@@ -1702,7 +1702,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
         external_key: 'key-001',
         copyright_declaration: 'original',
         authoring_method: 'robot',
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['naplan'] },
+        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });

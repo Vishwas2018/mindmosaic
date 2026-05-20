@@ -44,7 +44,7 @@ SELECT plan(40);
 INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint)
 VALUES (
   '00000000-0000-0000-0003-000000000001',
-  'naplan', 'v_setup_003',
+  'au_numeracy_y5_format', 'v_setup_003',
   '{"name":"NAPLAN Numeracy Y5"}'::jsonb,
   '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb
 );
@@ -56,7 +56,7 @@ INSERT INTO pathway (id, slug, display_name, exam_family, program, framework_con
 VALUES (
   '00000000-0000-0000-0003-000000000003',
   'naplan-numeracy-y5', 'NAPLAN Numeracy Y5',
-  'naplan', 'numeracy',
+  'au_numeracy_y5_format', 'numeracy',
   '00000000-0000-0000-0003-000000000001',
   'adaptive', ARRAY[5],
   'pathway.feature.naplan.numeracy_y5', true
@@ -66,7 +66,7 @@ INSERT INTO pathway (id, slug, display_name, exam_family, program, framework_con
 VALUES (
   '00000000-0000-0000-0003-000000000004',
   'naplan-numeracy-y3', 'NAPLAN Numeracy Y3',
-  'naplan', 'numeracy',
+  'au_numeracy_y5_format', 'numeracy',
   '00000000-0000-0000-0003-000000000001',
   'adaptive', ARRAY[3],
   'pathway.feature.naplan.numeracy_y3', false
@@ -75,7 +75,7 @@ VALUES (
 INSERT INTO assessment_profile (id, exam_family, program, year_level, version, framework_config_id, blueprint_id, duration_minutes, is_active)
 VALUES (
   '00000000-0000-0000-0003-000000000005',
-  'naplan', 'numeracy', 5, 'v_setup_003',
+  'au_numeracy_y5_format', 'numeracy', 5, 'v_setup_003',
   '00000000-0000-0000-0003-000000000001',
   '00000000-0000-0000-0003-000000000002',
   45, true
@@ -84,7 +84,7 @@ VALUES (
 INSERT INTO assessment_profile (id, exam_family, program, year_level, version, framework_config_id, blueprint_id, duration_minutes, is_active)
 VALUES (
   '00000000-0000-0000-0003-000000000006',
-  'naplan', 'numeracy', 3, 'v_setup_003_old',
+  'au_numeracy_y5_format', 'numeracy', 3, 'v_setup_003_old',
   '00000000-0000-0000-0003-000000000001',
   '00000000-0000-0000-0003-000000000002',
   40, false
@@ -201,7 +201,7 @@ SELECT set_config('request.jwt.claims',
 SET ROLE authenticated;
 
 SELECT throws_like(
-  $$INSERT INTO framework_config (exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint) VALUES ('naplan','v_g4','{}','{}','{}','{}','{}')$$,
+  $$INSERT INTO framework_config (exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint) VALUES ('au_numeracy_y5_format','v_g4','{}','{}','{}','{}','{}')$$,
   '%violates row-level security%',
   'G4.1: parent cannot INSERT into framework_config'
 );
@@ -213,13 +213,13 @@ SELECT throws_like(
 );
 
 SELECT throws_like(
-  $$INSERT INTO pathway (slug, display_name, exam_family, program, framework_config_id, engine_type, year_levels, required_feature_key) VALUES ('g4-test','G4 Test','naplan','numeracy','00000000-0000-0000-0003-000000000001','adaptive','{5}','pathway.feature.test')$$,
+  $$INSERT INTO pathway (slug, display_name, exam_family, program, framework_config_id, engine_type, year_levels, required_feature_key) VALUES ('g4-test','G4 Test','au_numeracy_y5_format','numeracy','00000000-0000-0000-0003-000000000001','adaptive','{5}','pathway.feature.test')$$,
   '%violates row-level security%',
   'G4.3: parent cannot INSERT into pathway'
 );
 
 SELECT throws_like(
-  $$INSERT INTO assessment_profile (exam_family, program, year_level, version, framework_config_id, blueprint_id, duration_minutes) VALUES ('naplan','numeracy',5,'v_g4','00000000-0000-0000-0003-000000000001','00000000-0000-0000-0003-000000000002',45)$$,
+  $$INSERT INTO assessment_profile (exam_family, program, year_level, version, framework_config_id, blueprint_id, duration_minutes) VALUES ('au_numeracy_y5_format','numeracy',5,'v_g4','00000000-0000-0000-0003-000000000001','00000000-0000-0000-0003-000000000002',45)$$,
   '%violates row-level security%',
   'G4.4: parent cannot INSERT into assessment_profile'
 );
@@ -244,7 +244,7 @@ SELECT set_config('request.jwt.claims',
 SET ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint) VALUES ('00000000-0000-0000-0003-000000000011','naplan','v_g5_fc','{}','{}','{}','{}','{}')$$,
+  $$INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint) VALUES ('00000000-0000-0000-0003-000000000011','au_numeracy_y5_format','v_g5_fc','{}','{}','{}','{}','{}')$$,
   'G5.1: platform_admin can INSERT into framework_config'
 );
 
@@ -254,12 +254,12 @@ SELECT lives_ok(
 );
 
 SELECT lives_ok(
-  $$INSERT INTO pathway (id, slug, display_name, exam_family, program, framework_config_id, engine_type, year_levels, required_feature_key) VALUES ('00000000-0000-0000-0003-000000000013','naplan-g5-test','G5 Test Pathway','naplan','numeracy','00000000-0000-0000-0003-000000000001','adaptive','{5}','pathway.feature.g5.test')$$,
+  $$INSERT INTO pathway (id, slug, display_name, exam_family, program, framework_config_id, engine_type, year_levels, required_feature_key) VALUES ('00000000-0000-0000-0003-000000000013','naplan-g5-test','G5 Test Pathway','au_numeracy_y5_format','numeracy','00000000-0000-0000-0003-000000000001','adaptive','{5}','pathway.feature.g5.test')$$,
   'G5.3: platform_admin can INSERT into pathway'
 );
 
 SELECT lives_ok(
-  $$INSERT INTO assessment_profile (id, exam_family, program, year_level, version, framework_config_id, blueprint_id, duration_minutes) VALUES ('00000000-0000-0000-0003-000000000014','naplan','numeracy',5,'v_g5_ap','00000000-0000-0000-0003-000000000001','00000000-0000-0000-0003-000000000002',45)$$,
+  $$INSERT INTO assessment_profile (id, exam_family, program, year_level, version, framework_config_id, blueprint_id, duration_minutes) VALUES ('00000000-0000-0000-0003-000000000014','au_numeracy_y5_format','numeracy',5,'v_g5_ap','00000000-0000-0000-0003-000000000001','00000000-0000-0000-0003-000000000002',45)$$,
   'G5.4: platform_admin can INSERT into assessment_profile'
 );
 

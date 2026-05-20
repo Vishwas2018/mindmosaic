@@ -14,6 +14,7 @@ import {
 import { usePathways, useCreateSession } from '@mm/sdk'
 import type { PathwayDTO } from '@mm/types'
 import { useAuth } from '../../../providers/AuthProvider'
+import { getExamFamilyLabel } from '../../../lib/content-labels'
 
 // SCREEN_SPECS §8 — Session Selection.
 // Q-22.4 (2026-05-12) = A: no recent-sessions row on this screen.
@@ -75,7 +76,7 @@ function PathwayCard({ pathway, isPending, onStart }: PathwayCardProps) {
           <div>
             <h2 className="text-base font-semibold text-[var(--text)]">{pathway.display_name}</h2>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              {pathway.exam_family} · Year {pathway.year_levels.join(', ')}
+              {getExamFamilyLabel(pathway.exam_family)} · Year {pathway.year_levels.join(', ')}
             </p>
           </div>
           <span
@@ -102,7 +103,7 @@ function PathwayCard({ pathway, isPending, onStart }: PathwayCardProps) {
       <div>
         <h2 className="text-base font-semibold text-[var(--text)]">{pathway.display_name}</h2>
         <p className="mt-1 text-xs text-[var(--muted)]">
-          {pathway.exam_family} · Year {pathway.year_levels.join(', ')} · 20–30 min
+          {getExamFamilyLabel(pathway.exam_family)} · Year {pathway.year_levels.join(', ')} · 20–30 min
         </p>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">

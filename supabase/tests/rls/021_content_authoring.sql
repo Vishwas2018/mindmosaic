@@ -43,7 +43,7 @@ VALUES (
   ARRAY['aaaaaaaa-0000-0000-0000-000000000001']::uuid[],
   0.4,
   ARRAY[5]::int[],
-  ARRAY['naplan']::exam_family[]
+  ARRAY['au_numeracy_y5_format']::exam_family[]
 );
 
 INSERT INTO item_version (item_id, version, stem, response_config, difficulty, is_current)
@@ -145,7 +145,7 @@ SET ROLE authenticated;
 
 SELECT throws_like(
   $$INSERT INTO item (response_type, skill_ids, difficulty, year_levels, exam_families)
-    VALUES ('mcq', ARRAY['aaaaaaaa-0000-0000-0000-000000000001']::uuid[], 0.4, ARRAY[5], ARRAY['naplan']::exam_family[])$$,
+    VALUES ('mcq', ARRAY['aaaaaaaa-0000-0000-0000-000000000001']::uuid[], 0.4, ARRAY[5], ARRAY['au_numeracy_y5_format']::exam_family[])$$,
   '%42501%',
   'G3.1: non-admin INSERT on item is denied (42501)'
 );
@@ -186,7 +186,7 @@ SELECT lives_ok(
             ARRAY['aaaaaaaa-0000-0000-0000-000000000001']::uuid[],
             0.5,
             ARRAY[5]::int[],
-            ARRAY['naplan']::exam_family[])$$,
+            ARRAY['au_numeracy_y5_format']::exam_family[])$$,
   'G4.1: platform_admin can INSERT into item'
 );
 

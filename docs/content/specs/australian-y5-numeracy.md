@@ -291,14 +291,14 @@ No code action required; operational gate only. See ADR-0041 §Decision 4.
 
 ```json
 {
-  "external_key": "naplan-y5-num-meas-area-001",
+  "external_key": "au-numeracy-y5-meas-area-001",
   "copyright_declaration": "original",
   "item": {
     "response_type": "multiple_choice",
     "skill_ids": ["meas.area.rectangle"],
     "difficulty": 0.1,
     "year_levels": [5],
-    "exam_families": ["naplan"],
+    "exam_families": ["au_numeracy_y5_format"],
     "curricula": ["ac_v9"],
     "countries": ["AU"],
     "bloom_level": "apply",

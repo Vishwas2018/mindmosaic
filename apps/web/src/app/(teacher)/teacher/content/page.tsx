@@ -17,6 +17,7 @@ import {
 import { usePathways } from '@mm/sdk'
 import type { PathwayDTO } from '@mm/types'
 import { EXAM_CONTENT_COPY as C } from '../../copy/examContent'
+import { getExamFamilyLabel } from '../../../../lib/content-labels'
 import { TeacherSidebarNav } from '../../../../components/teacher/TeacherSidebarNav'
 
 // ── State components ──────────────────────────────────────────────────────────
@@ -89,7 +90,7 @@ function PathwayGrid({
                     {p.display_name}
                   </p>
                   <p className="text-xs text-[var(--muted)] mt-0.5">
-                    {p.exam_family} · {p.program}
+                    {getExamFamilyLabel(p.exam_family)} · {p.program}
                   </p>
                 </div>
                 <Button

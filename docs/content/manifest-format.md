@@ -57,7 +57,7 @@ Each element of `items[]` must conform to `ImportManifestItemSchema`.
 | `skill_ids`          | `string[]`        | yes      | Min 1. Must match skill-graph node IDs.             |
 | `difficulty`         | `number`          | yes      | IRT difficulty parameter (θ scale; 0 = at level).  |
 | `year_levels`        | `integer[]`       | yes      | Min 1. e.g. `[5]`.                                 |
-| `exam_families`      | `string[]`        | yes      | Min 1. e.g. `["naplan"]`, `["icas"]`.              |
+| `exam_families`      | `string[]`        | yes      | Min 1. e.g. `["au_numeracy_y5_format"]`, `["au_math_paper_c_format"]`.              |
 | `source_item_id`     | `string \| null`  | no       | Reference to source item if adapted.                |
 | `stimulus_id`        | `string \| null`  | no       | UUID ref to existing stimulus row.                  |
 | `discrimination`     | `number \| null`  | no       | IRT discrimination (a) parameter.                  |
@@ -263,14 +263,14 @@ POST /content/import?dry_run=true
   "manifest_version": "1.0",
   "items": [
     {
-      "external_key": "naplan-y5-num-2026-001",
+      "external_key": "au-numeracy-y5-num-2026-001",
       "copyright_declaration": "original",
       "item": {
         "response_type": "multiple_choice",
         "skill_ids": ["num.fractions.compare"],
         "difficulty": 0.2,
         "year_levels": [5],
-        "exam_families": ["naplan"],
+        "exam_families": ["au_numeracy_y5_format"],
         "curricula": ["ac_v9"],
         "countries": ["AU"]
       },
@@ -317,9 +317,9 @@ item-003 stem is a SHA-duplicate of item-001.
 {
   "manifest_version": "1.0",
   "items": [
-    { "external_key": "item-001", "copyright_declaration": "original", "item": { "response_type": "multiple_choice", "skill_ids": ["num.fractions.compare"], "difficulty": 0.2, "year_levels": [5], "exam_families": ["naplan"] }, "version": { "stem": { "type": "text", "content": "Q1 stem text" }, "response_config": {}, "difficulty": 0.2 } },
+    { "external_key": "item-001", "copyright_declaration": "original", "item": { "response_type": "multiple_choice", "skill_ids": ["num.fractions.compare"], "difficulty": 0.2, "year_levels": [5], "exam_families": ["au_numeracy_y5_format"] }, "version": { "stem": { "type": "text", "content": "Q1 stem text" }, "response_config": {}, "difficulty": 0.2 } },
     { "external_key": "item-002", "copyright_declaration": "original", "item": { "response_type": "multiple_choice", "skill_ids": ["num.fractions.compare"], "difficulty": 0.3, "year_levels": [5], "exam_families": [] }, "version": { "stem": { "type": "text", "content": "Q2 stem text" }, "response_config": {}, "difficulty": 0.3 } },
-    { "external_key": "item-003", "copyright_declaration": "original", "item": { "response_type": "multiple_choice", "skill_ids": ["num.fractions.compare"], "difficulty": 0.2, "year_levels": [5], "exam_families": ["naplan"] }, "version": { "stem": { "type": "text", "content": "Q1 stem text" }, "response_config": {}, "difficulty": 0.2 } }
+    { "external_key": "item-003", "copyright_declaration": "original", "item": { "response_type": "multiple_choice", "skill_ids": ["num.fractions.compare"], "difficulty": 0.2, "year_levels": [5], "exam_families": ["au_numeracy_y5_format"] }, "version": { "stem": { "type": "text", "content": "Q1 stem text" }, "response_config": {}, "difficulty": 0.2 } }
   ]
 }
 ```
