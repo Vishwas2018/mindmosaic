@@ -47,14 +47,18 @@ this table is a reference starting point, not a substitute for the primary sourc
 
 ### Recommended strand mix per 50-item pilot batch (S7.1)
 
-| Strand      | Item count | Rationale                                   |
-| ----------- | ---------- | ------------------------------------------- |
-| Number      | 20         | Core NAPLAN weight; highest test coverage   |
-| Measurement | 10         | Second highest NAPLAN weight                |
-| Statistics  | 7          | Interpreting graphs and tables              |
-| Algebra     | 6          | Patterns and number sentences               |
-| Space       | 5          | Shape properties, angles                   |
-| Probability | 2          | Lower NAPLAN weight at Year 5              |
+| Strand      | Item count | Rationale                                                      |
+| ----------- | ---------- | -------------------------------------------------------------- |
+| Number      | 21         | Core NAPLAN weight; highest test coverage (+1 from Probability redistribution — Q-1.1-7.T1C Option A) |
+| Measurement | 11         | Second highest NAPLAN weight (+1 from Probability redistribution — Q-1.1-7.T1C Option A)              |
+| Statistics  | 7          | Interpreting graphs and tables                                 |
+| Algebra     | 6          | Patterns and number sentences                                  |
+| Space       | 5          | Shape properties, angles                                       |
+| Probability | 0          | Deferred to S7.2+ pending skill graph extension (ISSUE-0053)  |
+
+> **Probability strand note (Q-1.1-7.T1C Option A):** The seeded skill graph (seeds/01_skill_graph.sql) contains no
+> Probability skill node. The 2 Probability items originally planned for S7.1 have been redistributed (+1 Number,
+> +1 Measurement). Probability authoring resumes in S7.2+ after ISSUE-0053 (skill graph extension) is resolved.
 
 ---
 
@@ -86,11 +90,17 @@ IRT difficulty parameter (θ scale; 0 = NAPLAN Band 5 Year 5 benchmark).
 
 | Response type         | `response_type` value | Items | % | Notes                                   |
 | --------------------- | --------------------- | ----- | --- | --------------------------------------- |
-| Multiple choice (4-opt) | `"multiple_choice"` | 32  | 64% | Standard NAPLAN MC; 1 correct, 3 distractors |
-| Short response (numeric) | `"short_response"` | 15  | 30% | Fill-in numeric answer; no distractors   |
-| Complex MC / ordering | `"multiple_choice"`   | 3   | 6%  | Ranked or multi-step MC                 |
+| Multiple choice (4-opt) | `"mcq"` | 32  | 64% | Standard NAPLAN MC; 1 correct, 3 distractors |
+| Short response (numeric) | `"short_answer"` | 15  | 30% | Fill-in numeric answer; no distractors   |
+| Complex MC / ordering | `"mcq"`   | 3   | 6%  | Ranked or multi-step MC                 |
 
-All items for S7.1 pilot: `response_type: "multiple_choice"` or `"short_response"` only.
+All items for S7.1 pilot: `response_type: "mcq"` or `"short_answer"` only.
+
+> **DB enum note (Q-1.1-7.T1A Option A):** `response_type` values must match the Postgres `response_type` enum
+> exactly as defined in migration 0001: `'mcq', 'multi_select', 'short_answer', 'extended_response', 'drag_drop',
+> 'cloze', 'numeric_entry'`. The import handler passes this value directly to the DB without translation; a mismatch
+> causes a DB constraint violation (item rejected, not a 422). `"multiple_choice"` and `"short_response"` are NOT
+> valid values.
 
 ---
 
@@ -293,9 +303,10 @@ No code action required; operational gate only. See ADR-0041 §Decision 4.
 {
   "external_key": "au-numeracy-y5-meas-area-001",
   "copyright_declaration": "original",
+  "authoring_method": "ai_assisted_human_reviewed",
   "item": {
-    "response_type": "multiple_choice",
-    "skill_ids": ["meas.area.rectangle"],
+    "response_type": "mcq",
+    "skill_ids": ["a0000001-0000-0000-0000-000000000008"],
     "difficulty": 0.1,
     "year_levels": [5],
     "exam_families": ["au_numeracy_y5_format"],

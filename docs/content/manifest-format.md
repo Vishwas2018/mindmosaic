@@ -53,8 +53,8 @@ Each element of `items[]` must conform to `ImportManifestItemSchema`.
 
 | Field                | Type              | Required | Notes                                               |
 | -------------------- | ----------------- | -------- | --------------------------------------------------- |
-| `response_type`      | `string`          | yes      | e.g. `"multiple_choice"`, `"short_response"`        |
-| `skill_ids`          | `string[]`        | yes      | Min 1. Must match skill-graph node IDs.             |
+| `response_type`      | `string`          | yes      | Must match the Postgres `response_type` enum verbatim (migration 0001 values: `"mcq"`, `"multi_select"`, `"short_answer"`, `"extended_response"`, `"drag_drop"`, `"cloze"`, `"numeric_entry"`). Zod validates as `z.string()` only — the DB enforces the enum constraint. A mismatch causes a DB-level rejection, not a 422. (Q-1.1-7.T1A) |
+| `skill_ids`          | `string[]`        | yes      | Min 1. Must be valid UUID values from the `skill_node` table (`SELECT id, slug FROM skill_node`). The import handler passes these directly to the DB `uuid[]` column — slug strings are NOT resolved to UUIDs at import time (ISSUE-0052). A non-UUID value causes a DB cast error (item rejected). (Q-1.1-7.T1B) |
 | `difficulty`         | `number`          | yes      | IRT difficulty parameter (θ scale; 0 = at level).  |
 | `year_levels`        | `integer[]`       | yes      | Min 1. e.g. `[5]`.                                 |
 | `exam_families`      | `string[]`        | yes      | Min 1. e.g. `["au_numeracy_y5_format"]`, `["au_math_paper_c_format"]`.              |
@@ -265,9 +265,10 @@ POST /content/import?dry_run=true
     {
       "external_key": "au-numeracy-y5-num-2026-001",
       "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
       "item": {
-        "response_type": "multiple_choice",
-        "skill_ids": ["num.fractions.compare"],
+        "response_type": "mcq",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000005"],
         "difficulty": 0.2,
         "year_levels": [5],
         "exam_families": ["au_numeracy_y5_format"],

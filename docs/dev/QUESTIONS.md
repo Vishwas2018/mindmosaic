@@ -9,6 +9,63 @@
 
 ## Resolved
 
+### Q-1.1-7.T1C — Probability strand has no skill node in seed; template §2 targets 2 items
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — T1 pre-read finding)
+- Asked of: operator (T3 medium — strand mix + skill graph coverage)
+- Source: `docs/content/specs/australian-y5-numeracy.md §2`; `supabase/seeds/01_skill_graph.sql`
+- Question: Template §2 pilot batch mix allocates 2 items to the Probability strand. The seeded skill graph contains no Probability skill node. Options: (A) suppress Probability for S7.1, redistribute 2 items; (B) add Probability + Statistics skill nodes before authoring begins.
+- Why ambiguous: Probability is a valid AC v9.0 strand but is absent from the v1 seed. Adding a skill node requires either a new seed entry or a migration.
+- Blocking? yes — authoring items with a non-existent skill UUID fails at DB; authoring with any non-UUID slug fails at cast.
+- Assumed answer: Option A (suppress Probability, redistribute)
+- Code affected: `docs/content/specs/australian-y5-numeracy.md §2` (strand mix table)
+- Status: resolved
+- Resolution: **Option A. Probability items suppressed for S7.1 pilot. Redistributed: +1 Number (21 total), +1 Measurement (11 total). Probability deferred to S7.2+ pending ISSUE-0053 (skill graph extension). (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.T1B — `skill_ids` field: manifest examples use slug strings; DB column is `uuid[]`
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — T1 pre-read finding)
+- Asked of: operator (T3 structural — manifest contract + handler behavior)
+- Source: `supabase/migrations/0002_content_skill_graph.sql:166` (`skill_ids uuid[] NOT NULL`); `supabase/functions/content-svc/handlers.ts:854` (passes directly to INSERT); `docs/content/specs/australian-y5-numeracy.md §10` (`"skill_ids": ["meas.area.rectangle"]`); `docs/content/manifest-format.md §9` (`"skill_ids": ["num.fractions.compare"]`)
+- Question: Manifest skill_ids examples use slug strings (`"meas.area.rectangle"`, `"num.fractions.compare"`). DB column is `uuid[]`. `importItems` passes them directly to Supabase INSERT without slug resolution — non-UUID strings cause a DB cast error. Options: (A) fix docs/examples to use UUIDs; (B) add slug resolution to `importItems`; (C) UUIDs for S7.1, file ISSUE for slug-resolution upgrade.
+- Why ambiguous: Template examples, manifest-format docs, and actual DB column type all conflict.
+- Blocking? yes — any non-UUID `skill_ids` value causes a DB cast error; item rejected.
+- Assumed answer: Option C (UUIDs in S7.1 manifests, ISSUE-0052 for upgrade)
+- Code affected: `docs/content/specs/australian-y5-numeracy.md §10`; `docs/content/manifest-format.md §3.1 + §9`; `docs/dev/OPEN_ISSUES.md` (ISSUE-0052)
+- Status: resolved
+- Resolution: **Option C. Manifests for S7.1 must supply valid UUIDs from `skill_node` table. Template + manifest-format docs updated to show real UUIDs from seed (Q-1.1-7.T1B Option C, 2026-05-20 operator decision). ISSUE-0052 filed for post-S7.1 slug-resolution upgrade to `importItems`.**
+
+Seeded skill UUIDs for S7.1 reference:
+- `place-value` → `a0000001-0000-0000-0000-000000000004`
+- `fractions-decimals` → `a0000001-0000-0000-0000-000000000005`
+- `operations` → `a0000001-0000-0000-0000-000000000006`
+- `word-problems` → `a0000001-0000-0000-0000-000000000007`
+- `geometry` → `a0000001-0000-0000-0000-000000000008`
+- `data-interpretation` → `a0000001-0000-0000-0000-000000000009`
+
+T3 classification: structural — manifest contract change affects all authored items; round-trip required and completed.
+
+---
+
+### Q-1.1-7.T1A — `response_type` values in template ≠ DB enum; import fails silently
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — T1 pre-read finding)
+- Asked of: operator (T3 structural — manifest contract)
+- Source: `supabase/migrations/0001_enums_tenancy_auth.sql:36–42` (enum: `'mcq', 'multi_select', 'short_answer', 'extended_response', 'drag_drop', 'cloze', 'numeric_entry'`); `supabase/migrations/0002_content_skill_graph.sql:165` (`response_type response_type NOT NULL`); `supabase/functions/content-svc/handlers.ts:853` (passes directly to INSERT); `docs/content/specs/australian-y5-numeracy.md §4` (`"multiple_choice"`, `"short_response"`); `docs/content/manifest-format.md §9` (`"multiple_choice"`)
+- Question: Template §4 and manifest-format §9 example both use `"multiple_choice"` and `"short_response"` as `response_type` values. DB enum has `'mcq'` and `'short_answer'`. Handler passes the value directly to INSERT — mismatch causes DB enum constraint violation. Options: (A) fix docs to use DB enum values; (B) add translation map in handler; (C) extend DB enum with new values.
+- Why ambiguous: Template and DB use different vocabularies; Zod uses `z.string()` so mismatch is invisible at validation time.
+- Blocking? yes — `"multiple_choice"` or `"short_response"` in a manifest causes DB INSERT failure; item rejected.
+- Assumed answer: Option A (DB enum is authoritative; fix docs)
+- Code affected: `docs/content/specs/australian-y5-numeracy.md §4 + §10`; `docs/content/manifest-format.md §3.1 + §9`; `docs/dev/decisions/0041-content-import-pipeline.md §Implementation Notes`
+- Status: resolved
+- Resolution: **Option A. DB enum is authoritative. Template + manifest-format docs updated: `"multiple_choice"` → `"mcq"`, `"short_response"` → `"short_answer"`. ADR-0041 §Implementation Notes records the constraint. No code change. (2026-05-20 operator decision)**
+
+T3 classification: structural — manifest contract; every authored item's response_type value is affected; round-trip required and completed.
+
+---
+
 ### Q-1.1-S7-LEGAL-2 — exam_family enum values: trademark exposure in public-facing surfaces (item 9)
 
 - Date raised: 2026-05-19 (v1.1-S7 legal review — finding 9)

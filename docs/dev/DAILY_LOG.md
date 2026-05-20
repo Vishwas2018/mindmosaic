@@ -2,6 +2,55 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1-S7 pre-authoring chore — 2026-05-20
+
+**Planned (from S7 morning ritual T1 pre-read):** Correct template + manifest-format docs before any S7.1 item authoring begins. Three T1 blockers caught at morning ritual; operator-resolved in session.
+
+**Actually delivered:**
+
+- `docs/content/specs/australian-y5-numeracy.md §4` — response_type values corrected: `"multiple_choice"` → `"mcq"`, `"short_response"` → `"short_answer"`. DB enum note added. (Q-1.1-7.T1A Option A)
+- `docs/content/specs/australian-y5-numeracy.md §2` — strand mix updated: Number 20→21, Measurement 10→11, Probability 2→0. Probability deferral note added. (Q-1.1-7.T1C Option A)
+- `docs/content/specs/australian-y5-numeracy.md §10` — example `response_type` corrected to `"mcq"`; `skill_ids` corrected to real UUID `a0000001-0000-0000-0000-000000000008` (geometry node); `authoring_method` field added. (Q-1.1-7.T1A + T1B)
+- `docs/content/manifest-format.md §3.1` — `response_type` and `skill_ids` field notes updated with DB enum verbatim constraint and UUID requirement. (Q-1.1-7.T1A + T1B)
+- `docs/content/manifest-format.md §9` — minimal example corrected: `"multiple_choice"` → `"mcq"`, slug `"num.fractions.compare"` → UUID `a0000001-0000-0000-0000-000000000005`; `authoring_method` added. (Q-1.1-7.T1A + T1B)
+- `docs/dev/QUESTIONS.md` — Q-1.1-7.T1A, Q-1.1-7.T1B, Q-1.1-7.T1C filed in ## Resolved with full citations, options, and resolutions.
+- `docs/dev/OPEN_ISSUES.md` — ISSUE-0052 (manifest slug→UUID resolution, medium, post-S7.1) + ISSUE-0053 (skill graph Probability + Statistics nodes, medium, pre-S7.2+) filed.
+- `docs/dev/decisions/0041-content-import-pipeline.md` — S7 morning ritual addendum appended to §Implementation Notes: response_type enum verbatim constraint + skill_ids UUID constraint + seeded UUIDs + ISSUE-0052 / ISSUE-0053 cross-refs.
+- `docs/dev/PROJECT_STATE.md` — issues count updated (medium: 16→18); notes updated.
+
+**Time spent:** < 1h (T1 pre-read findings + operator round-trip + docs corrections).
+
+**Surprises / departures:**
+
+- Template §4 and manifest-format.md §9 both used `"multiple_choice"` / `"short_response"` which are not valid DB enum values. Caught before any item was authored.
+- Template §10 example and manifest-format.md §9 used slug-format `skill_ids` (`"meas.area.rectangle"`, `"num.fractions.compare"`) — not UUIDs, and not matching any seeded slug. Caught before any import attempt.
+- Probability strand has no skill node in seed — 2 planned pilot items suppressed, redistributed.
+
+**Decisions made (not in stage):**
+
+- Q-1.1-7.T1A Option A — DB enum authoritative; docs corrected
+- Q-1.1-7.T1B Option C — UUIDs in S7.1 manifests; ISSUE-0052 for post-S7.1 upgrade
+- Q-1.1-7.T1C Option A — Probability suppressed for S7.1; ISSUE-0053 for graph extension
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0052 opened (slug→UUID resolution, medium)
+- ISSUE-0053 opened (skill graph extension, medium)
+- Q-1.1-7.T1A/T1B/T1C resolved
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (843/843, 0 regression) · Build n/a (docs-only) · RLS n/a (docs-only)
+
+**Tomorrow — first thing:**
+Resolve Q-1.1-7.1..9 round before S7.1 authoring opens. T3 structural: authoring approach, source format, import environment, lifecycle transition ownership.
+
+---
+
 ## v1.1-S7-prep step 1c — 2026-05-20
 
 **Planned (from Q-1.1-S7-LEGAL-2 Option A operator decision):** `exam_family` enum rename — `ALTER TYPE RENAME VALUE` (migration 0024) renaming `'naplan'` → `'au_numeracy_y5_format'` and `'icas'` → `'au_math_paper_c_format'`. Full mechanical sweep of all affected surfaces (seeds, contract tests, RLS pgTAP, UI call sites, scripts, docs). Intelligence-svc slug-split coupling fix (Q-2.5). UI display-label map (Q-2.3).

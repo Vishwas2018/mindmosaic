@@ -305,3 +305,35 @@ any remediation is scoped.
 
 Commit: a5140e0 (step 1c feat — migration + code sweep) · this chore close
 Related: Q-1.1-S7-LEGAL-2, migration 0024, ISSUE-0051
+
+---
+
+**S7 morning ritual addendum (2026-05-20) — manifest authoring constraints (Q-1.1-7.T1A + Q-1.1-7.T1B):**
+
+T1 pre-read at S7 morning ritual identified two manifest authoring constraints not previously documented in this ADR. Both are resolved before any S7.1 authoring begins (operator decisions, 2026-05-20):
+
+**`response_type` must match DB enum verbatim (Q-1.1-7.T1A Option A):**
+The `item.response_type` column uses the Postgres `response_type` enum defined in migration 0001:
+`'mcq', 'multi_select', 'short_answer', 'extended_response', 'drag_drop', 'cloze', 'numeric_entry'`
+
+`importItems` passes the manifest `response_type` string directly to Supabase INSERT (`handlers.ts:853`). The `ImportManifestItemSchema` uses `z.string()`, so Zod does not validate against enum values — the DB enforces the constraint. A mismatch produces a DB-level error; the item is rejected with `status: "rejected"`. There is no translation layer.
+
+Prior template and manifest-format docs incorrectly used `"multiple_choice"` and `"short_response"`. Both are not valid enum values. Corrected in this chore: template §4 and manifest-format §9 now use `"mcq"` and `"short_answer"`.
+
+For S7.1 pilot: use `"mcq"` for all multiple-choice items; `"short_answer"` for all numeric short-response items.
+
+**`skill_ids` must be UUIDs from `skill_node` table (Q-1.1-7.T1B Option C):**
+The `item.skill_ids` column is `uuid[] NOT NULL`. `importItems` passes manifest `skill_ids` directly to INSERT without slug-to-UUID resolution (`handlers.ts:854`). Slug-format strings (e.g., `"fractions-decimals"`) cause a DB UUID cast error; item rejected.
+
+Authors must supply the UUID values from the `skill_node` table. Seeded UUIDs for S7.1 (`seeds/01_skill_graph.sql`):
+- `place-value` → `a0000001-0000-0000-0000-000000000004`
+- `fractions-decimals` → `a0000001-0000-0000-0000-000000000005`
+- `operations` → `a0000001-0000-0000-0000-000000000006`
+- `word-problems` → `a0000001-0000-0000-0000-000000000007`
+- `geometry` → `a0000001-0000-0000-0000-000000000008`
+- `data-interpretation` → `a0000001-0000-0000-0000-000000000009`
+
+Slug resolution upgrade deferred: ISSUE-0052 tracks adding slug→UUID resolution inside `importItems` (same pattern as `selectFromBlueprint` at `handlers.ts:481`). Post-S7.1.
+
+Commit: this pre-S7 chore
+Related: Q-1.1-7.T1A, Q-1.1-7.T1B, Q-1.1-7.T1C, ISSUE-0052, ISSUE-0053

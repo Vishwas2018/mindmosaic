@@ -5,6 +5,50 @@
 
 ## Open
 
+### ISSUE-0053 — Skill graph extension: Probability + Statistics skill nodes missing
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.T1C)
+- Area: backend (supabase/seeds/) + content-ops
+- Tags: skill-graph · content-ops · s7.2+
+
+**Summary.** The seeded skill graph (`supabase/seeds/01_skill_graph.sql`) contains 6 skill nodes across 2 strands: Number & Algebra (place-value, fractions-decimals, operations, word-problems) and Measurement & Space (geometry, data-interpretation). The AC v9.0 Mathematics curriculum has 6 strands including Probability (AC9M5P) and a richer Statistics strand. No Probability skill node exists in the seed; `data-interpretation` covers some statistics-adjacent content but not the full Statistics strand.
+
+Impact on S7.1: Probability items suppressed (Q-1.1-7.T1C Option A). Statistics items map to `data-interpretation` (skill_id `a0000001-0000-0000-0000-000000000009`); this is an approximate mapping acceptable for S7.1.
+
+**Fix (before S7.2+ Probability/Statistics authoring).**
+1. Add `probability` skill node to `skill_graph_version` v1 (or a v2) seed under Number & Algebra strand.
+2. Optionally add a richer `statistics` skill node (distinct from `data-interpretation`) for more granular strand coverage.
+3. Update `docs/content/specs/australian-y5-numeracy.md §2` strand mix to restore 2 Probability items once the node is seeded.
+4. Remove Q-1.1-7.T1C reference from strand-mix note.
+
+Related: Q-1.1-7.T1C, DEV-20260520-1, `supabase/seeds/01_skill_graph.sql`
+
+---
+
+### ISSUE-0052 — Manifest slug→UUID resolution: `importItems` passes `skill_ids` directly to DB
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.T1B Option C)
+- Area: backend (supabase/functions/content-svc/handlers.ts)
+- Tags: content-import · skill-graph · dx · post-s7.1
+
+**Summary.** `importItems` in `content-svc/handlers.ts` passes `itemFields.skill_ids` directly to the Supabase INSERT at `item.skill_ids uuid[]` without slug-to-UUID resolution. Authors must supply valid UUIDs from the `skill_node` table. Working with 36-character UUIDs at authoring volume is error-prone; a slug-resolution step would allow authors to use human-readable slug strings (e.g., `"fractions-decimals"`) instead.
+
+The slug-resolution pattern is already proven at [handlers.ts:481–488](../../../supabase/functions/content-svc/handlers.ts#L481) (`selectFromBlueprint` resolves `skill_slugs → skill_ids` via `SELECT id, slug FROM skill_node WHERE slug IN (...)`). The same pattern could be applied inside `importItems` before the `createItem` call.
+
+**Fix (post-S7.1 — after S7.1 pilot proves end-to-end loop).**
+1. In `importItems`, before calling `createItem`: batch-resolve all unique slug values across the manifest using `skill_node.slug IN (...)`.
+2. Build a `Map<slug, uuid>`. Replace string entries in each item's `skill_ids` array: UUIDs pass through; slugs are resolved; unresolved slugs → per-item rejection with reason `"unknown skill_id: <slug>"`.
+3. Update `ImportManifestItemSchema` and `manifest-format.md §3.1` to document slug-or-UUID semantics.
+4. Update template §10 example and `manifest-format.md §9` to use slug format once implemented.
+
+Related: Q-1.1-7.T1B, ADR-0041 §Implementation Notes Step T1B addendum, handlers.ts:481
+
+---
+
 ### ISSUE-0051 — Trademark strings remain in non-enum surfaces (program column, display_name, slugs, feature_key, UI copy)
 
 - Status: open
