@@ -369,3 +369,42 @@ Q-1.1-7.1..9 were raised at S7 morning ritual (T3 structural — all 9 required 
 
 Commit: this S7.1 workflow chore
 Related: Q-1.1-7.1, Q-1.1-7.2, Q-1.1-7.3, Q-1.1-7.4, Q-1.1-7.5, Q-1.1-7.6, Q-1.1-7.7, Q-1.1-7.8, Q-1.1-7.9, DEV-20260520-1, ISSUE-0052, ISSUE-0053
+
+---
+
+**Gate I T3 addendum (2026-05-20) — response_config shape correction (Q-1.1-S7-RC.1):**
+
+T3 structural round-trip at S7.1 Gate I identified a three-way shape inconsistency in MCQ
+`response_config` across the spec docs and the delivery-time engine.
+
+**Finding:** `manifest-format.md §9` used `"correct"` + `string[]` options; `australian-y5-numeracy.md
+§6/§10` used `"correct"` + `[{key,text}]` object arrays. Both were wrong on at least one dimension:
+- `computeCorrectness` (`assessment-svc/handlers.ts:1068`) reads `cfg['correct_option_id']` — the
+  field `"correct"` is never read; MCQ items authored with `"correct"` score permanently incorrect
+- `readOptions` (`apps/web/exam/page.tsx:62-68`) expects `string[]` — object arrays return `[]`
+  (student sees "This question type is not yet supported" instead of options)
+- Assessment-svc contract test fixtures (lines 82-85) confirm `correct_option_id` is the intended key
+
+**Binding decision (Q-1.1-S7-RC.1 Option A, 2026-05-20 operator):** Flat string options +
+`correct_option_id`. Server ground truth wins; spec docs corrected.
+
+Correct MCQ `response_config` shape for all manifest items:
+```json
+{
+  "options": ["<text A>", "<text B>", "<text C>", "<text D>"],
+  "correct_option_id": "<text — must match one options element exactly, case-sensitive>",
+  "scoring": { "correct": 1, "incorrect": 0 }
+}
+```
+
+Docs corrected: `manifest-format.md §3.2` (subfield conventions added) + `§9` (minimal example);
+`australian-y5-numeracy.md §6` (MCQ block rewritten) + `§10` (complete example response_config).
+
+**By-product finding (ISSUE-0054):** Pre-existing v1 scoring bug — exam page submits
+`{ choice: selected }` (`exam/page.tsx:282`) but `computeCorrectness` reads `responseData['option_id']`
+(`handlers.ts:1070`). MCQ auto-scoring therefore non-functional in v1 exam mode regardless of content
+shape. Filed as ISSUE-0054 (high severity, pre-launch blocker). Fix: change `exam/page.tsx:282` to
+submit `{ option_id: selected }`.
+
+Commit: this Gate I T3 chore
+Related: Q-1.1-S7-RC.1, ISSUE-0054

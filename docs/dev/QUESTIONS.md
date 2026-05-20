@@ -9,6 +9,21 @@
 
 ## Resolved
 
+### Q-1.1-S7-RC.1 — response_config shape: correct_option_id + string[] options
+
+- Date raised: 2026-05-20 (v1.1-S7.1 Gate I)
+- Asked of: operator (T3 structural — DTO shape)
+- Source: manifest-format.md §9; australian-y5-numeracy.md §6/§10; assessment-svc/handlers.ts:1064-1073; apps/web/src/app/(student)/session/[id]/exam/page.tsx:62-68
+- Question: Which shape should MCQ `response_config` use for the correct-answer field and options array?
+- Why ambiguous: Three-way inconsistency — manifest-format.md §9 used `"correct"` + `string[]`; authoring spec §6/§10 used `"correct"` + `[{key,text}]` objects; delivery code reads `correct_option_id` + expects `string[]`.
+- Blocking? yes — Gate I format approval; manifest authored with wrong shape before investigation
+- Assumed answer: Option A — flat string options + `correct_option_id` (server ground truth wins)
+- Code affected: docs/content/manifest-format.md §3.2/§9; docs/content/specs/australian-y5-numeracy.md §6/§10; docs/content/manifests/s7.1-batch-01-preview.json (pending update)
+- Status: resolved
+- Resolution: **Option A — flat string options + `correct_option_id`** (2026-05-20 operator). Server ground truth (`computeCorrectness` at `assessment-svc/handlers.ts:1068`) wins; spec docs corrected. Evidence chain: (1) `handlers.ts:1064-1073` reads `cfg['correct_option_id']` — `"correct"` field never read by engine; (2) `exam/page.tsx:62-68` `readOptions()` returns `string[]` only — object arrays return `[]` (empty render); (3) assessment-svc contract test fixtures lines 82-85 confirm `correct_option_id`. Docs updated: `manifest-format.md §3.2/§9`; authoring spec `§6/§10`. By-product: pre-existing v1 scoring bug surfaced as ISSUE-0054 — UI sends `{ choice }` but server reads `responseData['option_id']`; MCQ auto-scoring non-functional in v1 exam mode regardless of content shape.
+
+---
+
 ### Q-1.1-7.9 — T5 adaptation for S7 content work
 
 - Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)

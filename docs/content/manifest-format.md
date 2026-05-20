@@ -78,6 +78,16 @@ Each element of `items[]` must conform to `ImportManifestItemSchema`.
 | `explanation`           | `Record<string, unknown> \| null` | no    | Worked solution for student-facing review.           |
 | `discrimination`        | `number \| null`               | no       | Version-level discrimination parameter.              |
 
+**`response_config` subfield conventions by `response_type` (Q-1.1-S7-RC.1):**
+
+- **MCQ (`"mcq"`):** `options` is `string[]` — full display text per option. `correct_option_id` is the
+  matching option string (must equal one element exactly, case-sensitive). The field `"correct"` is **not**
+  read by the delivery engine (`assessment-svc/handlers.ts:computeCorrectness:1068`); do not use it.
+  `distractor_rationale` keys use position labels A/B/C/D by convention.
+- **Short answer (`"short_answer"`):** `answer` (string), `answer_type` (`"integer"` | `"decimal"`),
+  `units` (`null` or unit string). Not auto-scored in v1 — `computeCorrectness` returns `null` for
+  non-MCQ items; human review governs correctness. See `australian-y5-numeracy.md §6` for examples.
+
 **NOT included:** `supersedes` — batch import creates fresh `draft` items only.
 `supersedes` is a separate admin operation for relating a new `item_version` to
 an existing item and is not an import concern. (T2 tightening — Q-1.1-6.8.)
@@ -278,26 +288,27 @@ POST /content/import?dry_run=true
       "version": {
         "stem": {
           "type": "text",
-          "content": "Which fraction is closest to 1?\n(A) 1/2\n(B) 3/4\n(C) 2/3\n(D) 5/8"
+          "content": "Which fraction is closest to 1?",
+          "format": "plaintext"
         },
         "response_config": {
-          "options": ["A", "B", "C", "D"],
-          "correct": "B",
+          "options": ["1/2", "3/4", "2/3", "5/8"],
+          "correct_option_id": "3/4",
           "scoring": { "correct": 1, "incorrect": 0 }
         },
         "difficulty": 0.2,
         "distractor_rationale": {
-          "A": "1/2 = 0.5; closer to 0 than 1",
-          "C": "2/3 ≈ 0.667; less than 3/4",
-          "D": "5/8 = 0.625; less than 3/4"
+          "A": { "misconception": "largest numerator focus", "description": "1/2 = 0.5; distance from 1 is 0.5 — the largest gap" },
+          "C": { "misconception": "approximate ordering error", "description": "2/3 ≈ 0.667; less than 3/4 = 0.75" },
+          "D": { "misconception": "larger denominator confusion", "description": "5/8 = 0.625; less than 3/4 = 0.75" }
         },
         "explanation": {
           "steps": [
             "Convert each fraction to a decimal: 1/2=0.5, 3/4=0.75, 2/3≈0.667, 5/8=0.625",
-            "Compare to 1: distances are 0.5, 0.25, 0.333, 0.375",
-            "3/4 has the smallest distance from 1"
+            "Compare distances to 1: 0.5, 0.25, 0.333, 0.375",
+            "3/4 has the smallest distance — it is closest to 1"
           ],
-          "answer": "B"
+          "answer": "3/4"
         }
       }
     }

@@ -150,20 +150,26 @@ distinct SHAs. Maintain consistent casing within your authored items.
 ```json
 {
   "options": [
-    { "key": "A", "text": "<option A text>" },
-    { "key": "B", "text": "<option B text>" },
-    { "key": "C", "text": "<option C text>" },
-    { "key": "D", "text": "<option D text>" }
+    "<option A text>",
+    "<option B text>",
+    "<option C text>",
+    "<option D text>"
   ],
-  "correct": "B",
+  "correct_option_id": "<option B text>",
   "scoring": { "correct": 1, "incorrect": 0 }
 }
 ```
 
+> **Shape note (Q-1.1-S7-RC.1):** `options` is `string[]` — each element is the full display text of
+> one option. `correct_option_id` must equal one element of `options` exactly (case-sensitive). The
+> field `"correct"` is **not** read by the delivery engine
+> (`assessment-svc/handlers.ts:computeCorrectness:1068`); do not use it.
+
 Requirements:
-- Exactly 4 options (A, B, C, D) for NAPLAN-style MC.
-- Exactly 1 correct answer.
-- Distractors must represent plausible wrong answers (see §7 for rationale spec).
+- Exactly 4 strings in `options` for NAPLAN-style MC.
+- `correct_option_id` must match one element of `options` exactly.
+- Distractors are the remaining 3 strings. Must represent plausible wrong answers (see §7 for rationale spec).
+- `distractor_rationale` keys use position labels A/B/C/D by convention (A = first option, B = second, etc.).
 
 ### Short response (numeric)
 
@@ -323,12 +329,12 @@ No code action required; operational gate only. See ADR-0041 §Decision 4.
     },
     "response_config": {
       "options": [
-        { "key": "A", "text": "13 square metres" },
-        { "key": "B", "text": "26 square metres" },
-        { "key": "C", "text": "40 square metres" },
-        { "key": "D", "text": "45 square metres" }
+        "13 square metres",
+        "26 square metres",
+        "40 square metres",
+        "45 square metres"
       ],
-      "correct": "C",
+      "correct_option_id": "40 square metres",
       "scoring": { "correct": 1, "incorrect": 0 }
     },
     "difficulty": 0.1,

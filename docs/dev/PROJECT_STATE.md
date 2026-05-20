@@ -6,7 +6,7 @@
 ## Position
 
 - Last completed stage: v1.1-S7 pre-authoring chore — template + manifest-format docs corrected (Q-1.1-7.T1A/T1B/T1C, 2026-05-20)
-- Next stage: v1.1-S7.1 Gate I — 5–10 item pilot dry-run (workflow defined; Q-1.1-7.1..9 resolved 2026-05-20)
+- Next stage: v1.1-S7.1 Gate I close — update manifest (Option A shape + skill remap), then Gate II dry-run (Q-1.1-S7-RC.1 resolved 2026-05-20)
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
 - Active branch: `v1.1/exam-content` — 26 commits ahead of origin/main (9376d98 v1.0.0):
   a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · 8c86690 v1.1-S6 chore · 4453ddc S7-prep step 1a · bd3a310 S7-prep step 1b feat · 5dd8f4e S7-prep step 1b chore · a5140e0 S7-prep step 1c feat · this chore
@@ -81,13 +81,13 @@ Full table: `docs/dev/perf/measurements.md`.
 - ADRs accepted: **41** (ADR-0001 through ADR-0041; ADR-0041 Step 1c addendum appended 2026-05-20 — Q-1.1-S7-LEGAL-2.1..2.5 resolutions, enum rename mapping, migration 0024 DDL note, intelligence-svc DB-lookup fix, EXAM_FAMILY_DISPLAY_LABELS pattern, ISSUE-0051 cross-ref)
 - ADRs proposed: **0**
 - Workspaces: **17** — unchanged
-- Issues critical / high / medium / low: **0 / 0 / 18 / 19**
-  - High (0): none
+- Issues critical / high / medium / low: **0 / 1 / 18 / 19**
+  - High (1): **ISSUE-0054** (MCQ auto-scoring broken v1 exam mode — UI sends `{ choice }`, server reads `option_id` — pre-launch blocker)
   - Medium (18): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0039, ISSUE-0040, ISSUE-0041, ISSUE-0043, ISSUE-0045, ISSUE-0049, ISSUE-0050, ISSUE-0051 (trademark non-enum surfaces), **ISSUE-0052** (manifest slug→UUID resolution — post-S7.1), **ISSUE-0053** (skill graph extension — Probability + Statistics nodes — pre-S7.2+)
   - Low (19): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038 (info), ISSUE-0044, ISSUE-0046, ISSUE-0047, ISSUE-0048
   - Resolved: ISSUE-0005, 0006, 0007, 0008, 0012, 0013, 0018, 0026, 0029, 0036, 0037, **0042** (content-svc scope; b3eb668 2026-05-19)
 - Migrations: **0001–0024** (migrations 0001–0020 pgTAP-verified 451/451; 0021 SQL on disk deferred-validation; 0022 adds composer_params + simulation_params jsonb nullable columns — deferred-validation per 0021 pattern; 0023 adds authoring_method NOT NULL to item_version — deferred-validation per 0021 pattern; **0024 renames exam_family enum values naplan→au_numeracy_y5_format + icas→au_math_paper_c_format — deferred-validation per 0021 pattern**)
-- Open questions: **0** — Q-1.1-1.0..9 + Q-1.1-2.1..5 + Q-1.1-3.1..5 + Q-1.1-4.1..8 + Q-1.1-5.1..6 + Q-1.1-6.1..8 + Q-1.1-S7-LEGAL-2.1..2.5 + **Q-1.1-7.1..9** all resolved
+- Open questions: **0** — Q-1.1-1.0..9 + Q-1.1-2.1..5 + Q-1.1-3.1..5 + Q-1.1-4.1..8 + Q-1.1-5.1..6 + Q-1.1-6.1..8 + Q-1.1-S7-LEGAL-2.1..2.5 + **Q-1.1-7.1..9** + **Q-1.1-S7-RC.1** all resolved
 - Open bugs: 0
 - Deviations logged: **24 total (9 resolved, 15 open)** — unchanged (no new deviations in S6; DEV-20260515-2 honored)
   - DEV-20260607-1 accepted — DEV_PLAN "47 stages" count vs delivered 49
@@ -117,7 +117,11 @@ Full table: `docs/dev/perf/measurements.md`.
 - Manifests: in-repo at `docs/content/manifests/<batch>.json`
 - T5 gates: Gate I (5–10 item pilot dry-run) → Gate II (full 50-item dry-run) → Gate III (live import)
 
-**NEXT: S7.1 Gate I** — author 5–10 pilot items (Number strand), dry-run import, surface for operator approval. DEV-20260520-1 still active (items land as `draft`; no `active` until legal pre-launch gate).
+**S7.1 Gate I format review COMPLETE.** Q-1.1-S7-RC.1 Option A resolved (2026-05-20): flat string options + `correct_option_id` (server ground truth). Spec docs corrected (manifest-format.md §3.2/§9, authoring spec §6/§10).
+
+**ISSUE-0054 FILED** — MCQ auto-scoring broken in v1 exam mode (UI sends `{ choice }`, server reads `option_id`; high severity; pre-launch blocker). Not a Gate I/II/III blocker (items land draft). Fix before any item reaches `active` in exam-mode session.
+
+**NEXT: S7.1 Gate I close** — (1) update `docs/content/manifests/s7.1-batch-01-preview.json` with Option A shape + skill remap (Gate I amendments). (2) Gate II dry-run: `POST /content/import?dry_run=true`. DEV-20260520-1 still active.
 
 **ISSUE-0052 FILED** — manifest slug→UUID resolution (post-S7.1 upgrade to `importItems`).
 **ISSUE-0053 FILED** — skill graph Probability + Statistics node extension (pre-S7.2+).

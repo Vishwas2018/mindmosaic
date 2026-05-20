@@ -2,6 +2,50 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1-S7.1 Gate I T3 + pre-Gate-II chore — 2026-05-20
+
+**Planned (from Gate I operator review):** Investigate response_config shape at delivery time; correct manifest-format.md + authoring spec docs to reflect server ground truth; file ISSUE-0054.
+
+**Actually delivered:**
+
+- `docs/content/specs/australian-y5-numeracy.md §6` — MCQ response_config corrected: `[{key,text}]` + `"correct"` → `string[]` + `"correct_option_id"`. Shape note added. (Q-1.1-S7-RC.1 Option A)
+- `docs/content/specs/australian-y5-numeracy.md §10` — complete example response_config corrected to flat string options + `correct_option_id`. (Q-1.1-S7-RC.1)
+- `docs/content/manifest-format.md §3.2` — `response_config` subfield conventions added for MCQ + short_answer. (Q-1.1-S7-RC.1)
+- `docs/content/manifest-format.md §9` — minimal example updated: stem cleaned (options removed from content), `correct` → `correct_option_id`, options → meaningful string array, distractor_rationale → `{misconception, description}` format. (Q-1.1-S7-RC.1)
+- `docs/dev/QUESTIONS.md` — Q-1.1-S7-RC.1 filed in ## Resolved with full evidence chain (handlers.ts:1064-1073, exam/page.tsx:62-68, contract test fixtures lines 82-85).
+- `docs/dev/OPEN_ISSUES.md` — ISSUE-0054 filed (MCQ auto-scoring broken v1 exam mode; high severity; pre-launch blocker).
+- `docs/dev/decisions/0041-content-import-pipeline.md` — Gate I T3 addendum appended: three-way shape inconsistency finding, Option A decision, correct MCQ shape, ISSUE-0054 cross-ref.
+- `docs/dev/PROJECT_STATE.md` — next stage, issues count (high: 0→1), open questions (Q-1.1-S7-RC.1), notes updated.
+
+**Time spent:** < 1h (shape investigation across 3 files + docs corrections).
+
+**Surprises / departures:**
+
+- `response_config` had three inconsistent shapes across spec docs and delivery code. `computeCorrectness` (`handlers.ts:1068`) reads `correct_option_id`; `readOptions` (`exam/page.tsx:62`) returns `string[]` only. Spec docs used neither correctly.
+- By-product discovery: MCQ auto-scoring non-functional in v1 exam mode — `exam/page.tsx:282` submits `{ choice }` but server reads `option_id`. Filed ISSUE-0054 (high, pre-launch blocker). Not a Gate I/II/III blocker.
+
+**Decisions made (not in stage):**
+
+- Q-1.1-S7-RC.1 Option A — flat string options + `correct_option_id` (server ground truth wins)
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0054 opened (MCQ auto-scoring broken, high, pre-launch blocker)
+- Q-1.1-S7-RC.1 resolved
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (843/843, 0 regression) · Build n/a (docs-only) · RLS n/a (docs-only)
+
+**Tomorrow — first thing:**
+Update `docs/content/manifests/s7.1-batch-01-preview.json` (Option A shape + skill remap per Gate I amendments), then Gate II dry-run.
+
+---
+
 ## v1.1-S7 pre-authoring chore — 2026-05-20
 
 **Planned (from S7 morning ritual T1 pre-read):** Correct template + manifest-format docs before any S7.1 item authoring begins. Three T1 blockers caught at morning ritual; operator-resolved in session.

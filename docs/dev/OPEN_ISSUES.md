@@ -5,6 +5,33 @@
 
 ## Open
 
+### ISSUE-0054 — MCQ auto-scoring broken in v1 exam mode: UI submits `{ choice }`, server reads `responseData['option_id']`
+
+- Status: open
+- Severity: high
+- Reported: 2026-05-20 (v1.1-S7.1 Gate I — by-product of Q-1.1-S7-RC.1 investigation)
+- Area: frontend + backend
+- Tags: bug · scoring · exam-mode · pre-launch-blocker
+
+**Summary.** `computeCorrectness` in `assessment-svc/handlers.ts:1064-1073` checks `responseData['option_id']` to determine if a student's MCQ answer is correct. The exam page (`apps/web/src/app/(student)/session/[id]/exam/page.tsx:282`) submits `response_data: { choice: selected }` — the key is `choice`, not `option_id`. As a result, `typeof submitted !== 'string'` is `true` (the `option_id` key is `undefined`), and `computeCorrectness` returns `false` for every MCQ response. MCQ auto-scoring is non-functional in v1 exam mode regardless of `response_config` shape.
+
+**Reproduction.**
+1. Start an exam-mode session with an MCQ item whose `response_config.correct_option_id` is set correctly
+2. Select the correct option and submit
+3. Expected: session records `is_correct: true`; Actual: session records `is_correct: false`
+
+**Root cause.** Field name mismatch between submit path and scoring path:
+- `apps/web/src/app/(student)/session/[id]/exam/page.tsx:282` — submits `{ choice: selected }`
+- `supabase/functions/assessment-svc/handlers.ts:1070` — reads `responseData['option_id']`
+
+**Fix (preferred — Option A):** Change `exam/page.tsx:282` to submit `{ option_id: selected }` — one-line client fix, keeps server contract stable.
+
+**Pre-launch blocker note.** Items land as `draft` during S7.1 — not served to students in exam mode. This bug does not block S7.1 authoring or import. Blocker activates when any item reaches `active` and enters an exam-mode session.
+
+Related: Q-1.1-S7-RC.1, assessment-svc/handlers.ts:1064-1073, apps/web exam/page.tsx:282
+
+---
+
 ### ISSUE-0053 — Skill graph extension: Probability + Statistics skill nodes missing
 
 - Status: open
