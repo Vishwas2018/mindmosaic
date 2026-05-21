@@ -852,6 +852,38 @@ L5 writes `async_pipeline_event` (scope_type='student_pathway'); L7/L9 write bot
 
 ## Resolved
 
+### ISSUE-0055 — Edge runtime BOOT_ERROR: @mm/types symlink path mismatch + .js extension failure
+
+- Status: resolved — 2026-05-21 (v1.1-S7.1 Gate II unblock)
+- Severity: critical (blocked all content-svc local dev requests)
+- Area: infra
+- Tags: edge-runtime · import-map · deno · symlink
+
+**Summary.** pnpm workspace symlinks `@mm/types` using Git Bash path `/c/Users/...`, which doesn't exist inside Docker (container mounts as `/Users/...`). Node-modules resolution failed. Import map with `src/index.ts` pointer failed next because Deno can't resolve `.js` extension relative imports inside `.ts` source files (TypeScript ESM convention); import map scopes cannot intercept relative specifiers. `deno.json` `unstable: ["sloppy-imports"]` failed because the edge runtime pre-compiles to `/var/tmp/sb-compile-edge-runtime/` where `.ts` source files are absent.
+
+**Fix.** `supabase/functions/deno.json` (newly created) provides the import map via its `imports` key — this is what the edge runtime worker ACTUALLY reads (not `import_map.json` from `SUPABASE_INTERNAL_FUNCTIONS_CONFIG`, which is ignored by workers). Both `@mm/types` and `@mm/engines` point to `../../packages/types/dist/index.js` and `../../packages/engines/dist/index.js` respectively. Compiled `.js` files in `dist/` contain relative `.js` imports that resolve to sibling `.js` files — no extension remapping needed. `packages/types` dist was rebuilt (`pnpm --filter @mm/types build`) to include `ImportManifestSchema` added in v1.1.
+
+**Files.** `supabase/functions/deno.json` (created), `supabase/functions/import_map.json` (updated — was previously unused by workers; retained for CLI tooling). `import_map.json` `scopes` section removed (scopes cannot intercept relative specifiers per WHATWG spec).
+
+**Gate II unblocked.** HTTP 200, `dry_run: true`, `rejected: 0`, all 8 items `status: ok`.
+
+---
+
+### ISSUE-0056 — content-svc route dispatcher 404 in local dev: URL prefix not stripped
+
+- Status: resolved — 2026-05-21 (v1.1-S7.1 Gate II unblock, BUG-0001)
+- Severity: critical (all routes returned 404 in local dev)
+- Area: backend
+- Tags: edge-runtime · routing · local-dev
+
+**Summary.** The Supabase edge runtime v1.73.13 passes `req.url` with pathname `/content-svc/<rest>` (no `/functions/v1/` prefix) in local dev. `content-svc/index.ts:96` stripped only `/functions/v1/content-svc`, so `path` was always `/content-svc/content/import` instead of `/content/import`. Every route check failed; all requests fell through to the catch-all 404.
+
+**Fix.** Regex changed from `/^\/functions\/v1\/content-svc/` to `/^\/(functions\/v1\/)?content-svc/` — makes the `/functions/v1/` prefix optional. Both production and local dev URL forms now reduce correctly to the bare `/route` path. Regression test added: `contract.test.ts` describe block `'content-svc — route prefix stripping (BUG-0001)'` (5 cases: production form, local-dev form, no-prefix passthrough incl. `/functions/v1/billing-svc/x`, mid-path anchor, bare `/content-svc` → empty string).
+
+**Files.** `supabase/functions/content-svc/index.ts:96`, `supabase/functions/content-svc/__tests__/contract.test.ts`.
+
+---
+
 ### ISSUE-0042 — Zod parse gap at content-svc and assessment-svc API boundaries
 
 - Status: resolved — 2026-05-19 (commit b3eb668)

@@ -1712,3 +1712,47 @@ describe('content-svc — POST /content/import (importItems)', () => {
     expect(paths.some(p => p.includes('authoring_method'))).toBe(true);
   });
 });
+
+// ─── content-svc route-prefix stripping (BUG-0001 regression) ────────────────
+//
+// The edge runtime passes req.url with pathname `/content-svc/<rest>` in local
+// dev but `/functions/v1/content-svc/<rest>` in production. The dispatcher must
+// strip whichever prefix is present, leaving bare `/route` for all comparisons.
+// Regex under test: /^\/(functions\/v1\/)?content-svc/
+//
+// Not importing index.ts (Deno URL imports); tests the regex in isolation.
+
+describe('content-svc — route prefix stripping (BUG-0001)', () => {
+  const stripPrefix = (pathname: string): string =>
+    pathname.replace(/^\/(functions\/v1\/)?content-svc/, '');
+
+  it('strips /functions/v1/content-svc (production URL format)', () => {
+    expect(stripPrefix('/functions/v1/content-svc/content/import')).toBe('/content/import');
+    expect(stripPrefix('/functions/v1/content-svc/pathways')).toBe('/pathways');
+    expect(stripPrefix('/functions/v1/content-svc/content/items/abc-123')).toBe('/content/items/abc-123');
+    expect(stripPrefix('/functions/v1/content-svc/content/search')).toBe('/content/search');
+  });
+
+  it('strips /content-svc (local-dev edge runtime URL format)', () => {
+    expect(stripPrefix('/content-svc/content/import')).toBe('/content/import');
+    expect(stripPrefix('/content-svc/pathways')).toBe('/pathways');
+    expect(stripPrefix('/content-svc/content/items/abc-123')).toBe('/content/items/abc-123');
+    expect(stripPrefix('/content-svc/skill-graphs/active')).toBe('/skill-graphs/active');
+  });
+
+  it('does not alter paths that have no recognised prefix', () => {
+    expect(stripPrefix('/content/import')).toBe('/content/import');
+    expect(stripPrefix('/pathways')).toBe('/pathways');
+    // Another function name in the /functions/v1/ namespace must not be stripped.
+    expect(stripPrefix('/functions/v1/billing-svc/x')).toBe('/functions/v1/billing-svc/x');
+  });
+
+  it('does not match prefix embedded mid-path (anchor enforced)', () => {
+    expect(stripPrefix('/other/content-svc/path')).toBe('/other/content-svc/path');
+  });
+
+  it('bare /content-svc (no route suffix) strips to empty string', () => {
+    expect(stripPrefix('/content-svc')).toBe('');
+    expect(stripPrefix('/functions/v1/content-svc')).toBe('');
+  });
+});
