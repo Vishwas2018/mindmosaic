@@ -5,6 +5,86 @@
 
 ## Open
 
+### ISSUE-0059 — Manifest template §3 difficulty bands teach IRT logit scale; spec §6.4 mandates [0,1] normalized
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III — root cause of ISSUE-0058 difficulty scale mismatch)
+- Area: content-ops (docs/content/specs/australian-y5-numeracy.md)
+- Tags: content-authoring · difficulty · template · dx · s7.2-blocker
+
+**Summary.** The authoring template `docs/content/specs/australian-y5-numeracy.md §3` documents difficulty bands using IRT logit notation (B1 θ≈-2, B2 θ≈-1, B3 θ≈0, B4 θ≈+1, B5 θ≈+2). This directly caused manifest authors to write difficulty values of -2.0, -1.0, 0.0, 1.0, 2.0 in the Gate III batch, violating the DB `CHECK (difficulty BETWEEN 0 AND 1)` constraint and breaking the live import.
+
+The canonical scale is [0,1] normalized per spec §6.4 and §15.1 (CTT p-value; `new_difficulty = 1.0 - observed_p`). Engine Zod contracts enforce `z.number().min(0).max(1)`. The template must be corrected to the linear band-midpoint mapping adopted as ISSUE-0058 resolution before any S7.2 authoring begins.
+
+**Required template correction (§3 difficulty bands):**
+
+| Band | Label | IRT θ (remove) | [0,1] value (add) |
+|------|-------|----------------|-------------------|
+| B1   | Foundation / Very Easy | θ ≈ -2 | 0.10 |
+| B2   | Developing / Easy      | θ ≈ -1 | 0.30 |
+| B3   | Proficient / Average   | θ ≈  0 | 0.50 |
+| B4   | Advanced / Hard        | θ ≈ +1 | 0.70 |
+| B5   | Expert / Very Hard     | θ ≈ +2 | 0.90 |
+
+Remove all IRT logit references. Replace with [0,1] values and cite spec §6.4 for the canonical scale. Note that IRT/2PL is a Phase 3 deferred path (spec §15.6).
+
+**Fix.** Update `docs/content/specs/australian-y5-numeracy.md §3`. Can be bundled with the S7.1 batch content commit or done as a `docs(content):` chore. Must complete before S7.2 authoring session.
+
+Related: ISSUE-0058 (root cause), spec §6.4, spec §15.1, spec §15.6
+
+---
+
+### ISSUE-0060 — RLS disabled on intelligence_audit_log_default + learning_event_default
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III — surfaced by `supabase db query` advisory)
+- Area: infra (supabase/migrations/)
+- Tags: rls · security · audit-log
+
+**Summary.** `supabase db query` advisory reports that `public.intelligence_audit_log_default` and `public.learning_event_default` have Row Level Security disabled. Per the advisory, these tables are fully exposed to the `anon` and `authenticated` roles. This violates the project RLS non-negotiable (CLAUDE.md: "RLS in the same migration as CREATE TABLE").
+
+**Do NOT enable RLS without adding policies first** — enabling without policies blocks all access to these tables, which would break any queries against them. The correct fix is:
+1. Identify the intended access pattern for each table (service-role only? authenticated read? tenant-scoped?)
+2. Write appropriate RLS policies (or confirm service-role-only = Pattern G from migration 0018)
+3. Enable RLS in a new migration with the policies in the same transaction
+
+**Remediation SQL (do not run until policies are decided):**
+```sql
+ALTER TABLE public.intelligence_audit_log_default ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.learning_event_default ENABLE ROW LEVEL SECURITY;
+```
+
+**Context.** These appear to be partitioned table defaults (the `_default` suffix is a Postgres partitioning convention). Triage should confirm whether these are partition roots or default partitions and whether the parent partition tables already have RLS enabled (RLS on the parent does not automatically cover default partitions in all Postgres versions).
+
+Related: CLAUDE.md RLS non-negotiable, migration 0018 Pattern G precedent
+
+---
+
+### ISSUE-0057 — ImportManifestSchema: z.string() for exam_families + bloom_level lets invalid enum values pass dry-run but fail live import
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III unblock — exposed by exam_family + bloom_level rejections)
+- Area: backend (packages/types/src/content.ts, supabase/functions/content-svc/handlers.ts)
+- Tags: validation · zod · manifest · dry-run · content-ops
+
+**Summary.** `ImportManifestSchema` uses `z.string()` for `exam_families` items and `bloom_level`, matching no DB enum constraint. A dry-run passes Zod validation and returns all items `status: "ok"` even with invalid enum values. The live import then fails at the DB INSERT level (`invalid input value for enum exam_family`) — the dry-run gives false confidence. This is the same class of gap as Q-1.1-7.T1A (`response_type`).
+
+**Reproduction.** Gate III: manifest used `exam_families: ["au_numeracy_y5_format"]` against a DB with old enum values (`naplan`/`icas`). Dry-run (no DB writes): 8/8 `status: "ok"`. Live import: 8/8 rejected with `invalid input value for enum exam_family`. The enum mismatch was a stale DB issue, not a manifest bug, but the gap still means a dry-run that passes is not a reliable pre-flight for live import.
+
+**Fields to tighten in `ImportManifestSchema`:**
+- `items[].item.exam_families[]` — should be `z.enum(['au_numeracy_y5_format', 'au_math_paper_c_format', 'selective', 'singapore_math', 'olympiad'])`
+- `items[].item.bloom_level` — should be `z.enum(['remember', 'understand', 'apply', 'analyse', 'evaluate', 'create'])`
+- `items[].item.response_type` — noted in Q-1.1-7.T1A; same fix needed
+
+**Fix deferred.** These enums are stable; tighten in the next content-authoring iteration. Companion test should verify `ImportManifestSchema.safeParse` rejects invalid enum values.
+
+Related: Q-1.1-7.T1A, `packages/types/src/content.ts`, Gate III unblock
+
+---
+
 ### ISSUE-0054 — MCQ auto-scoring broken in v1 exam mode: UI submits `{ choice }`, server reads `responseData['option_id']`
 
 - Status: open
@@ -851,6 +931,24 @@ L5 writes `async_pipeline_event` (scope_type='student_pathway'); L7/L9 write bot
 **Tracking pointer.** v1.1-S4 impl commit b8b8290. Spec covers `/teacher/content` and `/teacher/content/new`. ADR-0038 §Implementation Notes.
 
 ## Resolved
+
+### ISSUE-0058 — Content manifest difficulty scale mismatch: manifest uses IRT logit notation, DB enforces [0,1] normalized p-value
+
+- Status: resolved — 2026-05-21 (v1.1-S7.1 Gate III r2 — Option 1 linear band-midpoint transform applied)
+- Severity: high
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III — `item_difficulty_check` constraint failures on items 001/002/003/008)
+- Area: content-ops (docs/content/manifests/) + infra (supabase/migrations/0002_content_skill_graph.sql)
+- Tags: content-authoring · difficulty · schema · manifest
+
+**Summary.** Gate III live import: 4/8 items rejected with `item_difficulty_check` constraint violation. Manifest used IRT logit notation (-2.0 to +2.0); DB `CHECK (difficulty BETWEEN 0 AND 1)`. Engine Zod contracts (`contracts.ts:88`: `z.number().min(0).max(1)`), DiagnosticEngine binary search, SkillEngine clamps, and band selector (handlers.ts:113–117 `easy:[0,0.35]`, `mid:[0.35,0.7]`, `hard:[0.7,1.0]`) all confirm [0,1] is canonical. Spec §6.4 mandates 0.0–1.0 float; §15.1 uses CTT p-value recalibration (`new_difficulty = 1.0 - observed_p`). Seed data (02_content.sql): all values 0.3/0.55/0.8.
+
+**Resolution.** Option 1 (linear band-midpoint) applied: `-2→0.10`, `-1→0.30`, `0→0.50`, `+1→0.70`, `+2→0.90`. 4 partial rows (items 004–007) deleted by UUID before clean re-import. Gate III r2: HTTP 200, imported: 8, rejected: 0. DB verification: 8 rows at difficulty `0.1, 0.3, 0.3, 0.5, 0.5, 0.7, 0.7, 0.9`.
+
+**Follow-ups filed.** ISSUE-0059 (template correction for S7.2), ISSUE-0060 (RLS advisory).
+
+Related: Gate III r2, ISSUE-0057, ISSUE-0059, `supabase/migrations/0002_content_skill_graph.sql:167`
+
+---
 
 ### ISSUE-0055 — Edge runtime BOOT_ERROR: @mm/types symlink path mismatch + .js extension failure
 

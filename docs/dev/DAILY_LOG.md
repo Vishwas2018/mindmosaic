@@ -2,6 +2,67 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1-S7.1 batch-01 content import — 2026-05-21
+
+**Planned (from DEV_PLAN.md v1.1-S7.1):** Gate II dry-run → Gate III live import → per-batch content commit. First 8-item pilot batch of NAPLAN-style Y5 Numeracy original items.
+
+**Actually delivered:**
+
+- Gate I/II/III complete after 4 pre-existing defects surfaced and fixed:
+  - **BUG-0001** (`ab75f14`) — content-svc route prefix regex not optional for `/functions/v1/`; fixed to `/^\/(functions\/v1\/)?content-svc/`; 5-case regression test added (78 tests total)
+  - **BUG-0002** (pending fix(db) commit) — migration 0018 billing schema duplicate of migration 0007; all 9 DDL statements made idempotent with `IF NOT EXISTS` / `CREATE OR REPLACE`
+  - **ISSUE-0055** (`15e3578`) — edge runtime `@mm/types` symlink resolution; `deno.json` + `import_map.json` created pointing to compiled `dist/` files
+  - **ISSUE-0058** (Gate III r2) — manifest used IRT logit difficulty scale (-2.0 to +2.0); DB CHECK requires [0,1]; linear band-midpoint transform adopted per spec §6.4: `-2→0.10`, `-1→0.30`, `0→0.50`, `+1→0.70`, `+2→0.90`; 4 partial rows rolled back by UUID before clean re-import
+- `supabase db reset` unblocked: migration 0018 (BUG-0002), migration 0019 (`COMMIT` after `ALTER TYPE`), seed 02_content.sql (`authoring_method` column added)
+- Gate III r2 clean: HTTP 200, `imported: 8`, `rejected: 0`, `skipped_duplicates: 0`
+- DB verification: 8 rows `lifecycle=draft`, `authoring_method=ai_assisted_human_reviewed`, difficulties `0.1, 0.3, 0.3, 0.5, 0.5, 0.7, 0.7, 0.9`
+- `docs/content/manifests/s7.1-batch-01-preview.json` — manifest corrected (bloom_level `analyze→analyse`, all 8 difficulties converted to [0,1])
+- `docs/content/reviews/s7.1-batch-01.md` — 8-item review log, all §9.2 checklists complete, Vishwas Joshi sign-off
+- `docs/content/coverage.md` — new file; skill/difficulty/response_type/bloom coverage matrix for batch-01
+- ISSUE-0057 filed (ImportManifestSchema z.string() vs DB enum gap)
+- ISSUE-0058 filed + resolved (difficulty scale)
+- ISSUE-0059 filed (template §3 difficulty bands must be corrected before S7.2)
+- ISSUE-0060 filed (RLS advisory — `intelligence_audit_log_default` + `learning_event_default`)
+- `docs/dev/PROJECT_STATE.md` + `docs/dev/OPEN_ISSUES.md` updated
+
+**Time spent:** ~1 day (context restoration from prior session + 4-defect unblock + Gate III iterations + content commit)
+
+**Surprises / departures:**
+
+- Gate III required 3 separate failure cycles before clean: exam_family stale DB (migration 0024 not applied) → `supabase db reset` exposed 3 cascading bugs (BUG-0002 + 0019 COMMIT gap + seed authoring_method) → difficulty scale IRT logit vs [0,1] mismatch (ISSUE-0058)
+- Platform admin user wiped by `db reset`; recreated via auth admin API + manual `user_profile` role promotion (handle_new_user trigger only allows `parent` signup in v1)
+- 4 partial item rows at wrong difficulty (0.0/1.0) required rollback-by-UUID before clean re-import; no `external_key` cross-DB dedup in `importItems`
+- Idempotency wrapper cached 207 partial response under `s7.1-batch-01-live-import-20260521`; Gate III r2 used new key `...-r2`
+
+**Decisions made (not in stage):**
+
+- ADR not needed: difficulty scale transform (Option 1 linear band-midpoint) — operator-specified; documented in ISSUE-0058 resolution
+- Migration 0018 idempotency approach (IF NOT EXISTS) — operator-approved after diff confirmed identical schemas
+
+**Deviations logged:**
+
+- none (defect fixes, not scope changes)
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0057 opened (ImportManifestSchema Zod gap — medium)
+- ISSUE-0058 opened + resolved (difficulty scale — high; Gate III r2 clean)
+- ISSUE-0059 opened (template difficulty bands — medium; S7.2 pre-condition)
+- ISSUE-0060 opened (RLS advisory — medium)
+- BUG-0001 fixed (ab75f14)
+- BUG-0002 fixed (pending commit)
+- ISSUE-0055 resolved (15e3578)
+- ISSUE-0056 resolved (ab75f14)
+
+**Quality gates at close:**
+
+- Lint n/a (no source changes in this commit) · Typecheck n/a · Tests n/a · Build n/a · RLS n/a (content/docs commit only)
+
+**Tomorrow — first thing:**
+Create fix(db) commit (migrations 0018/0019 + seed 02_content.sql + BUG-0002 + OPEN_ISSUES ISSUE-0057), then S7.2 authoring prep (fix ISSUE-0059 template difficulty bands before authoring begins).
+
+---
+
 ## v1.1-S7.1 Gate I T3 + pre-Gate-II chore — 2026-05-20
 
 **Planned (from Gate I operator review):** Investigate response_config shape at delivery time; correct manifest-format.md + authoring spec docs to reflect server ground truth; file ISSUE-0054.
