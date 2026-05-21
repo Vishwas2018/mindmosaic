@@ -1477,12 +1477,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: { options: ['3', '4', '5', '6'] }, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: { options: ['4', '5', '6', '7'] }, difficulty: 0.6 },
         },
       ],
@@ -1511,12 +1511,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
         },
       ],
@@ -1541,12 +1541,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: sharedStem, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: sharedStem, response_config: {}, difficulty: 0.6 }, // identical stem
         },
       ],
@@ -1567,7 +1567,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [{
         external_key: 'key-001',
         // copyright_declaration intentionally omitted — Zod literal('original') must reject
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+        item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });
@@ -1585,13 +1585,13 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-dup', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-dup', // duplicate external_key
           copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
         },
       ],
@@ -1613,12 +1613,12 @@ describe('content-svc — POST /content/import (importItems)', () => {
       items: [
         {
           external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 2 + 2?' }, response_config: {}, difficulty: 0.5 },
         },
         {
           external_key: 'key-002', copyright_declaration: 'original', authoring_method: 'human',
-          item: { response_type: 'multiple_choice', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+          item: { response_type: 'mcq', skill_ids: ['sk-2'], difficulty: 0.6, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
           version: { stem: { kind: 'plain_text', value: 'What is 3 + 3?' }, response_config: {}, difficulty: 0.6 },
         },
       ],
@@ -1644,7 +1644,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
         external_key: 'key-001',
         copyright_declaration: 'original',
         // authoring_method intentionally omitted — z.enum without default must reject
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+        item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });
@@ -1660,7 +1660,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
       manifest_version: '1.0',
       items: [{
         external_key: 'key-001', copyright_declaration: 'original', authoring_method: 'ai_assisted_human_reviewed',
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+        item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });
@@ -1702,7 +1702,7 @@ describe('content-svc — POST /content/import (importItems)', () => {
         external_key: 'key-001',
         copyright_declaration: 'original',
         authoring_method: 'robot',
-        item: { response_type: 'multiple_choice', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
+        item: { response_type: 'mcq', skill_ids: ['sk-1'], difficulty: 0.5, year_levels: [5], exam_families: ['au_numeracy_y5_format'] },
         version: { stem: { kind: 'plain_text', value: 'Q' }, response_config: {}, difficulty: 0.5 },
       }],
     });

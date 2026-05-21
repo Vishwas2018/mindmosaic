@@ -425,3 +425,76 @@ describe('SimulationParamsSchema (v1.1-S3 / ADR-0037)', () => {
     ).toBe(true);
   });
 });
+
+// ─── ImportManifestSchema — enum tightening (ISSUE-0057) ─────────────────────
+// Proves dry-run now rejects enum violations that previously passed Zod and
+// failed only at DB INSERT (root cause of all 4 S7.1 batch-01 import rejections).
+// Enums mirror migration 0001 + 0024 exactly.
+
+const validManifestItem = {
+  external_key: 's7.1-batch-01-001',
+  copyright_declaration: 'original' as const,
+  authoring_method: 'ai_assisted_human_reviewed' as const,
+  item: {
+    response_type: 'mcq' as const,
+    skill_ids: ['a0000001-0000-0000-0000-000000000004'],
+    difficulty: 0.10,
+    year_levels: [5],
+    exam_families: ['au_numeracy_y5_format' as const],
+    bloom_level: 'remember' as const,
+  },
+  version: {
+    stem: { text: 'What is the value of the digit 7 in 47 382?' },
+    response_config: { options: ['7 000', '700', '70 000', '70'], correct_id: 'A' },
+    difficulty: 0.10,
+  },
+};
+
+describe('ImportManifestSchema — enum tightening (ISSUE-0057)', () => {
+  it('accepts valid s7.1-batch-01 manifest item (regression: tightened schema must not break existing batch)', () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [validManifestItem],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid exam_family — dry-run now catches what previously only DB caught', () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [
+        {
+          ...validManifestItem,
+          item: { ...validManifestItem.item, exam_families: ['naplan'] },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects American spelling 'analyze' — DB bloom_level enum uses British 'analyse'", () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [
+        {
+          ...validManifestItem,
+          item: { ...validManifestItem.item, bloom_level: 'analyze' },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid response_type — e.g. legacy value "multiple_choice" not in DB enum', () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [
+        {
+          ...validManifestItem,
+          item: { ...validManifestItem.item, response_type: 'multiple_choice' },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+});

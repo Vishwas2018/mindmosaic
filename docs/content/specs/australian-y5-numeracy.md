@@ -64,15 +64,15 @@ this table is a reference starting point, not a substitute for the primary sourc
 
 ## §3 — Difficulty bands
 
-IRT difficulty parameter (θ scale; 0 = NAPLAN Band 5 Year 5 benchmark).
+All `difficulty` values are normalised to a [0.0, 1.0] float per spec §6.4 (CTT p-value model; 1.0 = easiest, 0.0 = hardest). IRT/logit scales are not used in v1 (deferred to Phase 3). Use the band midpoint value verbatim in both `item.difficulty` and `version.difficulty` — no other values within a band are accepted by the authoring contract.
 
-| Band | Label         | θ range      | Description                                    |
-| ---- | ------------- | ------------ | ---------------------------------------------- |
-| B1   | Foundation    | ≤ −1.5       | Well below year level; consolidation items     |
-| B2   | Developing    | −1.5 to −0.5 | Below year level; approaching benchmark        |
-| B3   | At benchmark  | −0.5 to 0.5  | NAPLAN Band 5 target range; majority of items  |
-| B4   | Above         | 0.5 to 1.5   | Above year level; stretch items                |
-| B5   | Extending     | > 1.5        | Well above; high-ability items                 |
+| Band | Label         | [0,1] value | Description                                    |
+| ---- | ------------- | ----------- | ---------------------------------------------- |
+| B1   | Foundation    | 0.10        | Well below year level; consolidation items     |
+| B2   | Developing    | 0.30        | Below year level; approaching benchmark        |
+| B3   | At benchmark  | 0.50        | NAPLAN Band 5 target range; majority of items  |
+| B4   | Above         | 0.70        | Above year level; stretch items                |
+| B5   | Extending     | 0.90        | Well above; high-ability items                 |
 
 **Pilot batch (S7.1) recommended distribution:**
 

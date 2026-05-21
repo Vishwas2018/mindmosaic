@@ -170,11 +170,12 @@ export const ImportManifestItemSchema = z.object({
   copyright_declaration: z.literal('original'),
   authoring_method: z.enum(['human', 'ai_assisted_human_reviewed']),
   item: z.object({
-    response_type: z.string().min(1),
+    // Enums mirror DB exactly: migration 0001 + 0024
+    response_type: z.enum(['mcq', 'multi_select', 'short_answer', 'extended_response', 'drag_drop', 'cloze', 'numeric_entry']),
     skill_ids: z.array(z.string()).min(1),
     difficulty: z.number(),
     year_levels: z.array(z.number().int()).min(1),
-    exam_families: z.array(z.string()).min(1),
+    exam_families: z.array(z.enum(['au_numeracy_y5_format', 'au_math_paper_c_format', 'selective', 'singapore_math', 'olympiad'])).min(1),
     source_item_id: z.string().nullable().optional(),
     stimulus_id: z.string().nullable().optional(),
     discrimination: z.number().nullable().optional(),
@@ -182,7 +183,7 @@ export const ImportManifestItemSchema = z.object({
     programs: z.array(z.string()).optional(),
     countries: z.array(z.string()).optional(),
     curricula: z.array(z.string()).optional(),
-    bloom_level: z.string().nullable().optional(),
+    bloom_level: z.enum(['remember', 'understand', 'apply', 'analyse', 'evaluate', 'create']).nullable().optional(),
   }),
   version: z.object({
     stem: z.record(z.string(), z.unknown()),
