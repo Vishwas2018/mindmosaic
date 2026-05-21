@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@mm/types": "../../packages/types/dist/index.js",
+    "@mm/engines": "../../packages/engines/dist/index.js",
+    "zod": "npm:zod@3.25.76"
+  }
+}
