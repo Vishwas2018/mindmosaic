@@ -472,6 +472,69 @@ describe('assessment-svc — respondToSession', () => {
       expect(result.data.is_correct).toBe(true);
     }
   });
+
+  // ISSUE-0054: option_id key fix — s7.1-style string correct_option_id
+  it('MCQ scoring: correct option_id matches correct_option_id → is_correct true (ISSUE-0054)', async () => {
+    const s71Item = buildItem(1, { correctOption: '400' });
+    const db = client({
+      session_record: {
+        data: buildSessionRow({
+          engine_state_snapshot: {
+            ...buildInitialLinearState(),
+            planned_items: [s71Item, buildItem(2), buildItem(3)],
+          },
+        }),
+        error: null,
+      },
+      _rpc: {
+        create_session_response_atomic: {
+          data: [{ response_id: 'r-2', event_id: 'e-2', new_sequence: 1, new_version: 4 }],
+          error: null,
+        },
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: { ...respondBody, response_data: { option_id: '400' } },
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.is_correct).toBe(true);
+  });
+
+  it('MCQ scoring: wrong option_id does not match correct_option_id → is_correct false (ISSUE-0054)', async () => {
+    const s71Item = buildItem(1, { correctOption: '400' });
+    const db = client({
+      session_record: {
+        data: buildSessionRow({
+          engine_state_snapshot: {
+            ...buildInitialLinearState(),
+            planned_items: [s71Item, buildItem(2), buildItem(3)],
+          },
+        }),
+        error: null,
+      },
+      _rpc: {
+        create_session_response_atomic: {
+          data: [{ response_id: 'r-3', event_id: 'e-3', new_sequence: 1, new_version: 5 }],
+          error: null,
+        },
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: { ...respondBody, response_data: { option_id: '40' } },
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.is_correct).toBe(false);
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────

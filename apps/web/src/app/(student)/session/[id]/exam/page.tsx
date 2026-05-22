@@ -279,7 +279,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> }
   function handleSubmitResponse(opts: { skip: boolean }) {
     if (currentItem === null) return
     const now = Date.now()
-    const responseData = opts.skip ? {} : { choice: selected }
+    const responseData = opts.skip ? {} : { option_id: selected }
     // Persist locally so cumulative checkpoints + question map both see it.
     answersRef.current.set(currentItem.item_id, {
       itemId: currentItem.item_id,
