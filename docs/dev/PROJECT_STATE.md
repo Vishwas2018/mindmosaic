@@ -6,7 +6,7 @@
 ## Position
 
 - Last completed stage: v1.1 pre-polish static audit — ADR-0042 (P1–P8, 2026-05-22); ISSUE-0054 fixed (MCQ scoring key); S7.1 batch-01 8 items in draft
-- Next stage: v1.1 polish (ISSUE-0062 ErrorState, ISSUE-0063 UpgradeState, ISSUE-0043 idempotency) OR v1.1-S7.2 batch-02 authoring — operator decision
+- Next stage: v1.1 Polish — **Cluster A sketch gate next** (ErrorState + UpgradeState component API + ASCII layout). Cluster order: A → (B + D parallel) → C → E → F → matrix sweep. ADR-0043 binding (proposed).
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
 - Active branch: `v1.1/exam-content` — 26 commits ahead of origin/main (9376d98 v1.0.0):
   a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · 8c86690 v1.1-S6 chore · 4453ddc S7-prep step 1a · bd3a310 S7-prep step 1b feat · 5dd8f4e S7-prep step 1b chore · a5140e0 S7-prep step 1c feat · this chore
@@ -79,14 +79,14 @@ Full table: `docs/dev/perf/measurements.md`.
 ## Open items
 
 - ADRs accepted: **42** (ADR-0001 through ADR-0042; ADR-0042 = v1.1 pre-polish static audit P1–P8, 2026-05-22)
-- ADRs proposed: **0**
+- ADRs proposed: **1** (ADR-0043 — v1.1 polish stage binding, proposed 2026-05-22)
 - Workspaces: **17** — unchanged
-- Issues critical / high / medium / low: **0 / 0 / 22 / 22**
-  - Medium (22): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0039, ISSUE-0040, ISSUE-0041, ISSUE-0043, ISSUE-0045, ISSUE-0049, ISSUE-0050, ISSUE-0051, ISSUE-0052, ISSUE-0053, ISSUE-0060 (T3 flag — partition RLS), **ISSUE-0061** (ItemCreateDTO z.string() enum gaps), **ISSUE-0062** (missing ErrorState primitive), **ISSUE-0063** (missing UpgradeState primitive), **ISSUE-0067** (local prod build TLS cert)
-  - Low (22): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038, ISSUE-0044, ISSUE-0046, ISSUE-0047, ISSUE-0048, **ISSUE-0064** (inline LoadingState), **ISSUE-0065** (role=alert overdue banner), **ISSUE-0066** (console.warn exam page)
+- Issues critical / high / medium / low: **0 / 0 / 23 / 22**
+  - Medium (23): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0039, ISSUE-0040, ISSUE-0041, ISSUE-0043, ISSUE-0045, ISSUE-0049, ISSUE-0050, ISSUE-0051, ISSUE-0052, ISSUE-0053, ISSUE-0060 (T3 flag — partition RLS), ISSUE-0061 (ItemCreateDTO z.string() enum gaps), ISSUE-0062 (missing ErrorState primitive), ISSUE-0063 (missing UpgradeState primitive), ISSUE-0067 (local prod build TLS cert) — **note: prior count of 22 was a doc error; corrected to 23**
+  - Low (22): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038, ISSUE-0044, ISSUE-0046, ISSUE-0047, ISSUE-0048, ISSUE-0064 (inline LoadingState), ISSUE-0065 (role=alert overdue banner), ISSUE-0066 (console.warn exam page)
   - Resolved: ISSUE-0005, 0006, 0007, 0008, 0012, 0013, 0018, 0026, 0029, 0036, 0037, 0042 (b3eb668), 0055, 0056, 0058, **0054** (MCQ key fix; 005f466), **0057** (manifest Zod enum tightening; d2cf946), **0059** (template scale; d2cf946)
 - Migrations: **0001–0024** (migrations 0001–0020 pgTAP-verified 451/451; 0021 SQL on disk deferred-validation; 0022 adds composer_params + simulation_params jsonb nullable columns — deferred-validation per 0021 pattern; 0023 adds authoring_method NOT NULL to item_version — deferred-validation per 0021 pattern; **0024 renames exam_family enum values naplan→au_numeracy_y5_format + icas→au_math_paper_c_format — deferred-validation per 0021 pattern**)
-- Open questions: **0** — Q-1.1-1.0..9 + Q-1.1-2.1..5 + Q-1.1-3.1..5 + Q-1.1-4.1..8 + Q-1.1-5.1..6 + Q-1.1-6.1..8 + Q-1.1-S7-LEGAL-2.1..2.5 + **Q-1.1-7.1..9** + **Q-1.1-S7-RC.1** all resolved
+- Open questions: **1** (Q-1.1-AUDIT-1 — partition RLS access pattern; blocks ISSUE-0060; operator decision required) — Q-1.1-1.0..9 + Q-1.1-2.1..5 + Q-1.1-3.1..5 + Q-1.1-4.1..8 + Q-1.1-5.1..6 + Q-1.1-6.1..8 + Q-1.1-S7-LEGAL-2.1..2.5 + Q-1.1-7.1..9 + Q-1.1-S7-RC.1 + **Q-1.1-POLISH-1..7** all resolved
 - Content items: **8 draft** (`au_numeracy_y5_format`, batch-01; review log at `docs/content/reviews/s7.1-batch-01.md`; `review→active` blocked by DEV-20260520-1 legal gate)
 - Open bugs: **2** (BUG-0001 route prefix — fixed ab75f14; BUG-0002 migration 0018 duplicate — fixed f6b7f90)
 - Deviations logged: **24 total (9 resolved, 15 open)** — unchanged (no new deviations in S6; DEV-20260515-2 honored)
@@ -101,9 +101,15 @@ Full table: `docs/dev/perf/measurements.md`.
 
 ## Notes for next session
 
-**Audit complete.** ADR-0042 accepted. 7 new issues filed (ISSUE-0061–0067). 3 issues resolved (ISSUE-0054, 0057, 0059). No Critical findings. Pre-launch blocker register in ADR-0042.
+**Polish stage open.** ADR-0043 proposed. Q-1.1-POLISH-1..7 all resolved. 6 clusters (A–F), cluster-by-area commits. +27 min test floor. **Next action: Cluster A sketch gate** — operator must approve ErrorState + UpgradeState component API (props, variants, ASCII layout) before any code begins.
 
-**Next decision required:** Polish stage (ISSUE-0062 ErrorState + ISSUE-0063 UpgradeState + ISSUE-0043 idempotency) vs S7.2 batch-02 authoring. Both are unblocked.
+**Cluster plan (ADR-0043 Decision 8):**
+- A: `ErrorState` + `UpgradeState` primitives — T5 three-gate (sketch → skeleton → fill)
+- B + D: dashboard-errors wiring (isError on 6 widgets + assignments + session-selection + 402 discrimination) + SDK staleTime — parallel after A
+- C: backend (assessment-svc idempotency + Zod enum tightening + N+1 batch fix)
+- E: a11y (focus management /practice + /exam-sim + role=alert corrections × 2)
+- F: loading-consistency (replace 11+ inline skeletons with LoadingState primitive)
+- Matrix sweep: cross-cutting 5-state audit pass; gaps fixed inline
 
 **ISSUE-0060 T3 flag open.** P6 scan found parent tables `intelligence_audit_log` + `learning_event` have RLS enabled in migrations 0005/0004. Default partitions may inherit. Operator must confirm whether ISSUE-0060 is a false positive before closing.
 

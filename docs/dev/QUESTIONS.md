@@ -20,6 +20,111 @@
 
 ## Resolved
 
+### Q-1.1-POLISH-7 — ISSUE-0039 + ISSUE-0045 scope placement in polish stage
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2a; ADR-0042 §Carried issues confirmed still open
+- Question: ISSUE-0039 (402 discrimination on submit) and ISSUE-0045 (focus management on /practice + /exam-sim) are Medium per the brief and confirmed carries in ADR-0042, but were absent from the morning ritual triage prompt buckets. Are they in-scope for this polish stage as Medium issues?
+- Why ambiguous: Omission from the morning ritual triage buckets could indicate intentional carry or oversight.
+- Blocking? no — both are deferrable but both are straightforward fixes within this stage's budget
+- Assumed answer (if proceeding): in-scope as Medium — ISSUE-0039 is a direct UpgradeState consumer (0063); ISSUE-0045 is a standalone a11y fix
+- Code affected: ISSUE-0039: `apps/web/src/components/student/StudentComposerForm.tsx`, `apps/web/src/app/(teacher)/content/new/page.tsx`; ISSUE-0045: `apps/web/src/app/(student)/practice/page.tsx`, `apps/web/src/app/(student)/exam-sim/page.tsx`
+- Status: resolved
+- Resolution: **Confirmed in-scope as Medium. ISSUE-0039 folds into Cluster B (depends on Cluster A UpgradeState). ISSUE-0045 folds into Cluster E (a11y). (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-6 — ISSUE-0067 local build TLS gate
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: ISSUE-0067; v1.1-polish-stage-brief.md §7 (anticipated)
+- Question: Does the local prod build TLS cert failure (ISSUE-0067) block polish stage close, or carry as a README note?
+- Why ambiguous: ISSUE-0067 is Medium severity but CI and Vercel deployments are unaffected; the failure is machine-specific (Google Fonts TLS chain on Windows).
+- Blocking? no
+- Assumed answer (if proceeding): carry — add `NODE_OPTIONS=--use-system-ca` workaround note to README; CI/Vercel unaffected
+- Code affected: `README.md` or `apps/web/README.md` (workaround note only); ISSUE-0067 remains open
+- Status: resolved
+- Resolution: **Carry. Add `NODE_OPTIONS=--use-system-ca` workaround note to README.md. Polish stage does not block on this. CI/Vercel unaffected. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-5 — Low issues to elevate to fix-in-stage
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2a; ISSUE-0044, 0046, 0047, 0064, 0065, 0066
+- Question: Which Low findings (ISSUE-0044, 0046, 0047, 0064, 0065, 0066) are elevated to fix-in-stage rather than deferred to v1.2?
+- Why ambiguous: All six Lows are deferrable per brief default; elevation is operator-discretion based on effort vs benefit.
+- Blocking? no
+- Assumed answer (if proceeding): defer all unless operator elevates
+- Code affected: elevations affect Cluster E (a11y) and Cluster F (loading-consistency)
+- Status: resolved
+- Resolution: **Elevate: ISSUE-0046 + ISSUE-0065 → Cluster E (role="alert" corrections, low effort, a11y coherence). ISSUE-0064 + ISSUE-0047 → Cluster F (LoadingState consolidation, visual-only, no test delta). Defer: ISSUE-0044 (assignments-svc error format) + ISSUE-0066 (console.warn). (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-4 — axe-core live-run gating
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2d; ISSUE-0038
+- Question: Does this stage block on preview env being provisioned (axe-core live run), or does ISSUE-0038 carry to the preview deploy stage?
+- Why ambiguous: axe-core page-level E2E run requires a running app; preview env provisioning is not in this stage's control.
+- Blocking? no
+- Assumed answer (if proceeding): carry-to-preview
+- Code affected: ISSUE-0038 tracking only; no code change
+- Status: resolved
+- Resolution: **carry-to-preview. ISSUE-0038 axe-core live run gates the preview deploy stage, not the polish stage. No code action here. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-3 — Mobile breakpoint scope
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2b
+- Question: Full mobile pass (all v1.1 routes) or student-facing only?
+- Why ambiguous: Teacher surfaces are desktop-primary by design; applying a full mobile pass to 20+ routes vs targeted student routes is a significant effort difference.
+- Blocking? no
+- Assumed answer (if proceeding): student-facing only
+- Code affected: `apps/web/src/app/(student)/**` routes only
+- Status: resolved
+- Resolution: **student-facing only. Teacher and admin surfaces are desktop-primary; no mobile breakpoint pass on teacher/admin routes in this stage. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-2 — Commit batching strategy
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §4; CLAUDE.md §Atomic commits
+- Question: One commit per ISSUE-NNNN, or cluster commits grouped by area?
+- Why ambiguous: Per-issue gives fine-grained bisect; per-cluster reduces commit noise and groups logically dependent changes (e.g. ErrorState primitive + ErrorState consumer wiring).
+- Blocking? no
+- Assumed answer (if proceeding): cluster by area (a11y, sdk, backend-idempotency, ui-states)
+- Code affected: commit discipline only; no code change
+- Status: resolved
+- Resolution: **cluster by area — 6 clusters (A: ui-primitives; B: dashboard-errors; C: backend; D: sdk; E: a11y; F: loading-consistency), one commit per cluster. Cluster order: A → (B + D parallel) → C → E → F → matrix sweep. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-1 — Design token scope
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §3 (out-of-scope: design system or token overhaul); §7
+- Question: Should the polish stage introduce an explicit token file, use minimal inline Tailwind-class consistency, or make no token changes?
+- Why ambiguous: Clarifying whether any new `tokens.css` entries are needed or whether consistency work uses only existing design tokens.
+- Blocking? no
+- Assumed answer (if proceeding): minimal — fix class inconsistencies without adding new token file entries
+- Code affected: `packages/ui/src/tokens.css` (no change)
+- Status: resolved
+- Resolution: **minimal — fix class inconsistencies using existing tokens only; no new `tokens.css` entries introduced in this stage. (2026-05-22 operator)**
+
+---
+
 ### Q-1.1-S7-RC.1 — response_config shape: correct_option_id + string[] options
 
 - Date raised: 2026-05-20 (v1.1-S7.1 Gate I)

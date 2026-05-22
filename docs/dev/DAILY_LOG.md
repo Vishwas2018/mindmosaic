@@ -2,6 +2,50 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1 Polish — morning ritual + cluster plan — 2026-05-22
+
+**Planned (from v1.1-polish-stage-brief.md):** Open polish stage, resolve Q-1.1-POLISH-1..7, draft ADR-0043, publish cluster plan, update dev context. No code change.
+
+**Actually delivered:**
+
+- R1–R7 pre-read: brief, ADR-0042, OPEN_ISSUES.md, v1.1-phase-plan.md, UI_CONTRACT.md §5.3+§6, packages/ui/src (no ErrorState/UpgradeState confirmed), CLAUDE.md §T-Discipline
+- Triage table: 3 pre-launch blockers (0062, 0063, 0043); 5 Medium (0039, 0040, 0041, 0045, 0061); 4 elevated Low (0046, 0065 → Cluster E; 0064, 0047 → Cluster F); 2 deferred Low (0044, 0066); carries (0038, 0060, 0067, post-launch others)
+- Q-1.1-POLISH-1..7 filed and resolved in QUESTIONS.md ## Resolved
+- ADR-0043 drafted (docs/dev/decisions/0043-v1.1-polish-stage.md) — status: proposed
+- PROJECT_STATE.md updated: next = Cluster A sketch gate; ADRs proposed 0→1; open questions 0→1 (Q-1.1-AUDIT-1 pre-existing omission corrected); Medium issue count corrected 22→23 (pre-existing doc error)
+- Note: ADR-0042 was consumed by pre-polish static audit; binding ADR for polish stage = ADR-0043
+
+**Time spent:** ~1.5h
+
+**Surprises / departures:**
+
+- ADR number shift: brief allocated ADR-0042 as polish-stage binding ADR, but ADR-0042 was used for the pre-polish static audit (both same day, 2026-05-22). Binding ADR = ADR-0043. No code impact.
+- ISSUE-0039 + ISSUE-0045 absent from morning ritual triage buckets despite being Medium in brief + ADR-0042 carries. Surfaced as Q-1.1-POLISH-7; operator confirmed in-scope.
+- Medium issue count in PROJECT_STATE.md was 22 (doc error — 23 issues listed). Corrected.
+- Q-1.1-AUDIT-1 (open since pre-polish audit) was missing from PROJECT_STATE.md open-questions count. Corrected.
+
+**Decisions made (not in stage):**
+
+- ADR-0043: v1.1 polish stage binding — proposed
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- Q-1.1-POLISH-1..7: filed and resolved (all in QUESTIONS.md ## Resolved)
+- ADR-0043: proposed (not yet accepted)
+
+**Quality gates at close:**
+
+- Lint n/a · Typecheck n/a · Tests n/a · Build n/a · RLS n/a (doc-only chore; no code change)
+
+**Tomorrow — first thing:**
+Cluster A sketch gate — present ErrorState + UpgradeState component API + ASCII layout for operator approval before any code.
+
+---
+
 ## v1.1 pre-polish static audit (ADR-0042) + ISSUE-0054 fix — 2026-05-22
 
 **Planned:** ISSUE-0054 fix (MCQ scoring key choice→option_id) then P1–P8 static audit per ADR-0040 follow-up brief.
