@@ -58,5 +58,5 @@ change needed there.
 - `CREATE UNIQUE INDEX` / `CREATE INDEX` → `CREATE … IF NOT EXISTS` (×3)
 - `CREATE TRIGGER` → `CREATE OR REPLACE TRIGGER` (×2)
 
-- Commit: (pending — `fix(db): make migration 0018 idempotent (BUG-0002)`)
+- Commit: f6b7f90 — `fix(db): guard migration 0018 subscription creates (BUG-0002)`
 - Regression-tested: `supabase db reset` clean run, all 24 migrations applied

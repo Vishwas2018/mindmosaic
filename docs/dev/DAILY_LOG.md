@@ -2,6 +2,47 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1 pre-polish static audit (ADR-0042) + ISSUE-0054 fix — 2026-05-22
+
+**Planned:** ISSUE-0054 fix (MCQ scoring key choice→option_id) then P1–P8 static audit per ADR-0040 follow-up brief.
+
+**Actually delivered:**
+
+- ISSUE-0054 fix: `exam/page.tsx:282` `{ choice: selected }` → `{ option_id: selected }`. 2 contract tests (s7.1-style fixture). Commit 005f466.
+- P1–P8 static audit: 8 passes run in order, surfaced between passes. ADR-0042 written (accepted). ISSUE-0061–0067 filed. ISSUE-0054/0057/0059 marked resolved. BUG-0002 commit SHA updated.
+- PROJECT_STATE.md + OPEN_ISSUES.md updated. Test suite confirmed 857/858 pass (0 cached). Typecheck 17/17. Lint 7/7.
+
+**Time spent:** ~3h
+
+**Surprises / departures:**
+
+- Local prod build blocked by TLS cert issue (Google Fonts `next/font` fetch) — filed ISSUE-0067. CI/Vercel unaffected.
+- ISSUE-0060 (partition RLS): P6 scan found parent tables have RLS enabled; default partition inheritance may make this a false positive. Filed T3 flag — not self-resolved.
+- ISSUE-0040 staleTime scope wider than original filing: 16 hooks across 6 files (original cited 3).
+
+**Decisions made (not in stage):**
+
+- ADR-0042: v1.1 pre-polish static audit — accepted
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- Opened: ISSUE-0061 (Medium), 0062 (Medium), 0063 (Medium), 0064 (Low), 0065 (Low), 0066 (Low), 0067 (Medium)
+- Resolved: ISSUE-0054 (MCQ scoring — 005f466), ISSUE-0057 (manifest Zod — d2cf946), ISSUE-0059 (template scale — d2cf946)
+- T3 flag: ISSUE-0060 partition RLS — operator decision required before closing
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (857/858) · Build ❌ (ISSUE-0067 local TLS — CI unaffected) · RLS ✅
+
+**Tomorrow — first thing:**
+Operator decides: polish stage (ISSUE-0062/0063/0043) OR S7.2 batch-02 authoring. ISSUE-0060 T3 question needs answer.
+
+---
+
 ## v1.1-S7.1 batch-01 content import — 2026-05-21
 
 **Planned (from DEV_PLAN.md v1.1-S7.1):** Gate II dry-run → Gate III live import → per-batch content commit. First 8-item pilot batch of NAPLAN-style Y5 Numeracy original items.

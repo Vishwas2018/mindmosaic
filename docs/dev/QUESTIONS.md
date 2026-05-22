@@ -5,7 +5,18 @@
 
 ## Open
 
-<!-- none -->
+### Q-1.1-AUDIT-1 — RLS access pattern for intelligence_audit_log_default + learning_event_default
+
+- Date raised: 2026-05-22 (v1.1 pre-polish audit P6 — ISSUE-0060 T3 flag)
+- Asked of: product owner / architect
+- Source: supabase/migrations/0004 (learning_event), 0005 (intelligence_audit_log); CLAUDE.md RLS non-negotiable
+- Question: What access pattern should govern RLS on `public.intelligence_audit_log_default` and `public.learning_event_default`? Which roles may read/write these tables, and what policies must be written before RLS is enabled? Secondary sub-question: do PostgreSQL 15 default partitions inherit `ENABLE ROW LEVEL SECURITY` from their parent partition table — if yes, does the parent-level enable in migrations 0004/0005 already cover the defaults, making ISSUE-0060 a false positive?
+- Why ambiguous: (1) Access-pattern analysis — no client-side query path against these tables was found in the P6 audit, but absence of evidence is not evidence of absence; (2) Structural question — PostgreSQL documentation on partition RLS inheritance for default partitions is not definitive across versions; a live schema inspection would resolve it but is out of scope for a static audit.
+- Blocking? yes — ISSUE-0060 cannot be closed (confirmed fix or false-positive) without this answer
+- Assumed answer (if proceeding): Option 1 — Pattern G (service-role only). `USING (false)` deny policy for `anon` + `authenticated`; service_role bypasses. Consistent with migration 0018 Pattern G. No client query path found; internal logging tables should not be client-readable.
+- Code affected: supabase/migrations/ (new migration required if Option 1 or 2 chosen); supabase/migrations/0004_learning_pipeline.sql, 0005_intelligence_core.sql (parent tables)
+- Status: open
+- Resolution: —
 
 ## Resolved
 

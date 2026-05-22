@@ -5,8 +5,8 @@
 
 ## Position
 
-- Last completed stage: v1.1-S7.1 batch-01 content import (Gate I/II/III complete, 8 items draft, 2026-05-21)
-- Next stage: v1.1-S7.2 batch-02 authoring — Number strand completion (~42 items remaining to reach 50-item pilot target)
+- Last completed stage: v1.1 pre-polish static audit — ADR-0042 (P1–P8, 2026-05-22); ISSUE-0054 fixed (MCQ scoring key); S7.1 batch-01 8 items in draft
+- Next stage: v1.1 polish (ISSUE-0062 ErrorState, ISSUE-0063 UpgradeState, ISSUE-0043 idempotency) OR v1.1-S7.2 batch-02 authoring — operator decision
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
 - Active branch: `v1.1/exam-content` — 26 commits ahead of origin/main (9376d98 v1.0.0):
   a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · 8c86690 v1.1-S6 chore · 4453ddc S7-prep step 1a · bd3a310 S7-prep step 1b feat · 5dd8f4e S7-prep step 1b chore · a5140e0 S7-prep step 1c feat · this chore
@@ -39,8 +39,8 @@
 | Replay           | ✅ green      | 58/58 assertions + 100 billing-svc replay assertions (2-pass 50-event)                                                            | 2026-06-01 |
 | axe-core         | ✅ green      | 31 Vitest files / 75 assertions (Stage 48 sweep); S4+S5 added 2 Playwright axe-core specs / 4 guarded tests pending ISSUE-0038   | 2026-06-07 |
 
-Unit + contract breakdown (full `pnpm -r run test` 2026-05-20 v1.1-S7-prep step 1c close):
-155 (@mm/types) + 58 (@mm/sdk) + 75 (@mm/ui) + 118 (@mm/engines) + 9 (@mm/core) + 73 (content-svc) + 46 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker) + 31 (analytics-svc) + 19 (orchestration-svc) + 25 (assignments-svc incl. e2e) + 17 (notifications-svc) + 7 (users-svc) + 92 (apps/web) + 59 (billing-svc) = **843 passed, 1 skipped** (844 total).
+Unit + contract breakdown (full `pnpm -r run test` 2026-05-22 pre-polish audit P8):
+159 (@mm/types) + 58 (@mm/sdk) + 75 (@mm/ui) + 118 (@mm/engines) + 9 (@mm/core) + 78 (content-svc) + 48 (assessment-svc) + 53 (intelligence-svc) + 7 (jobs-worker, 1 skipped) + 31 (analytics-svc) + 19 (orchestration-svc) + 25 (assignments-svc incl. e2e) + 17 (notifications-svc) + 7 (users-svc) + 92 (apps/web) + 59 (billing-svc) = **857 passed, 1 skipped** (858 total).
 
 Delta from v1.1-S7-prep step 1b close: **0** — step 1c is a rename sweep (no new tests; existing 843 now test renamed values).
 
@@ -50,11 +50,11 @@ Delta from v1.0.0 baseline (696/697): +143 total since v1.0.0 (+33 v1.1-S1 + +24
 
 | Gate                | Last status                                                                        | Last run   |
 | ------------------- | ---------------------------------------------------------------------------------- | ---------- |
-| pnpm lint           | ✅ green (17 packages)                                                             | 2026-05-19 |
-| pnpm typecheck      | ✅ green (17 packages, 0 turbo-cached — --force run per §Close-ritual)            | 2026-05-19 |
-| pnpm test           | ✅ green (843 passed / 1 skipped — 844 total Vitest)                              | 2026-05-19 |
+| pnpm lint           | ✅ green (7/7 packages with lint scripts; 0 warnings/errors)                      | 2026-05-22 |
+| pnpm typecheck      | ✅ green (17/17 packages, 0 turbo-cached — --force run)                           | 2026-05-22 |
+| pnpm test           | ✅ green (857 passed / 1 skipped — 858 total Vitest, 0 turbo-cached)             | 2026-05-22 |
 | pnpm test:replay    | ✅ green (58/58 assertions)                                                        | 2026-05-16 |
-| pnpm build          | ✅ green (exit 0, 21 routes)                                                       | 2026-05-11 |
+| pnpm build          | ❌ BLOCKED — local TLS cert issue (Google Fonts); CI/Vercel unaffected (ISSUE-0067) | 2026-05-22 |
 | RLS coverage        | ✅ 53/53 tables enabled + tested (pgTAP 0001–0020 451/451); 0021 + 0022 deferred  | 2026-06-07 |
 | pnpm audit          | ⚠ 18 findings (0 critical, 6 high, 10 moderate, 2 low) — all v1.1 track          | 2026-06-07 |
 | pnpm test:migration | ✅ 451/451 — covers migrations 0001–0020                                          | 2026-06-07 |
@@ -78,18 +78,17 @@ Full table: `docs/dev/perf/measurements.md`.
 
 ## Open items
 
-- ADRs accepted: **41** (ADR-0001 through ADR-0041; ADR-0041 Step 1c addendum appended 2026-05-20 — Q-1.1-S7-LEGAL-2.1..2.5 resolutions, enum rename mapping, migration 0024 DDL note, intelligence-svc DB-lookup fix, EXAM_FAMILY_DISPLAY_LABELS pattern, ISSUE-0051 cross-ref)
+- ADRs accepted: **42** (ADR-0001 through ADR-0042; ADR-0042 = v1.1 pre-polish static audit P1–P8, 2026-05-22)
 - ADRs proposed: **0**
 - Workspaces: **17** — unchanged
-- Issues critical / high / medium / low: **0 / 1 / 20 / 19**
-  - High (1): **ISSUE-0054** (MCQ auto-scoring broken v1 exam mode — UI sends `{ choice }`, server reads `option_id` — pre-launch blocker)
-  - Medium (20): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0039, ISSUE-0040, ISSUE-0041, ISSUE-0043, ISSUE-0045, ISSUE-0049, ISSUE-0050, ISSUE-0051 (trademark non-enum surfaces), ISSUE-0052 (manifest slug→UUID — post-S7.1), ISSUE-0053 (skill graph Probability+Statistics — pre-S7.2+), **ISSUE-0057** (ImportManifestSchema z.string() vs DB enum gap), **ISSUE-0059** (template difficulty scale — must fix before S7.2), **ISSUE-0060** (RLS disabled on audit/event partition defaults)
-  - Low (19): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038 (info), ISSUE-0044, ISSUE-0046, ISSUE-0047, ISSUE-0048
-  - Resolved: ISSUE-0005, 0006, 0007, 0008, 0012, 0013, 0018, 0026, 0029, 0036, 0037, 0042 (b3eb668), **0055** (edge resolution; 15e3578), **0056** (route prefix; ab75f14), **0058** (difficulty scale mismatch; Gate III r2 2026-05-21)
+- Issues critical / high / medium / low: **0 / 0 / 22 / 22**
+  - Medium (22): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0039, ISSUE-0040, ISSUE-0041, ISSUE-0043, ISSUE-0045, ISSUE-0049, ISSUE-0050, ISSUE-0051, ISSUE-0052, ISSUE-0053, ISSUE-0060 (T3 flag — partition RLS), **ISSUE-0061** (ItemCreateDTO z.string() enum gaps), **ISSUE-0062** (missing ErrorState primitive), **ISSUE-0063** (missing UpgradeState primitive), **ISSUE-0067** (local prod build TLS cert)
+  - Low (22): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038, ISSUE-0044, ISSUE-0046, ISSUE-0047, ISSUE-0048, **ISSUE-0064** (inline LoadingState), **ISSUE-0065** (role=alert overdue banner), **ISSUE-0066** (console.warn exam page)
+  - Resolved: ISSUE-0005, 0006, 0007, 0008, 0012, 0013, 0018, 0026, 0029, 0036, 0037, 0042 (b3eb668), 0055, 0056, 0058, **0054** (MCQ key fix; 005f466), **0057** (manifest Zod enum tightening; d2cf946), **0059** (template scale; d2cf946)
 - Migrations: **0001–0024** (migrations 0001–0020 pgTAP-verified 451/451; 0021 SQL on disk deferred-validation; 0022 adds composer_params + simulation_params jsonb nullable columns — deferred-validation per 0021 pattern; 0023 adds authoring_method NOT NULL to item_version — deferred-validation per 0021 pattern; **0024 renames exam_family enum values naplan→au_numeracy_y5_format + icas→au_math_paper_c_format — deferred-validation per 0021 pattern**)
 - Open questions: **0** — Q-1.1-1.0..9 + Q-1.1-2.1..5 + Q-1.1-3.1..5 + Q-1.1-4.1..8 + Q-1.1-5.1..6 + Q-1.1-6.1..8 + Q-1.1-S7-LEGAL-2.1..2.5 + **Q-1.1-7.1..9** + **Q-1.1-S7-RC.1** all resolved
-- Content items: **8 draft** (`au_numeracy_y5_format`, batch-01; review log at `docs/content/reviews/s7.1-batch-01.md`; `review→active` blocked by DEV-20260520-1 + ISSUE-0054)
-- Open bugs: **2** (BUG-0001 route prefix — fixed ab75f14; BUG-0002 migration 0018 duplicate — fixed, pending fix(db) commit)
+- Content items: **8 draft** (`au_numeracy_y5_format`, batch-01; review log at `docs/content/reviews/s7.1-batch-01.md`; `review→active` blocked by DEV-20260520-1 legal gate)
+- Open bugs: **2** (BUG-0001 route prefix — fixed ab75f14; BUG-0002 migration 0018 duplicate — fixed f6b7f90)
 - Deviations logged: **24 total (9 resolved, 15 open)** — unchanged (no new deviations in S6; DEV-20260515-2 honored)
   - DEV-20260607-1 accepted — DEV_PLAN "47 stages" count vs delivered 49
   - DEV-20260607-2 accepted — DEV_PLAN Stage 49 "spec §4" citation error
@@ -102,11 +101,13 @@ Full table: `docs/dev/perf/measurements.md`.
 
 ## Notes for next session
 
-**S7.1 batch-01 complete.** 8 items imported draft (`au_numeracy_y5_format`; `ai_assisted_human_reviewed`). Gate I/II/III flow required 4 pre-existing defect fixes: BUG-0001 (route prefix regex), BUG-0002 (migration 0018 duplicate billing schema), ISSUE-0055 (edge runtime `@mm/types` resolution), ISSUE-0058 (difficulty scale IRT-logit vs [0,1]). Gate III r2 clean: HTTP 200, imported: 8, rejected: 0.
+**Audit complete.** ADR-0042 accepted. 7 new issues filed (ISSUE-0061–0067). 3 issues resolved (ISSUE-0054, 0057, 0059). No Critical findings. Pre-launch blocker register in ADR-0042.
 
-**fix(db) commit pending.** Staged but NOT yet committed: `supabase/migrations/0018_billing.sql` (IF NOT EXISTS guards), `supabase/migrations/0019_user_role_system.sql` (COMMIT after ALTER TYPE), `supabase/seeds/02_content.sql` (authoring_method column), `docs/dev/bugs/BUG-0002-migration-0018-billing-tables-duplicate-of-0007.md`, OPEN_ISSUES.md (ISSUE-0057). Awaiting operator "create the commit" for fix(db) commit and separate content(s7.1) batch-01 commit.
+**Next decision required:** Polish stage (ISSUE-0062 ErrorState + ISSUE-0063 UpgradeState + ISSUE-0043 idempotency) vs S7.2 batch-02 authoring. Both are unblocked.
 
-**ISSUE-0059 must be resolved before S7.2 authoring.** `docs/content/specs/australian-y5-numeracy.md §3` difficulty bands reference IRT logit (θ values). Must correct to [0,1] band-midpoint values per spec §6.4 before any S7.2 manifest is authored.
+**ISSUE-0060 T3 flag open.** P6 scan found parent tables `intelligence_audit_log` + `learning_event` have RLS enabled in migrations 0005/0004. Default partitions may inherit. Operator must confirm whether ISSUE-0060 is a false positive before closing.
+
+**Local prod build (ISSUE-0067).** `pnpm turbo build` fails with Google Fonts TLS cert error on this machine. CI/Vercel unaffected. Workaround: `NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm --filter @mm/web run build`.
 
 **S7-prep legal response complete.** Steps 1a + 1b + 1c all landed on `v1.1/exam-content`:
 - 1a: spec rename + disclaimers, AI clause, prohibitions, privacy, a11y, jurisdiction (4453ddc)

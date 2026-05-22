@@ -5,9 +5,129 @@
 
 ## Open
 
-### ISSUE-0059 — Manifest template §3 difficulty bands teach IRT logit scale; spec §6.4 mandates [0,1] normalized
+### ISSUE-0067 — Local prod build blocked by TLS cert verification failure (Google Fonts)
 
 - Status: open
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P8)
+- Area: infra (apps/web/next.config.mjs, apps/web/src/app/layout.tsx)
+- Tags: build · tls · next-font · local-env
+
+**Summary.** `pnpm turbo build` fails locally with `UNABLE_TO_VERIFY_LEAF_SIGNATURE` when `next/font` fetches `DM Sans` and `DM Serif Display` from `fonts.googleapis.com` at build time. The Node.js TLS stack on the local Windows machine does not trust the certificate chain issued by Google's CA. CI and Vercel deployments use system CAs and are unaffected.
+
+**Workaround (local only).** `NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm turbo build` (disables TLS verification — for local use only, never CI). Alternatively use `NODE_OPTIONS=--use-system-ca` (Node.js 22+).
+
+**Fix.** Add the Google root CA to the local machine's trusted store, or configure `next.config.mjs` to fall back to a self-hosted font if the Google Fonts fetch fails (using `display: 'swap'` and a local fallback). Or upgrade to Node.js 22+ and use `--use-system-ca`.
+
+Related: apps/web/src/app/layout.tsx (DM Sans + DM Serif Display font declarations)
+
+---
+
+### ISSUE-0066 — console.warn in production code path (exam page autosave)
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-22 (v1.1 pre-polish audit P6)
+- Area: frontend (apps/web/src/app/(student)/session/[id]/exam/page.tsx)
+- Tags: logging · production · exam-mode
+
+**Summary.** `apps/web/src/app/(student)/session/[id]/exam/page.tsx:333` contains `console.warn('autosave failed', err)` in the autosave error handler. In production builds, browser console output is visible to users via DevTools and may expose internal error objects. Should use structured error reporting (Sentry or equivalent) instead.
+
+**Fix.** Remove `console.warn` or replace with a structured error reporting call. Ensure the autosave failure is surfaced to the user via the UI (e.g., the `SavedPill` component or an inline error indicator) rather than the browser console.
+
+Related: apps/web/src/app/(student)/session/[id]/exam/page.tsx:333
+
+---
+
+### ISSUE-0065 — role="alert" on static overdue banner in assignments page
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-22 (v1.1 pre-polish audit P5)
+- Area: frontend (apps/web/src/app/(student)/assignments/page.tsx)
+- Tags: a11y · aria · assignments
+
+**Summary.** `apps/web/src/app/(student)/assignments/page.tsx:327` uses `role="alert"` on an overdue-assignment banner that is conditionally rendered based on `overdueCount > 0`. `role="alert"` triggers an ARIA live-region assertive announcement — appropriate for asynchronously injected urgent notifications, not for a count-based banner rendered on page load. Use `role="status"` (polite live region) or no role if the banner is always present when the page loads.
+
+**Fix.** Replace `role="alert"` with `role="status"` on the overdue banner, or remove the live-region role if the banner is always present when overdueCount > 0 on mount.
+
+Related: ISSUE-0046 (role="alert" misuse in StudentComposerForm)
+
+---
+
+### ISSUE-0064 — LoadingState primitive underutilised: 11+ pages define inline skeletons
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-22 (v1.1 pre-polish audit P4)
+- Area: frontend (apps/web/src/app/)
+- Tags: ui-consistency · loading-state · polish
+
+**Summary.** The shared `LoadingState` primitive exists in `packages/ui/src/LoadingState/` but 11+ student and teacher pages define inline skeleton components (`SkeletonCard`, `SkeletonRow`, `PathwaySkeleton`) as page-scoped functions or components. Instances: dashboard/page.tsx:67,351,388,422,510,736; session-selection/page.tsx:44; session/[id]/exam/page.tsx:438; session/[id]/practice/page.tsx:332; results/[id]/page.tsx:60; assignments/page.tsx:209; teacher/page.tsx:39,84,114,210,306; teacher/students/page.tsx:21,222; teacher/content/page.tsx:25.
+
+**Fix.** Replace inline skeleton implementations with `import { LoadingState } from '@mm/ui'` and use the existing `variant` prop. Polish-stage item.
+
+Related: ISSUE-0047 (inline loading on teacher content pages)
+
+---
+
+### ISSUE-0063 — Missing shared UpgradeState primitive: 402 paywall shown as toast, not visual component
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P4)
+- Area: frontend (packages/ui/src/, apps/web/src/app/(student)/session-selection/)
+- Tags: ui-consistency · upgrade-state · a11y · pre-launch
+
+**Summary.** No `UpgradeState` component exists in `packages/ui/src/`. UI_CONTRACT §6 row 556 requires a persistent visual upgrade-prompt card (CTA: 'Upgrade to {tier}' → `/billing`) for 402 gate responses. Current implementation: `apps/web/src/app/(student)/session-selection/page.tsx:188-194` handles 402 via a toast notification — ephemeral and inaccessible after dismissal. An inline `UpgradeState()` function exists in `apps/web/src/app/(teacher)/teacher/content/page.tsx:48-69` but is not shared.
+
+**Fix.** Create `packages/ui/src/UpgradeState/` primitive. Update session-selection to render `<UpgradeState />` component instead of toast. Replace teacher/content inline function with shared import.
+
+Related: ISSUE-0039 (402 discrimination on submit), UI_CONTRACT §6
+
+---
+
+### ISSUE-0062 — Missing shared ErrorState primitive: 7+ pages handle errors inline without retry
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P4)
+- Area: frontend (packages/ui/src/, apps/web/src/app/)
+- Tags: ui-consistency · error-state · ux · pre-launch
+
+**Summary.** No `ErrorState` component exists in `packages/ui/src/`. Seven+ pages implement error UI inline, inconsistently. Critical gap: `apps/web/src/app/(student)/dashboard/page.tsx` has 6 data-bound query hooks (`useRecentSessions`, `usePathways`, `useLearnerProfile`, `useLearningPlan`, `useCausalMap`, `useWeeklyPlan`) with no `isError` handler — errors are silently swallowed and the widget simply shows nothing. `apps/web/src/app/(student)/assignments/page.tsx:225` also has no error handler for `assignments.isError`. UI_CONTRACT §5.3 requires widget-level error cards with retry button.
+
+**Fix.** Create `packages/ui/src/ErrorState/` primitive with title, description, and optional retry callback. Add `isError` handlers to all data-bound sections on dashboard and assignments pages. Replace inline error cards in exam, practice, results, and teacher pages with shared primitive.
+
+Related: ISSUE-0047 (inline LoadingState on teacher content pages), UI_CONTRACT §5.3
+
+---
+
+### ISSUE-0061 — ItemCreateDTOSchema and ItemUpdateDTOSchema use z.string() for DB enum fields
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P2)
+- Area: backend (packages/types/src/content.ts)
+- Tags: validation · zod · content-api · enum
+
+**Summary.** `ImportManifestItemSchema` was tightened to `z.enum()` for `response_type`, `exam_families`, and `bloom_level` by ISSUE-0057 (commit d2cf946). The admin API input schemas were not updated in the same pass:
+
+- `packages/types/src/content.ts:71` — `ItemCreateDTOSchema.response_type`: `z.string().min(1)` — DB has `response_type` enum (7 values)
+- `packages/types/src/content.ts:81` — `ItemCreateDTOSchema.bloom_level`: `z.string().nullable()` — DB has `bloom_level` enum (6 values)
+- `packages/types/src/content.ts:97` — `ItemUpdateDTOSchema.bloom_level`: `z.string().nullable()` — same gap
+
+A client calling `POST /content/items` directly with an invalid `response_type` (e.g., `"multiple_choice"`) will receive a 500 INTERNAL_ERROR from the DB constraint violation rather than a 422 VALIDATION_ERROR from Zod. The admin API is not end-user-facing, reducing blast radius, but the contract violation is the same class as ISSUE-0057.
+
+**Fix.** Tighten these three fields to `z.enum([...])` using the same enum values as `ImportManifestItemSchema`. Add tests matching the ISSUE-0057 pattern.
+
+Related: ISSUE-0057 (manifest schema tightening), packages/types/src/content.ts:71,81,97
+
+---
+
+### ISSUE-0059 — Manifest template §3 difficulty bands teach IRT logit scale; spec §6.4 mandates [0,1] normalized
+
+- Status: resolved — 2026-05-22 (commit d2cf946 — fix(types,content): §3 replaced with [0,1] band-midpoint table; IRT logit references removed)
 - Severity: medium
 - Reported: 2026-05-21 (v1.1-S7.1 Gate III — root cause of ISSUE-0058 difficulty scale mismatch)
 - Area: content-ops (docs/content/specs/australian-y5-numeracy.md)
@@ -64,7 +184,7 @@ Related: CLAUDE.md RLS non-negotiable, migration 0018 Pattern G precedent
 
 ### ISSUE-0057 — ImportManifestSchema: z.string() for exam_families + bloom_level lets invalid enum values pass dry-run but fail live import
 
-- Status: open
+- Status: resolved — 2026-05-22 (commit d2cf946 — fix(types,content): tightened ImportManifestItemSchema to z.enum() for response_type, exam_families, bloom_level; 4 regression tests added)
 - Severity: medium
 - Reported: 2026-05-21 (v1.1-S7.1 Gate III unblock — exposed by exam_family + bloom_level rejections)
 - Area: backend (packages/types/src/content.ts, supabase/functions/content-svc/handlers.ts)
@@ -87,7 +207,7 @@ Related: Q-1.1-7.T1A, `packages/types/src/content.ts`, Gate III unblock
 
 ### ISSUE-0054 — MCQ auto-scoring broken in v1 exam mode: UI submits `{ choice }`, server reads `responseData['option_id']`
 
-- Status: open
+- Status: resolved — 2026-05-22 (commit 005f466 — fix(web): correct MCQ response key choice→option_id; 2 scoring contract tests added)
 - Severity: high
 - Reported: 2026-05-20 (v1.1-S7.1 Gate I — by-product of Q-1.1-S7-RC.1 investigation)
 - Area: frontend + backend
