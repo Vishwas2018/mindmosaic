@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   SkillBar,
   StatTile,
   TopBar,
@@ -702,13 +703,20 @@ export default function StudentDashboardPage() {
         />
 
         {/* ContinueSection — preserved unchanged from Stage 25 (NBA omitted ISSUE-0031) */}
-        <ContinueSection
-          activeSession={activeSession}
-          sessionsExist={sessions.length > 0}
-          loading={recentSessions.isPending}
-          onContinue={handleContinue}
-          onStart={handleStart}
-        />
+        {recentSessions.isError ? (
+          <ErrorState
+            title="Couldn't load session data"
+            onRetry={() => void recentSessions.refetch()}
+          />
+        ) : (
+          <ContinueSection
+            activeSession={activeSession}
+            sessionsExist={sessions.length > 0}
+            loading={recentSessions.isPending}
+            onContinue={handleContinue}
+            onStart={handleStart}
+          />
+        )}
 
         {/* KPI strip */}
         <KpiStrip
@@ -724,11 +732,18 @@ export default function StudentDashboardPage() {
 
           {/* LEFT */}
           <div className="lg:col-span-3 space-y-6">
-            <WeeklyPlanCard
-              items={planItems}
-              loading={learningPlan.isPending}
-              stale={learningPlan.data?.stale_since != null}
-            />
+            {learningPlan.isError ? (
+              <ErrorState
+                title="Couldn't load this week's plan"
+                onRetry={() => void learningPlan.refetch()}
+              />
+            ) : (
+              <WeeklyPlanCard
+                items={planItems}
+                loading={learningPlan.isPending}
+                stale={learningPlan.data?.stale_since != null}
+              />
+            )}
             <section aria-label="Quick start pathways">
               <SectionHeading>Quick start</SectionHeading>
               {pathways.isPending ? (
@@ -736,6 +751,8 @@ export default function StudentDashboardPage() {
                   <SkeletonCard className="h-36" />
                   <SkeletonCard className="h-36" />
                 </div>
+              ) : pathways.isError ? (
+                <ErrorState title="Couldn't load pathways" onRetry={() => void pathways.refetch()} />
               ) : (pathways.data ?? []).length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {(pathways.data ?? []).map((pathway) => (
@@ -748,23 +765,44 @@ export default function StudentDashboardPage() {
 
           {/* RIGHT */}
           <div className="lg:col-span-2 space-y-6">
-            <MasterySnapshotCard
-              skills={masterySkills}
-              loading={learnerProfile.isPending}
-            />
-            <QuickInsightsCard
-              cards={insightCards}
-              loading={causalMap.isPending}
-            />
+            {learnerProfile.isError ? (
+              <ErrorState
+                title="Couldn't load mastery data"
+                onRetry={() => void learnerProfile.refetch()}
+              />
+            ) : (
+              <MasterySnapshotCard
+                skills={masterySkills}
+                loading={learnerProfile.isPending}
+              />
+            )}
+            {causalMap.isError ? (
+              <ErrorState
+                title="Couldn't load insights"
+                onRetry={() => void causalMap.refetch()}
+              />
+            ) : (
+              <QuickInsightsCard
+                cards={insightCards}
+                loading={causalMap.isPending}
+              />
+            )}
           </div>
         </div>
 
         {/* Recent sessions */}
-        <RecentSessionsSection
-          sessions={submittedSessions}
-          loading={recentSessions.isPending}
-          onSessionClick={handleSessionClick}
-        />
+        {recentSessions.isError ? (
+          <ErrorState
+            title="Couldn't load recent activity"
+            onRetry={() => void recentSessions.refetch()}
+          />
+        ) : (
+          <RecentSessionsSection
+            sessions={submittedSessions}
+            loading={recentSessions.isPending}
+            onSessionClick={handleSessionClick}
+          />
+        )}
 
         {/* Assessment shortcuts */}
         <AssessmentShortcuts onStart={handleStartMode} />

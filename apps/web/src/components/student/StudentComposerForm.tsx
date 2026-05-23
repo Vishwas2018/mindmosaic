@@ -6,7 +6,7 @@ import type { SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
-import { Button, EmptyState, LoadingState } from '@mm/ui'
+import { Button, EmptyState, ErrorState, LoadingState, UpgradeState } from '@mm/ui'
 import { useCreateSession, usePathways } from '@mm/sdk'
 import type { SimulationParams } from '@mm/types'
 import { STUDENT_COMPOSER_COPY as C } from '@/app/(student)/copy/studentComposer'
@@ -89,25 +89,6 @@ function EmptyState_() {
   )
 }
 
-function ErrorState_({ onRetry }: { onRetry: () => void }) {
-  return (
-    <div className="text-center space-y-4">
-      <EmptyState title={C.states.errorHeading} description="" />
-      <Button variant="secondary" size="sm" onClick={onRetry}>
-        {C.states.errorRetry}
-      </Button>
-    </div>
-  )
-}
-
-function UpgradeState_() {
-  return (
-    <EmptyState
-      title={C.states.upgradeHeading}
-      description={C.states.upgradeDescription}
-    />
-  )
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -156,13 +137,24 @@ export function StudentComposerForm({ simulationLocked }: StudentComposerFormPro
     return <LoadingState />
   }
   if (pathways.isError) {
-    return <ErrorState_ onRetry={() => pathways.refetch()} />
+    return (
+      <ErrorState
+        title={C.states.errorHeading}
+        onRetry={() => void pathways.refetch()}
+      />
+    )
   }
   if (!pathways.isError && allPathways.length === 0) {
     return <EmptyState_ />
   }
   if (availablePathways.length === 0) {
-    return <UpgradeState_ />
+    return (
+      <UpgradeState
+        tier="Standard"
+        description={C.states.upgradeDescription}
+        onUpgrade={() => router.push('/billing')}
+      />
+    )
   }
 
   // ── Content state (form) ──────────────────────────────────────────────────
@@ -357,9 +349,17 @@ export function StudentComposerForm({ simulationLocked }: StudentComposerFormPro
 
       <div className="flex flex-col gap-2">
         {createSession.isError && (
-          <p role="alert" className="text-sm text-[var(--incorrect)]">
-            {C.form.submitError}
-          </p>
+          (createSession.error as { status?: number })?.status === 402 ? (
+            <UpgradeState
+              tier="Standard"
+              onUpgrade={() => router.push('/billing')}
+            />
+          ) : (
+            <ErrorState
+              title={C.form.submitError}
+              onRetry={() => createSession.reset()}
+            />
+          )
         )}
         <Button
           type="submit"

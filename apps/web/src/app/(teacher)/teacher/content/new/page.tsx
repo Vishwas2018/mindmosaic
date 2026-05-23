@@ -12,6 +12,9 @@ import {
   AppShell,
   Button,
   EmptyState,
+  ErrorState,
+  LoadingState,
+  UpgradeState,
 } from '@mm/ui'
 import { usePathways, useMyClasses, useCreateAssignment } from '@mm/sdk'
 import { TeacherSidebarNav } from '../../../../../components/teacher/TeacherSidebarNav'
@@ -48,31 +51,8 @@ interface FormState {
 
 // ── State components ──────────────────────────────────────────────────────────
 
-function LoadingState() {
-  return (
-    <div className="space-y-3" aria-busy="true" aria-label={C.loadingLabel}>
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="h-12 rounded-card border border-[var(--border)] animate-pulse" />
-      ))}
-    </div>
-  )
-}
-
-function ErrorState() {
-  return <EmptyState title={C.loadErrorTitle} description={C.loadError} />
-}
-
 function EmptyState_() {
   return <EmptyState title={C.emptyTitle} description={C.emptyDesc} />
-}
-
-function UpgradeState() {
-  return (
-    <EmptyState
-      title={C.upgradeTitle}
-      description={C.upgradeDesc}
-    />
-  )
 }
 
 // ── Composer form (Content state) ─────────────────────────────────────────────
@@ -373,9 +353,9 @@ export default function NewExamPage() {
   const router = useRouter()
   const pathname = usePathname()
 
-  const { data: pathways, isLoading: pathwaysLoading, isError: pathwaysError } = usePathways()
-  const { data: classesData, isLoading: classesLoading, isError: classesError } = useMyClasses()
-  const { mutate: createAssignment, isPending, isError: submitError, isSuccess } = useCreateAssignment()
+  const { data: pathways, isLoading: pathwaysLoading, isError: pathwaysError, error: pathwaysQueryError, refetch: refetchPathways } = usePathways()
+  const { data: classesData, isLoading: classesLoading, isError: classesError, error: classesQueryError, refetch: refetchClasses } = useMyClasses()
+  const { mutate: createAssignment, isPending, isError: submitError, isSuccess, error: submitMutationError } = useCreateAssignment()
 
   const isLoadingData = pathwaysLoading || classesLoading
   const isDataError = pathwaysError || classesError
@@ -407,19 +387,54 @@ export default function NewExamPage() {
     })
   }
 
+  const is402Submit = submitError && (submitMutationError as { status?: number })?.status === 402
+
   function renderContent() {
     if (isLoadingData) return <LoadingState />
-    if (isDataError) return <ErrorState />
+    if (isDataError) {
+      const errStatus = (pathwaysError
+        ? (pathwaysQueryError as { status?: number })?.status
+        : (classesQueryError as { status?: number })?.status)
+      if (errStatus === 402) return (
+        <UpgradeState
+          tier="Standard"
+          description={C.upgradeDesc}
+          onUpgrade={() => router.push('/billing')}
+        />
+      )
+      return (
+        <ErrorState
+          title={C.loadErrorTitle}
+          description={C.loadError}
+          onRetry={() => { void refetchPathways(); void refetchClasses() }}
+        />
+      )
+    }
     if (hasNoPathways) return <EmptyState_ />
-    if (allPathwaysLocked) return <UpgradeState />
-    return (
-      <ComposerForm
-        pathways={availablePathways}
-        classesData={classesData}
-        onSubmit={handleSubmit}
-        isPending={isPending}
-        submitError={submitError}
+    if (allPathwaysLocked) return (
+      <UpgradeState
+        tier="Standard"
+        description={C.upgradeDesc}
+        onUpgrade={() => router.push('/billing')}
       />
+    )
+    return (
+      <>
+        {is402Submit && (
+          <UpgradeState
+            tier="Standard"
+            description={C.upgradeDesc}
+            onUpgrade={() => router.push('/billing')}
+          />
+        )}
+        <ComposerForm
+          pathways={availablePathways}
+          classesData={classesData}
+          onSubmit={handleSubmit}
+          isPending={isPending}
+          submitError={submitError && !is402Submit}
+        />
+      </>
     )
   }
 

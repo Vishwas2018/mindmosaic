@@ -20,6 +20,19 @@
 
 ## Resolved
 
+### Q-1.1-POLISH-B1 — jsdom + @testing-library/react in @mm/web for render tests
+
+- Date raised: 2026-05-23 (Cluster B consumer wiring)
+- Asked of: operator
+- Source: Cluster B brief §4 test floor (+7 render tests); ISSUE-0062
+- Question: The Cluster B brief listed +7 widget-level render tests (6 dashboard ErrorState guards + 1 assignments guard) but noted they require jsdom not yet configured in `apps/web`. Were these to be deferred to a follow-up commit, or added immediately in Cluster B?
+- Why ambiguous: `apps/web/vitest.config.ts` had no `environment: 'jsdom'` or `@testing-library/react` devDep, making render tests impossible without config work. Brief was silent on whether that config work was in scope.
+- Blocking? yes — render tests cannot be written until config is updated
+- Assumed answer (if proceeding): defer to follow-up; write 11 pure-logic tests now
+- Code affected: `apps/web/vitest.config.ts`, `apps/web/package.json`, `apps/web/src/__tests__/dashboard-error-states.test.tsx`
+- Status: resolved
+- Resolution: Operator ordered immediate fix (2026-05-23): add jsdom + @testing-library/react NOW, not deferred. ISSUE-0062 is a pre-launch blocker; render path must be tested in same cluster. Implemented: vitest.config.ts updated, 3 devDeps added, setup.ts created, 7 render tests written. Total 860 → 878 (+18: 11 logic + 7 render).
+
 ### Q-1.1-POLISH-7 — ISSUE-0039 + ISSUE-0045 scope placement in polish stage
 
 - Date raised: 2026-05-22 (v1.1 polish morning ritual)

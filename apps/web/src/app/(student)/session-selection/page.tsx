@@ -9,6 +9,7 @@ import {
   EmptyState,
   PageHeader,
   TopBar,
+  UpgradeState,
   useToast,
 } from '@mm/ui'
 import { usePathways, useCreateSession } from '@mm/sdk'
@@ -147,6 +148,7 @@ export default function SessionSelectionPage() {
 
   const [subject, setSubject] = useState<SubjectKey>(initialSubject)
   const [activeSessionConflict, setActiveSessionConflict] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   const pathwaysQuery = usePathways()
   const createSession = useCreateSession()
@@ -159,6 +161,7 @@ export default function SessionSelectionPage() {
 
   function handleStart(pathway: PathwayDTO, mode: Mode) {
     setActiveSessionConflict(false)
+    setShowUpgrade(false)
     createSession.mutate(
       {
         assessment_profile_id: null,
@@ -186,11 +189,7 @@ export default function SessionSelectionPage() {
             return
           }
           if (apiErr.status === 402 || apiErr.code === 'FEATURE_GATED') {
-            toast.addToast({
-              title: 'This is a Premium feature',
-              description: 'Upgrade your plan to unlock more pathways.',
-              variant: 'warn',
-            })
+            setShowUpgrade(true)
             return
           }
           toast.addToast({
@@ -233,6 +232,14 @@ export default function SessionSelectionPage() {
               Resume
             </a>
           </div>
+        )}
+
+        {showUpgrade && (
+          <UpgradeState
+            tier="Standard"
+            description="This feature requires the Standard plan."
+            onUpgrade={() => router.push('/billing')}
+          />
         )}
 
         <div role="tablist" aria-label="Filter by subject" className="flex flex-wrap gap-2">

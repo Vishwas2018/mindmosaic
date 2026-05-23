@@ -8,7 +8,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle } from 'lucide-react'
-import { AppShell, Bell, Button, Card, EmptyState, Tabs, TopBar } from '@mm/ui'
+import { AppShell, Bell, Button, Card, EmptyState, ErrorState, Tabs, TopBar } from '@mm/ui'
 import type { TabItem } from '@mm/ui'
 import { useMe, useMyNotifications, useStartAssignment, useStudentAssignments } from '@mm/sdk'
 import type { StudentAssignmentDTO } from '@mm/sdk'
@@ -332,7 +332,14 @@ export default function StudentAssignmentsPage() {
           </div>
         )}
 
-        <Tabs items={tabItems} defaultValue="assigned" />
+        {assignments.isError ? (
+          <ErrorState
+            title="Couldn't load assignments"
+            onRetry={() => void assignments.refetch()}
+          />
+        ) : (
+          <Tabs items={tabItems} defaultValue="assigned" />
+        )}
       </main>
     </AppShell>
   )
