@@ -324,7 +324,7 @@ export default function StudentAssignmentsPage() {
         {/* Overdue banner (Q-40.2) */}
         {overdueCount > 0 && (
           <div
-            role="alert"
+            role="status"
             className="flex items-center gap-3 mb-6 p-3 rounded-card border-l-4 border-l-red-500 bg-red-50"
           >
             <AlertTriangle size={16} className="flex-shrink-0 text-red-600" aria-hidden="true" />

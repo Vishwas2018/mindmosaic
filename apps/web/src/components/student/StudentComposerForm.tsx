@@ -205,7 +205,7 @@ export function StudentComposerForm({ simulationLocked }: StudentComposerFormPro
           ))}
         </select>
         {errors.pathway_id && (
-          <p role="alert" className="text-xs text-[var(--incorrect)] mt-1">
+          <p role="status" className="text-xs text-[var(--incorrect)] mt-1">
             {C.form.pathwayRequired}
           </p>
         )}
@@ -236,7 +236,7 @@ export function StudentComposerForm({ simulationLocked }: StudentComposerFormPro
             {C.form.itemCountHint}
           </p>
           {errors.item_count && (
-            <p role="alert" className="text-xs text-[var(--incorrect)] mt-1">
+            <p role="status" className="text-xs text-[var(--incorrect)] mt-1">
               {errors.item_count.message}
             </p>
           )}
@@ -285,7 +285,7 @@ export function StudentComposerForm({ simulationLocked }: StudentComposerFormPro
             {C.form.difficultyHint} ({distSum} / {itemCount})
           </p>
           {errors.difficulty_distribution && (
-            <p role="alert" className="text-xs text-[var(--incorrect)] mt-1">
+            <p role="status" className="text-xs text-[var(--incorrect)] mt-1">
               {errors.difficulty_distribution.message ?? C.form.diffSumError(itemCount)}
             </p>
           )}

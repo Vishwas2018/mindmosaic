@@ -6,6 +6,7 @@
 // Redirects to /session/[id]/exam on submit (no new session-running surface — §N Trap 1).
 // SCREEN_SPECS gap: this ADR-0039 + Checkpoint A sketch = de-facto spec.
 
+import { useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { AppShell, Bell, PageHeader, TopBar } from '@mm/ui'
 import { useMyNotifications } from '@mm/sdk'
@@ -15,6 +16,8 @@ import { STUDENT_COMPOSER_COPY as C } from '../copy/studentComposer'
 
 export default function ExamSimPage() {
   const notifications = useMyNotifications(true)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  useEffect(() => { headingRef.current?.focus() }, [])
 
   return (
     <AppShell variant="student-parent">
@@ -32,6 +35,7 @@ export default function ExamSimPage() {
 
       <main className="max-w-3xl mx-auto px-6 py-8">
         <PageHeader
+          ref={headingRef}
           title={C.examSim.pageTitle}
           subtitle={C.examSim.pageDescription}
         />
