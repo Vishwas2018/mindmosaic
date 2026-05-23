@@ -10,6 +10,7 @@ export function useLearnerProfile(studentId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.intelligence.learnerProfile(studentId),
+    staleTime: 120_000,
     queryFn: () =>
       client
         .get(`/intelligence-svc/intelligence/learner-profile/${studentId}`, LearningDNADTOSchema)
@@ -49,6 +50,7 @@ export function useCausalMap(studentId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.intelligence.causalMap(studentId),
+    staleTime: 120_000,
     queryFn: () =>
       client
         .get(`/intelligence-svc/intelligence/causal-map/${studentId}`, CausalMapDTOSchema)

@@ -36,6 +36,7 @@ export function useInterventionAlerts(classId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.analytics.interventionAlerts(classId),
+    staleTime: 120_000,
     queryFn: () =>
       client
         .get(
@@ -54,6 +55,7 @@ export function useClassKpi(classId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.analytics.classKpi(classId),
+    staleTime: 120_000,
     queryFn: () =>
       client
         .get(

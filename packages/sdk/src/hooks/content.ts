@@ -30,6 +30,7 @@ export function usePathways() {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.pathways.list(),
+    staleTime: 300_000,
     queryFn: () => client.get('/content-svc/pathways', PathwayListSchema).then((r) => r.data),
   });
 }

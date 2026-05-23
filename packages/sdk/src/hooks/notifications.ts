@@ -26,6 +26,7 @@ export function useMyNotifications(unreadOnly?: boolean) {
     : '/notifications-svc/notifications/me';
   return useQuery({
     queryKey: mmKeys.notifications.mine(),
+    staleTime: 0,
     queryFn: () =>
       client.get(path, z.array(NotificationDTOSchema)).then((r) => r.data),
   });
