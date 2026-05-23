@@ -15,7 +15,7 @@
  *   - resumeSession (2)
  *   - abandonSession (1)
  *   - listRecentSessions (2)
- *   - idempotency middleware (3 incl. replay-returns-cached)
+ *   - idempotency middleware (5 incl. replay-returns-cached; +2 ISSUE-0043 /respond + /submit)
  *
  * Three DEV_PLAN exit criteria appear as **named tests**:
  *   - 'version conflict surfaces 409 (DEV_PLAN exit criterion)'
@@ -1046,6 +1046,82 @@ describe('_shared/idempotency — withIdempotency', () => {
       expect(result.code).toBe('IDEMPOTENCY_MISMATCH');
     }
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  // ISSUE-0043: /respond and /submit now wrapped with the same conditional
+  // withIdempotency pattern as /create. These tests confirm the middleware
+  // replays the stored response body (fromCache: true) and does not re-invoke
+  // the handler on a duplicate request — ruling out double-scoring and
+  // double-close respectively.
+
+  it('ISSUE-0043 — /respond: withIdempotency replays cached response; handler not re-invoked', async () => {
+    const bodyText = '{"item_id":"i1","response":{"choice":"A"}}';
+    const cachedHash = await hashRequestBody(bodyText);
+    const handler = vi.fn();
+    const result = await withIdempotency({
+      client: idemClient({
+        select: {
+          data: {
+            idempotency_key: 'idem-respond-1',
+            tenant_id: TENANT_ID,
+            endpoint: `POST /sessions/${SESSION_ID}/respond`,
+            request_hash: cachedHash,
+            status: 'completed',
+            response_status: 200,
+            response_body: { lock_token: 'tok-cached' },
+            created_at: FROZEN_NOW,
+            completed_at: FROZEN_NOW,
+          },
+          error: null,
+        },
+      }),
+      idempotencyKey: 'idem-respond-1',
+      tenantId: TENANT_ID,
+      endpoint: `POST /sessions/${SESSION_ID}/respond`,
+      bodyText,
+      handler,
+    });
+    expect(result.ok).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
+    if (result.ok) {
+      expect(result.fromCache).toBe(true);
+      expect((result.data as { lock_token: string }).lock_token).toBe('tok-cached');
+    }
+  });
+
+  it('ISSUE-0043 — /submit: withIdempotency replays cached response; handler not re-invoked', async () => {
+    const bodyText = '{}';
+    const cachedHash = await hashRequestBody(bodyText);
+    const handler = vi.fn();
+    const result = await withIdempotency({
+      client: idemClient({
+        select: {
+          data: {
+            idempotency_key: 'idem-submit-1',
+            tenant_id: TENANT_ID,
+            endpoint: `POST /sessions/${SESSION_ID}/submit`,
+            request_hash: cachedHash,
+            status: 'completed',
+            response_status: 200,
+            response_body: { session_id: SESSION_ID, final_score: 0.8 },
+            created_at: FROZEN_NOW,
+            completed_at: FROZEN_NOW,
+          },
+          error: null,
+        },
+      }),
+      idempotencyKey: 'idem-submit-1',
+      tenantId: TENANT_ID,
+      endpoint: `POST /sessions/${SESSION_ID}/submit`,
+      bodyText,
+      handler,
+    });
+    expect(result.ok).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
+    if (result.ok) {
+      expect(result.fromCache).toBe(true);
+      expect((result.data as { session_id: string }).session_id).toBe(SESSION_ID);
+    }
   });
 });
 

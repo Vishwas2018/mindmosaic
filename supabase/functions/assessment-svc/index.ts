@@ -264,15 +264,40 @@ Deno.serve(async (req: Request) => {
       if (rl !== null) { status = 429; return rl; }
       const bodyText = await req.text();
       const body = JSON.parse(bodyText) as RecordResponseRequest;
-      const result = await respondToSession({
-        client: handlerClient,
-        sessionId,
-        studentId: userId,
-        lockHeader,
-        body,
+      if (idemKey === null) {
+        const result = await respondToSession({
+          client: handlerClient,
+          sessionId,
+          studentId: userId,
+          lockHeader,
+          body,
+        });
+        status = result.status;
+        return settle(traceId, result);
+      }
+      const idem = await withIdempotency({
+        client: db as never,
+        idempotencyKey: idemKey,
+        tenantId,
+        endpoint: `POST /sessions/${sessionId}/respond`,
+        bodyText,
+        handler: async () => {
+          const result = await respondToSession({
+            client: handlerClient,
+            sessionId,
+            studentId: userId!,
+            lockHeader,
+            body,
+          });
+          return { status: result.status, data: result };
+        },
       });
-      status = result.status;
-      return settle(traceId, result);
+      if (!idem.ok) {
+        status = idem.status;
+        return jsonError(idem.code, idem.message, traceId, idem.status);
+      }
+      status = idem.status;
+      return settle(traceId, idem.data as HandlerResult<unknown>);
     }
 
     // POST /sessions/{id}/submit
@@ -281,15 +306,41 @@ Deno.serve(async (req: Request) => {
       const sessionId = submitMatch[1]!;
       const rl = await enforceRateLimit(db, 'sessions.default', userId, traceId);
       if (rl !== null) { status = 429; return rl; }
-      const result = await submitSession({
-        client: handlerClient,
-        sessionId,
-        studentId: userId,
-        traceId,
-        fetchProcessIntelligence,
+      const bodyText = await req.text();
+      if (idemKey === null) {
+        const result = await submitSession({
+          client: handlerClient,
+          sessionId,
+          studentId: userId,
+          traceId,
+          fetchProcessIntelligence,
+        });
+        status = result.status;
+        return settle(traceId, result);
+      }
+      const idem = await withIdempotency({
+        client: db as never,
+        idempotencyKey: idemKey,
+        tenantId,
+        endpoint: `POST /sessions/${sessionId}/submit`,
+        bodyText,
+        handler: async () => {
+          const result = await submitSession({
+            client: handlerClient,
+            sessionId,
+            studentId: userId!,
+            traceId,
+            fetchProcessIntelligence,
+          });
+          return { status: result.status, data: result };
+        },
       });
-      status = result.status;
-      return settle(traceId, result);
+      if (!idem.ok) {
+        status = idem.status;
+        return jsonError(idem.code, idem.message, traceId, idem.status);
+      }
+      status = idem.status;
+      return settle(traceId, idem.data as HandlerResult<unknown>);
     }
 
     // POST /sessions/{id}/checkpoint

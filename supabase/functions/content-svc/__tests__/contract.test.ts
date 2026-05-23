@@ -754,7 +754,7 @@ describe('content-svc — POST /content/items (createItem)', () => {
       item: { data: ITEM_ADMIN_STUB, error: null },
     });
     const result = await createItem(client, {
-      response_type: 'multiple_choice',
+      response_type: 'mcq',
       skill_ids: ['sk-1'],
       difficulty: 0.4,
       year_levels: [5],
@@ -785,7 +785,7 @@ describe('content-svc — POST /content/items (createItem)', () => {
   it('returns 422 VALIDATION_ERROR when optional field has wrong type (ISSUE-0042 Zod gap)', async () => {
     const client = mockClient({});
     const result = await createItem(client, {
-      response_type: 'multiple_choice',
+      response_type: 'mcq',
       skill_ids: ['sk-1'],
       difficulty: 0.4,
       year_levels: [5],
@@ -802,7 +802,7 @@ describe('content-svc — POST /content/items (createItem)', () => {
   it('returns 422 VALIDATION_ERROR when exam_families is empty array', async () => {
     const client = mockClient({});
     const result = await createItem(client, {
-      response_type: 'multiple_choice',
+      response_type: 'mcq',
       skill_ids: ['sk-1'],
       difficulty: 0.4,
       year_levels: [5],

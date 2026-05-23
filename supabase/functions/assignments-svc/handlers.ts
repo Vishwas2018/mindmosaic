@@ -212,6 +212,18 @@ async function fetchDisplayName(userId: string, db: DbClient): Promise<string> {
   return rows?.[0]?.display_name ?? '';
 }
 
+async function fetchDisplayNames(userIds: string[], db: DbClient): Promise<Map<string, string>> {
+  const ids = [...new Set(userIds)];
+  if (ids.length === 0) return new Map();
+  const { data: rows } = (await db
+    .from('user_profile')
+    .select('id,display_name')
+    .in('id', ids)) as { data: UserProfileRow[] | null; error: unknown };
+  const map = new Map<string, string>();
+  for (const r of rows ?? []) map.set(r.id, r.display_name ?? '');
+  return map;
+}
+
 function buildAssignmentDTO(
   row: AssignmentRow,
   skillNames: Map<string, string>,
@@ -567,11 +579,11 @@ export async function publishAssignment(
     .map((t) => t.class_id as string);
 
   const classStudentIds: string[] = [];
-  for (const classId of classIds) {
+  if (classIds.length > 0) {
     const { data: roster } = (await db
       .from('class_student')
       .select('student_id')
-      .eq('class_id', classId)) as { data: ClassStudentRow[] | null; error: unknown };
+      .in('class_id', classIds)) as { data: ClassStudentRow[] | null; error: unknown };
     for (const r of roster ?? []) classStudentIds.push(r.student_id);
   }
 
@@ -713,11 +725,7 @@ export async function getAssignmentsForStudent(
 
   const skillNames = await fetchSkillNames(allSkillIds, db);
 
-  const displayNames = new Map<string, string>();
-  for (const creatorId of creatorIds) {
-    const name = await fetchDisplayName(creatorId, db);
-    displayNames.set(creatorId, name);
-  }
+  const displayNames = await fetchDisplayNames(creatorIds, db);
 
   const sessionByAssignment = new Map<string, AssignmentSessionRow>();
   for (const s of sessionRows) sessionByAssignment.set(s.assignment_id, s);
@@ -780,10 +788,11 @@ export async function getAssignmentsForClass(
   const allSkillIds = [...new Set((rows ?? []).flatMap((a) => a.target_skill_ids))];
   const skillNames = await fetchSkillNames(allSkillIds, db);
 
+  const creatorIds = [...new Set((rows ?? []).map((r) => r.created_by))];
+  const displayNames = await fetchDisplayNames(creatorIds, db);
   const result: AssignmentDTO[] = [];
   for (const row of rows ?? []) {
-    const displayName = await fetchDisplayName(row.created_by, db);
-    result.push(buildAssignmentDTO(row, skillNames, displayName));
+    result.push(buildAssignmentDTO(row, skillNames, displayNames.get(row.created_by) ?? ''));
   }
 
   return { data: result, status: 200 };
@@ -809,11 +818,7 @@ export async function getAssignmentTracking(
   const sessions = sessionRows ?? [];
   const studentIds = sessions.map((s) => s.student_id);
 
-  const displayNames = new Map<string, string>();
-  for (const sid of studentIds) {
-    const name = await fetchDisplayName(sid, db);
-    displayNames.set(sid, name);
-  }
+  const displayNames = await fetchDisplayNames(studentIds, db);
 
   const total = sessions.length;
   const completedCount = sessions.filter((s) => s.status === 'completed').length;

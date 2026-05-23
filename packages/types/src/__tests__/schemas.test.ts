@@ -498,3 +498,42 @@ describe('ImportManifestSchema — enum tightening (ISSUE-0057)', () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ─── ISSUE-0061 — ItemCreateDTOSchema + ItemUpdateDTOSchema enum tightening ──
+// Admin API schemas now mirror the DB enums; previously z.string().min(1) / z.string()
+// allowed any value through Zod, deferring rejection to the DB constraint (500 not 422).
+
+describe('ISSUE-0061 — ItemCreateDTOSchema and ItemUpdateDTOSchema enum tightening', () => {
+  const validBase = {
+    response_type: 'mcq' as const,
+    skill_ids: ['s-001'],
+    difficulty: 0.5,
+    year_levels: [5],
+    exam_families: ['naplan'],
+  };
+
+  it('ItemCreateDTOSchema accepts valid response_type and rejects legacy "multiple_choice"', () => {
+    expect(types.ItemCreateDTOSchema.safeParse(validBase).success).toBe(true);
+    expect(
+      types.ItemCreateDTOSchema.safeParse({ ...validBase, response_type: 'multiple_choice' }).success,
+    ).toBe(false);
+  });
+
+  it('ItemCreateDTOSchema: British "analyse" accepted; American "analyze" rejected (0001_enums_tenancy_auth.sql:43)', () => {
+    expect(
+      types.ItemCreateDTOSchema.safeParse({ ...validBase, bloom_level: 'analyse' }).success,
+    ).toBe(true);
+    expect(
+      types.ItemCreateDTOSchema.safeParse({ ...validBase, bloom_level: 'analyze' }).success,
+    ).toBe(false);
+  });
+
+  it('ItemUpdateDTOSchema: British "analyse" accepted; American "analyze" rejected (0001_enums_tenancy_auth.sql:43)', () => {
+    expect(
+      types.ItemUpdateDTOSchema.safeParse({ bloom_level: 'analyse' }).success,
+    ).toBe(true);
+    expect(
+      types.ItemUpdateDTOSchema.safeParse({ bloom_level: 'analyze' }).success,
+    ).toBe(false);
+  });
+});

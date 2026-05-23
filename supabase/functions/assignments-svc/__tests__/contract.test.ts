@@ -4,7 +4,7 @@
  * Vitest in Node. The Deno dispatcher (index.ts) is NOT exercised here —
  * we test pure handler functions with a mocked Supabase-like client.
  *
- * Coverage (19 contract tests):
+ * Coverage (22 contract tests):
  *   createAssignment (3):
  *     happy-path: inserts assignment + assignment_target rows; returns AssignmentDTO
  *     student caller → 403
@@ -14,9 +14,10 @@
  *   updateAssignment (2):
  *     updates pre-publish draft; returns updated AssignmentDTO
  *     published assignment → 422 UNPROCESSABLE
- *   publishAssignment (2):
+ *   publishAssignment (3):
  *     materialises assignment_session per target; writes outbox_event assignment_assigned
  *     student caller → 403
+ *     ISSUE-0041 N+1 guard: exactly 1 class_student query for N class targets
  *   archiveAssignment (2):
  *     transitions assignment to archived from draft or published
  *     already-archived assignment → 422 UNPROCESSABLE
@@ -25,9 +26,10 @@
  *     student reads own; non-teacher cross-student → 403
  *   getAssignmentsForClass (1):
  *     returns assignment list; teacher-only (student → 403)
- *   getAssignmentTracking (2):
+ *   getAssignmentTracking (3):
  *     returns AssignmentTrackingDTO with completion_rate = completed / total
  *     completion_rate computed as completed_count / total_target_count
+ *     ISSUE-0041 N+1 guard: exactly 1 user_profile query for N students
  *   startAssignment (2):
  *     forwards student JWT to assessment-svc; updates assignment_session to in_progress
  *     assignment not published → 422 UNPROCESSABLE
@@ -332,6 +334,43 @@ describe('publishAssignment', () => {
     const result = await publishAssignment(ASSIGNMENT_ID, STUDENT_CALLER, db);
     expect(result.status).toBe(403);
   });
+
+  // ISSUE-0041 N+1 guard: publishAssignment now issues one batch IN(...) query
+  // for all class_ids rather than one query per class. Asserts db.from('class_student')
+  // is called exactly once even when two classes are targeted.
+  it('ISSUE-0041 — publishAssignment: issues exactly 1 class_student query for N class targets', async () => {
+    const CLASS_B = 'c0000000-0000-4000-8000-000000000002';
+    const STUDENT_C = 'u0000000-0000-4000-8000-000000000004';
+    const publishedRow = { ...DRAFT_ASSIGNMENT_ROW, status: 'published', published_at: '2026-05-23T02:00:00.000Z' };
+    const db = buildClient({
+      assignment: [
+        { data: [{ ...DRAFT_ASSIGNMENT_ROW }], error: null },
+        { data: { ...publishedRow }, error: null },
+      ],
+      assignment_target: {
+        data: [
+          { assignment_id: ASSIGNMENT_ID, student_id: null, class_id: CLASS_ID },
+          { assignment_id: ASSIGNMENT_ID, student_id: null, class_id: CLASS_B },
+        ],
+        error: null,
+      },
+      class_student: {
+        data: [{ student_id: STUDENT_ID }, { student_id: STUDENT_C }],
+        error: null,
+      },
+      assignment_session: { data: [], error: null },
+      outbox_event: { data: [], error: null },
+      skill_node: { data: [{ id: SKILL_A, name: 'Algebra' }, { id: SKILL_B, name: 'Fractions' }], error: null },
+      user_profile: { data: [{ id: TEACHER_ID, display_name: 'Ms Smith', tenant_id: TENANT_ID }], error: null },
+    });
+
+    const result = await publishAssignment(ASSIGNMENT_ID, TEACHER_CALLER, db);
+    expect(result.status).toBe(200);
+    const classCalls = ((db.from as ReturnType<typeof vi.fn>).mock.calls as string[][]).filter(
+      ([t]) => t === 'class_student',
+    );
+    expect(classCalls).toHaveLength(1);
+  });
 });
 
 // ─── archiveAssignment ──────────────────────────────────────────────────────
@@ -428,10 +467,13 @@ describe('getAssignmentTracking', () => {
         ],
         error: null,
       },
-      user_profile: [
-        { data: [{ id: STUDENT_ID, display_name: 'Alice', tenant_id: TENANT_ID }], error: null },
-        { data: [{ id: STUDENT_B, display_name: 'Bob', tenant_id: TENANT_ID }], error: null },
-      ],
+      user_profile: {
+        data: [
+          { id: STUDENT_ID, display_name: 'Alice', tenant_id: TENANT_ID },
+          { id: STUDENT_B, display_name: 'Bob', tenant_id: TENANT_ID },
+        ],
+        error: null,
+      },
     });
 
     const result = await getAssignmentTracking(ASSIGNMENT_ID, TEACHER_CALLER, db);
@@ -450,15 +492,47 @@ describe('getAssignmentTracking', () => {
         ],
         error: null,
       },
-      user_profile: [
-        { data: [{ id: STUDENT_ID, display_name: 'Alice', tenant_id: TENANT_ID }], error: null },
-        { data: [{ id: STUDENT_B, display_name: 'Bob', tenant_id: TENANT_ID }], error: null },
-      ],
+      user_profile: {
+        data: [
+          { id: STUDENT_ID, display_name: 'Alice', tenant_id: TENANT_ID },
+          { id: STUDENT_B, display_name: 'Bob', tenant_id: TENANT_ID },
+        ],
+        error: null,
+      },
     });
 
     const result = await getAssignmentTracking(ASSIGNMENT_ID, ADMIN_CALLER, db);
     expect(result.status).toBe(200);
     expect(result.data?.completion_rate).toBeCloseTo(1.0);
+  });
+
+  // ISSUE-0041 N+1 guard: fetchDisplayNames issues one batch query for all
+  // student IDs regardless of row count. Asserts db.from('user_profile') is
+  // called exactly once even when there are multiple tracking targets.
+  it('ISSUE-0041 — getAssignmentTracking: fetchDisplayNames issues exactly 1 user_profile query for N students', async () => {
+    const db = buildClient({
+      assignment_session: {
+        data: [
+          { assignment_id: ASSIGNMENT_ID, student_id: STUDENT_ID, tenant_id: TENANT_ID, session_id: SESSION_ID, status: 'completed', completed_at: '2026-05-23T04:00:00.000Z', created_at: '2026-05-23T00:00:00.000Z', updated_at: '2026-05-23T04:00:00.000Z' },
+          { assignment_id: ASSIGNMENT_ID, student_id: STUDENT_B, tenant_id: TENANT_ID, session_id: null, status: 'pending', completed_at: null, created_at: '2026-05-23T00:00:00.000Z', updated_at: '2026-05-23T00:00:00.000Z' },
+        ],
+        error: null,
+      },
+      user_profile: {
+        data: [
+          { id: STUDENT_ID, display_name: 'Alice', tenant_id: TENANT_ID },
+          { id: STUDENT_B, display_name: 'Bob', tenant_id: TENANT_ID },
+        ],
+        error: null,
+      },
+    });
+
+    const result = await getAssignmentTracking(ASSIGNMENT_ID, TEACHER_CALLER, db);
+    expect(result.status).toBe(200);
+    const profileCalls = ((db.from as ReturnType<typeof vi.fn>).mock.calls as string[][]).filter(
+      ([t]) => t === 'user_profile',
+    );
+    expect(profileCalls).toHaveLength(1);
   });
 });
 

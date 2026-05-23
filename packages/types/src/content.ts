@@ -68,7 +68,7 @@ export type ItemAdminDTO = z.infer<typeof ItemAdminDTOSchema>;
 export const ItemCreateDTOSchema = z.object({
   source_item_id: z.string().nullable().optional(),
   stimulus_id: z.string().nullable().optional(),
-  response_type: z.string().min(1),
+  response_type: z.enum(['mcq', 'multi_select', 'short_answer', 'extended_response', 'drag_drop', 'cloze', 'numeric_entry']),
   skill_ids: z.array(z.string()).min(1),
   difficulty: z.number(),
   discrimination: z.number().nullable().optional(),
@@ -78,7 +78,7 @@ export const ItemCreateDTOSchema = z.object({
   programs: z.array(z.string()).optional(),
   countries: z.array(z.string()).optional(),
   curricula: z.array(z.string()).optional(),
-  bloom_level: z.string().nullable().optional(),
+  bloom_level: z.enum(['remember', 'understand', 'apply', 'analyse', 'evaluate', 'create']).nullable().optional(),
 });
 export type ItemCreateDTO = z.infer<typeof ItemCreateDTOSchema>;
 
@@ -94,7 +94,7 @@ export const ItemUpdateDTOSchema = z.object({
   programs: z.array(z.string()).optional(),
   countries: z.array(z.string()).optional(),
   curricula: z.array(z.string()).optional(),
-  bloom_level: z.string().nullable().optional(),
+  bloom_level: z.enum(['remember', 'understand', 'apply', 'analyse', 'evaluate', 'create']).nullable().optional(),
   is_active: z.boolean().optional(),
 });
 export type ItemUpdateDTO = z.infer<typeof ItemUpdateDTOSchema>;
