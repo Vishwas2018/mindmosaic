@@ -8,7 +8,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle } from 'lucide-react'
-import { AppShell, Bell, Button, Card, EmptyState, ErrorState, Tabs, TopBar } from '@mm/ui'
+import { AppShell, Bell, Button, Card, EmptyState, ErrorState, LoadingState, Tabs, TopBar } from '@mm/ui'
 import type { TabItem } from '@mm/ui'
 import { useMe, useMyNotifications, useStartAssignment, useStudentAssignments } from '@mm/sdk'
 import type { StudentAssignmentDTO } from '@mm/sdk'
@@ -206,16 +206,6 @@ function CardList({ children }: { children: React.ReactNode }) {
   return <div className="space-y-3">{children}</div>
 }
 
-function SkeletonCard() {
-  return (
-    <div
-      role="status"
-      aria-label="Loading"
-      className="h-20 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-    />
-  )
-}
-
 // ── page ──────────────────────────────────────────────────────────────────────
 
 export default function StudentAssignmentsPage() {
@@ -247,7 +237,7 @@ export default function StudentAssignmentsPage() {
       count: assigned.length,
       content: assignments.isPending ? (
         <CardList>
-          {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
+          {[0, 1, 2].map((i) => <LoadingState key={i} variant="card" />)}
         </CardList>
       ) : assigned.length === 0 ? (
         <EmptyState title={STUDENT_COPY.emptyAssigned} description={STUDENT_COPY.emptyAssignedDesc} />
@@ -270,7 +260,7 @@ export default function StudentAssignmentsPage() {
       count: inProgress.length,
       content: assignments.isPending ? (
         <CardList>
-          {[0, 1].map((i) => <SkeletonCard key={i} />)}
+          {[0, 1].map((i) => <LoadingState key={i} variant="card" />)}
         </CardList>
       ) : inProgress.length === 0 ? (
         <EmptyState title={STUDENT_COPY.emptyInProgress} description={STUDENT_COPY.emptyInProgressDesc} />
@@ -288,7 +278,7 @@ export default function StudentAssignmentsPage() {
       count: completed.length,
       content: assignments.isPending ? (
         <CardList>
-          {[0, 1].map((i) => <SkeletonCard key={i} />)}
+          {[0, 1].map((i) => <LoadingState key={i} variant="card" />)}
         </CardList>
       ) : completed.length === 0 ? (
         <EmptyState title={STUDENT_COPY.emptyCompleted} description={STUDENT_COPY.emptyCompletedDesc} />

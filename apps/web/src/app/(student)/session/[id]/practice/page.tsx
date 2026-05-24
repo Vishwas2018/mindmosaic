@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   FocusHeader,
+  LoadingState,
   PageHeader,
   useToast,
 } from '@mm/ui'
@@ -334,11 +335,7 @@ export default function PracticePage({
       <AppShell variant="focus">
         <FocusHeader onExit={() => router.push('/dashboard')} />
         <main className="max-w-3xl mx-auto px-6 py-8">
-          <div
-            role="status"
-            aria-label="Loading session"
-            className="h-64 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-          />
+          <LoadingState />
         </main>
       </AppShell>
     )

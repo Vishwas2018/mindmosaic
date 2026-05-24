@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   EmptyState,
+  LoadingState,
   TopBar,
 } from '@mm/ui'
 import { usePathways } from '@mm/sdk'
@@ -21,21 +22,6 @@ import { getExamFamilyLabel } from '../../../../lib/content-labels'
 import { TeacherSidebarNav } from '../../../../components/teacher/TeacherSidebarNav'
 
 // ── State components ──────────────────────────────────────────────────────────
-
-function LoadingState() {
-  return (
-    <div className="space-y-3" aria-label={C.loadingLabel} aria-busy="true">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          aria-busy="true"
-          aria-label="Loading"
-          className="rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse h-16"
-        />
-      ))}
-    </div>
-  )
-}
 
 function ErrorState() {
   return <EmptyState title={C.loadErrorTitle} description={C.loadError} />
@@ -130,7 +116,11 @@ export default function ExamContentPage() {
   }
 
   function renderContent() {
-    if (isLoading) return <LoadingState />
+    if (isLoading) return (
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => <LoadingState key={i} variant="card" />)}
+      </div>
+    )
     if (isError) return <ErrorState />
     if (list.length === 0) return <EmptyState_ />
     if (availableList.length === 0) return <UpgradeState lockedList={lockedList} />

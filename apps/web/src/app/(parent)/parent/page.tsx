@@ -12,6 +12,7 @@ import {
   TopBar,
   Brand,
   Card,
+  LoadingState,
   StatTile,
   SkillBar,
   ReadinessRing,
@@ -77,16 +78,6 @@ function SectionHeading({ children }: { children: string }) {
   return <h2 className="text-base font-semibold text-[var(--text)] mb-3">{children}</h2>
 }
 
-function SkeletonCard({ className = '' }: { className?: string }) {
-  return (
-    <div
-      role="status"
-      aria-label="Loading"
-      className={`rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse ${className}`}
-    />
-  )
-}
-
 // ── Block 1: Child Switcher ───────────────────────────────────────────────────
 
 function ChildSwitcher({
@@ -128,7 +119,7 @@ function HeroSection({
   readinessText: string
   loading: boolean
 }) {
-  if (loading) return <SkeletonCard className="h-32" />
+  if (loading) return <LoadingState variant="card" />
   return (
     <Card>
       <div className="flex items-center justify-between gap-6">
@@ -160,9 +151,9 @@ function AtAGlanceSection({
       <SectionHeading>At a glance</SectionHeading>
       {loading ? (
         <div className="grid grid-cols-3 gap-4">
-          <SkeletonCard className="h-24" />
-          <SkeletonCard className="h-24" />
-          <SkeletonCard className="h-24" />
+          <LoadingState variant="card" />
+          <LoadingState variant="card" />
+          <LoadingState variant="card" />
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4">
@@ -188,7 +179,7 @@ function SubjectAreasSection({
     return (
       <section aria-label="Subject areas">
         <SectionHeading>Subject areas</SectionHeading>
-        <SkeletonCard className="h-40" />
+        <LoadingState variant="row" rows={3} />
       </section>
     )
   }
@@ -228,7 +219,7 @@ function RecentSessionsSection({
     return (
       <section aria-label="Recent sessions">
         <SectionHeading>Recent sessions</SectionHeading>
-        <SkeletonCard className="h-32" />
+        <LoadingState variant="row" rows={3} />
       </section>
     )
   }
@@ -306,7 +297,7 @@ function NoticedSection({
     return (
       <section aria-label="What we have noticed">
         <SectionHeading>What we have noticed</SectionHeading>
-        <SkeletonCard className="h-32" />
+        <LoadingState variant="row" rows={3} />
       </section>
     )
   }
@@ -343,7 +334,7 @@ function WhatHelpsSection({
     return (
       <section aria-label="What would help next">
         <SectionHeading>What would help next</SectionHeading>
-        <SkeletonCard className="h-28" />
+        <LoadingState variant="row" rows={2} />
       </section>
     )
   }

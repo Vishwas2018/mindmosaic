@@ -17,6 +17,7 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  LoadingState,
   SkillBar,
   StatTile,
   TopBar,
@@ -65,16 +66,6 @@ function SectionHeading({ children }: { children: string }) {
   return <h2 className="text-base font-semibold text-[var(--text)] mb-3">{children}</h2>
 }
 
-function SkeletonCard({ className = '' }: { className?: string }) {
-  return (
-    <div
-      role="status"
-      aria-label="Loading"
-      className={`rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse ${className}`}
-    />
-  )
-}
-
 // ── TopBar nav ────────────────────────────────────────────────────────────────
 
 function StudentNav({ active }: { active: 'dashboard' | 'assignments' | 'results' }) {
@@ -115,7 +106,7 @@ function GreetingSection({
   yearLevel: number | null
   loading: boolean
 }) {
-  if (loading) return <SkeletonCard className="h-20" />
+  if (loading) return <LoadingState variant="text" rows={2} />
   return (
     <div>
       <h1 className="text-xl font-semibold text-[var(--text)]">
@@ -145,7 +136,7 @@ function ContinueSection({
   onContinue: (path: string) => void
   onStart: () => void
 }) {
-  if (loading) return <SkeletonCard className="h-28" />
+  if (loading) return <LoadingState variant="card" />
 
   if (activeSession !== null) {
     return (
@@ -348,8 +339,8 @@ function WeeklyPlanCard({
         )}
       </div>
       {loading ? (
-        <div className="px-6 py-4 space-y-3">
-          {[0, 1, 2].map((i) => <SkeletonCard key={i} className="h-14" />)}
+        <div className="px-6 py-4">
+          <LoadingState variant="row" rows={3} />
         </div>
       ) : items.length === 0 ? (
         <div className="px-6 py-4">
@@ -386,7 +377,7 @@ function MasterySnapshotCard({
       </div>
       <div className="px-6 py-4 space-y-4">
         {loading ? (
-          [0, 1, 2, 3, 4].map((i) => <SkeletonCard key={i} className="h-10" />)
+          <LoadingState variant="row" rows={5} />
         ) : skills.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">{STUDENT_COPY.masteryEmpty}</p>
         ) : (
@@ -419,9 +410,7 @@ function QuickInsightsCard({
         {STUDENT_COPY.insightsHeading}
       </h3>
       {loading ? (
-        <div className="space-y-3">
-          {[0, 1].map((i) => <SkeletonCard key={i} className="h-12" />)}
-        </div>
+        <LoadingState variant="row" rows={2} />
       ) : cards.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">{STUDENT_COPY.insightsEmpty}</p>
       ) : (
@@ -508,7 +497,7 @@ function RecentSessionsSection({
     return (
       <section aria-label="Recent sessions">
         <SectionHeading>Recent sessions</SectionHeading>
-        <SkeletonCard className="h-32" />
+        <LoadingState variant="row" rows={3} />
       </section>
     )
   }
@@ -748,8 +737,8 @@ export default function StudentDashboardPage() {
               <SectionHeading>Quick start</SectionHeading>
               {pathways.isPending ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <SkeletonCard className="h-36" />
-                  <SkeletonCard className="h-36" />
+                  <LoadingState variant="card" />
+                  <LoadingState variant="card" />
                 </div>
               ) : pathways.isError ? (
                 <ErrorState title="Couldn't load pathways" onRetry={() => void pathways.refetch()} />

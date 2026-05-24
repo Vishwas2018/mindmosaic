@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, Brand, Button, Card, IconButton, TopBar } from '@mm/ui';
+import { AppShell, Brand, Button, Card, IconButton, LoadingState, TopBar } from '@mm/ui';
 import { useSessionSummary } from '@mm/sdk';
 import { HeroRing } from '@/components/results/HeroRing';
 
@@ -64,11 +64,7 @@ export default function ResultsPage({
           <Brand logoSrc="/logo.svg" size="sm" />
         </TopBar>
         <main id="results-main" className="max-w-2xl mx-auto px-6 py-12">
-          <div
-            role="status"
-            aria-label="Loading results"
-            className="h-64 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-          />
+          <LoadingState />
         </main>
       </AppShell>
     );

@@ -18,6 +18,7 @@ import {
   Button,
   Card,
   EmptyState,
+  LoadingState,
   NavLink,
   Sidebar,
   StatTile,
@@ -36,16 +37,6 @@ import {
 
 function SectionHeading({ label }: { label: string }) {
   return <h2 className="text-base font-semibold text-[var(--text)] mb-3">{label}</h2>
-}
-
-function SkeletonCard({ className = '' }: { className?: string }) {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading"
-      className={`rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse h-20 ${className}`}
-    />
-  )
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
@@ -163,7 +154,7 @@ function StudentHero({
 function StrandMasteryCard({ studentId }: { studentId: string }) {
   const { data, isLoading, isError } = useLearnerProfile(studentId)
 
-  if (isLoading) return <SkeletonCard className="h-32" />
+  if (isLoading) return <LoadingState variant="row" rows={3} />
   if (isError || !data) {
     return (
       <Card>
@@ -227,7 +218,7 @@ function formatDate(iso: string | null): string {
 function AssignmentTable({ studentId }: { studentId: string }) {
   const { data: assignments, isLoading, isError } = useStudentAssignments(studentId)
 
-  if (isLoading) return <SkeletonCard className="h-32" />
+  if (isLoading) return <LoadingState variant="row" rows={3} />
   if (isError) return <p className="text-sm text-[var(--error)]">Failed to load assignments.</p>
 
   const list = assignments ?? []
@@ -291,7 +282,7 @@ function ScoreTrendSection() {
 function ActivityFeed({ studentId }: { studentId: string }) {
   const { data: sessions, isLoading, isError } = useTeacherRecentSessions(studentId, 5)
 
-  if (isLoading) return <SkeletonCard />
+  if (isLoading) return <LoadingState variant="row" rows={3} />
   if (isError) return <p className="text-sm text-[var(--error)]">Failed to load activity.</p>
   if (!sessions || sessions.length === 0) {
     return <p className="text-sm text-[var(--muted)]">No recent sessions.</p>
@@ -426,7 +417,7 @@ export default function StudentDetailPage() {
               <Brand logoSrc="/logo.svg" size="sm" />
             </TopBar>
             <main className="flex-1 overflow-auto p-6 space-y-6">
-              {[0, 1, 2].map((i) => <SkeletonCard key={i} className="h-20" />)}
+              {[0, 1, 2].map((i) => <LoadingState key={i} variant="card" />)}
             </main>
           </div>
         </div>

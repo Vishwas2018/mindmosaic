@@ -14,6 +14,7 @@ import {
   Card,
   Dialog,
   EmptyState,
+  LoadingState,
   NavLink,
   Sidebar,
   StatTile,
@@ -44,18 +45,6 @@ function TeacherSidebarNav() {
         ))}
       </nav>
     </Sidebar>
-  )
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function SkeletonRow() {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading"
-      className="h-12 rounded-lg border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-    />
   )
 }
 
@@ -201,9 +190,7 @@ export default function AssignmentTrackingPage() {
                     />
                   ))}
                 </div>
-                {[0, 1, 2, 3].map((i) => (
-                  <SkeletonRow key={i} />
-                ))}
+                <LoadingState variant="row" rows={4} />
               </div>
             ) : isError ? (
               <EmptyState title="Failed to load" description={C.loadTrackError} />

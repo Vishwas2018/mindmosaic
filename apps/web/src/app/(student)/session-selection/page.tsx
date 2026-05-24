@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   EmptyState,
+  LoadingState,
   PageHeader,
   TopBar,
   UpgradeState,
@@ -39,24 +40,6 @@ const QUERY_TO_CHIP: Record<string, SubjectKey> = {
   writing: 'writing',
   language: 'language',
   all: 'all',
-}
-
-function PathwaySkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Loading pathways"
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-    >
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          aria-hidden="true"
-          className="h-40 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-        />
-      ))}
-    </div>
-  )
 }
 
 interface PathwayCardProps {
@@ -266,7 +249,11 @@ export default function SessionSelectionPage() {
         </div>
 
         <section id="pathway-list" role="tabpanel" aria-label="Pathways">
-          {pathwaysQuery.isPending && <PathwaySkeleton />}
+          {pathwaysQuery.isPending && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[0, 1, 2].map((i) => <LoadingState key={i} variant="card" />)}
+            </div>
+          )}
 
           {pathwaysQuery.isError && (
             <Card>
