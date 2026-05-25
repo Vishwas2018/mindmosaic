@@ -18,7 +18,7 @@
  *   getInterventionAlerts (1):
  *     org_admin bypasses ownership → 200 with alerts
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   processTeacherRefresh,
   getAutoGroups,
@@ -718,6 +718,9 @@ describe('generateAssignment', () => {
 const ALERT_ID = 'a0000000-0000-4000-8000-000000000001';
 
 describe('getClassKpi', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); });
+  afterEach(() => { vi.useRealTimers(); });
+
   it('getClassKpi: happy path returns ClassKpiDTO with all 4 aggregated stats', async () => {
     const weekAgo = new Date(NOW.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(); // 3 days ago
     const db = buildClient({

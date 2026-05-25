@@ -2,6 +2,54 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1 Polish — Clusters A–G close — 2026-05-22–2026-05-24
+
+**Planned (from v1.1-polish-stage-brief.md + ADR-0043):** Close 15 in-scope issues across 6 clusters (A–F). +27 min test floor. ADR-0043 proposed → accepted.
+
+**Actually delivered:**
+
+- Cluster A — ui-primitives: `ErrorState` + `UpgradeState` in `@mm/ui`; exports wired; 6 new tests. Commit 5144b9a.
+- Cluster B — student dashboard-errors: 6 widget isError guards on student dashboard + 402/FEATURE_GATED discrimination on session-selection + student assignments isError guard (ISSUE-0039). Commit 9705579.
+- Cluster C — backend: assessment-svc idempotency key validation (ISSUE-0043); `ItemCreateDTOSchema` / `ItemUpdateDTOSchema` Zod enum tightening (ISSUE-0061); N+1 batch fix (ISSUE-0041). Commit 3a2fca6.
+- Cluster D — sdk: `staleTime` added to 16 hooks across 6 files (ISSUE-0040). Commit 4353d78.
+- Cluster E — a11y: `h1` focus-on-mount in practice + exam-sim (ISSUE-0045); `role="alert"` corrected on `StudentComposerForm` + overdue banner (ISSUE-0046/0065). Commit 5e158f8.
+- Cluster F — loading-consistency: 13 inline skeletons replaced with `LoadingState` primitive across 6 pages (ISSUE-0064/0047). Commit e525d2a.
+- Cluster G — error-consistency matrix sweep: 20 G1 `ErrorState` guards across 11 surfaces (student/teacher/parent/billing); G2 `LoadingState` card substitution in assignments/[id]; G3 shared `UpgradeState` + `LockedPathwayCards` interactive CTA fix in teacher/content (ISSUE-0068). 22 new tests. Commit 57c3b95.
+- BUG-0003 fix: analytics-svc `getClassKpi` date-sensitive `sessions_this_week` fixture — added `vi.useFakeTimers()` / `vi.setSystemTime(NOW)` to `getClassKpi` describe block. Bundled in chore close.
+- OPEN_ISSUES: ISSUE-0048/0062/0063/0068 resolved; ISSUE-0068 filed + immediately closed.
+- ADR-0043: proposed → accepted (this chore).
+
+**Time spent:** ~2 sessions (~3–4h each)
+
+**Surprises / departures:**
+
+- Cluster G scope: student surfaces (results/[id], session/exam, session/practice, session-selection) were dropped in first impl pass; operator caught the silent substitution pre-commit and required all 4 student surfaces in addition to parent/teacher. Correct — student surfaces are higher launch priority per ISSUE-0062.
+- Cluster G added as 7th cluster (brief planned A–F); G is the matrix-sweep final pass.
+- analytics-svc `getClassKpi` test began failing after Cluster G push (not caused by A-G): fixture hardcodes `NOW='2026-05-20'` dates that drifted outside the handler's real-clock 7-day window. Fixed with `vi.setSystemTime(NOW)` in `beforeEach`.
+
+**Decisions made (not in stage):**
+
+- Cluster G scope expansion — 4 student surfaces added back per operator instruction (clarification of existing ISSUE-0062 scope; no ADR needed)
+
+**Deviations logged:**
+
+- none (Cluster G expansion is within scope of ISSUE-0062)
+
+**Issues opened / closed / questions raised:**
+
+- Closed: ISSUE-0039, 0040, 0041, 0043, 0045, 0046, 0047, 0061, 0062, 0063, 0064, 0065, 0068
+- ISSUE-0048 resolved: PROJECT_STATE overwrite corrects per-package breakdown (854 corrected baseline)
+- Opened: ISSUE-0069 (F5/F7 visual fidelity carry to preview gate), ISSUE-0070 (AT announcement carry)
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ (17/17) · Tests ✅ 945/945 (0 failed, 2 skipped) · Build ❌ (ISSUE-0067 TLS unchanged) · RLS ✅
+
+**Tomorrow — first thing:**
+v1.1 preview/E2E gate — provision preview env; run axe-core live (ISSUE-0038) + Playwright 19 tests.
+
+---
+
 ## v1.1 Polish — morning ritual + cluster plan — 2026-05-22
 
 **Planned (from v1.1-polish-stage-brief.md):** Open polish stage, resolve Q-1.1-POLISH-1..7, draft ADR-0043, publish cluster plan, update dev context. No code change.

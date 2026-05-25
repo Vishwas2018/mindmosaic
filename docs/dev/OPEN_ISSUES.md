@@ -5,6 +5,54 @@
 
 ## Open
 
+### ISSUE-0068 — teacher/content locked pathway cards non-interactive (pointer-events-none blocks upgrade CTA)
+
+- Status: resolved — 2026-05-24 (Cluster G G3 commit 57c3b95)
+- Severity: medium
+- Reported: 2026-05-24 (v1.1 polish matrix sweep)
+- Area: frontend (apps/web/src/app/(teacher)/teacher/content/page.tsx)
+- Tags: upgrade-state · a11y · ux · interactive
+
+**Summary.** teacher/content local `UpgradeState` wrapper applied `opacity-60 pointer-events-none` to the entire locked-pathway card group, making upgrade CTAs unreachable by pointer and keyboard. Renamed to `LockedPathwayCards`, removed `pointer-events-none`, added per-card `<Button aria-label="Upgrade to unlock {name}">` wired to `/billing?intent=upgrade`. Page-level empty-state gate replaced with shared `<UpgradeState>` from `@mm/ui`.
+
+**Fix.** Commit 57c3b95 (Cluster G G3).
+
+Related: ISSUE-0063 (shared UpgradeState primitive)
+
+---
+
+### ISSUE-0070 — ISSUE-0045 AT announcement carry to preview gate
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-24 (v1.1 polish matrix sweep)
+- Area: frontend (apps/web/src/app/(student)/session/[id]/practice/page.tsx)
+- Tags: a11y · screen-reader · preview-gate
+
+**Summary.** Cluster E wired `h1` focus on mount (code fix done, tested in jsdom, commit 5e158f8). The AT announcement — whether a screen reader announces the h1 on navigation — requires manual verification on NVDA/VoiceOver. jsdom cannot test this. Carry to preview gate.
+
+Related: ISSUE-0045
+
+---
+
+### ISSUE-0069 — F5 + F7 visual fidelity carry to preview gate
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-24 (v1.1 polish matrix sweep)
+- Area: frontend (apps/web/src/app/(student)/session-selection/page.tsx, dashboard/page.tsx)
+- Tags: loading · visual-fidelity · cls · preview-gate
+
+**Summary.** Two visual-fidelity items deferred to preview gate:
+
+1. **F5 (session-selection):** loading skeleton (3 × `LoadingState variant="card"` in `grid-cols-3`) footprint confirmed matching loaded state. Carry for AT + motion audit in browser — cannot verify in jsdom.
+
+2. **F7 (dashboard QuickStart + PathwayTile locked state):** `PathwayTile` locked state uses inline `opacity-50` div + "Upgrade to access" copy rather than the shared `UpgradeState` primitive. Visual parity decision deferred to preview gate.
+
+Related: ISSUE-0064, ISSUE-0063, Cluster F (e525d2a)
+
+---
+
 ### ISSUE-0067 — Local prod build blocked by TLS cert verification failure (Google Fonts)
 
 - Status: open
@@ -73,7 +121,7 @@ Related: ISSUE-0047 (inline loading on teacher content pages)
 
 ### ISSUE-0063 — Missing shared UpgradeState primitive: 402 paywall shown as toast, not visual component
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster A created shared UpgradeState primitive 5144b9a; G3 wired all call sites + teacher/content LockedPathwayCards 57c3b95)
 - Severity: medium
 - Reported: 2026-05-22 (v1.1 pre-polish audit P4)
 - Area: frontend (packages/ui/src/, apps/web/src/app/(student)/session-selection/)
@@ -89,7 +137,7 @@ Related: ISSUE-0039 (402 discrimination on submit), UI_CONTRACT §6
 
 ### ISSUE-0062 — Missing shared ErrorState primitive: 7+ pages handle errors inline without retry
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster A created shared ErrorState primitive 5144b9a; Cluster G G1 wired all 11 surfaces across student/teacher/parent/billing 57c3b95)
 - Severity: medium
 - Reported: 2026-05-22 (v1.1 pre-polish audit P4)
 - Area: frontend (packages/ui/src/, apps/web/src/app/)
@@ -387,7 +435,7 @@ Decision between (A) and (B) deferred to implementation. Value increases with co
 
 ### ISSUE-0048 — PROJECT_STATE.md per-package test count discrepancy
 
-- Status: open
+- Status: resolved — 2026-05-24 (chore(v1.1-polish) close — PROJECT_STATE overwritten with real pnpm -r test output; corrected baseline 854, current total 945)
 - Severity: low
 - Reported: 2026-05-18 (v1.1-S5 chore close — P8 audit)
 - Area: docs (docs/dev/PROJECT_STATE.md)
