@@ -12,6 +12,7 @@ import {
   TopBar,
   Brand,
   Card,
+  ErrorState,
   LoadingState,
   StatTile,
   SkillBar,
@@ -113,13 +114,18 @@ function HeroSection({
   readiness,
   readinessText,
   loading,
+  error,
+  onRetry,
 }: {
   firstName: string
   readiness: number
   readinessText: string
   loading: boolean
+  error?: boolean
+  onRetry?: () => void
 }) {
   if (loading) return <LoadingState variant="card" />
+  if (error) return <Card><ErrorState title="Failed to load profile" onRetry={onRetry} /></Card>
   return (
     <Card>
       <div className="flex items-center justify-between gap-6">
@@ -141,15 +147,21 @@ function AtAGlanceSection({
   sessions,
   profile,
   loading,
+  error,
+  onRetry,
 }: {
   sessions: SessionSummaryDTO[]
   profile: LearningDNADTO | undefined
   loading: boolean
+  error?: boolean
+  onRetry?: () => void
 }) {
   return (
     <section aria-label="At a glance">
       <SectionHeading>At a glance</SectionHeading>
-      {loading ? (
+      {error ? (
+        <ErrorState title="Failed to load stats" onRetry={onRetry} />
+      ) : loading ? (
         <div className="grid grid-cols-3 gap-4">
           <LoadingState variant="card" />
           <LoadingState variant="card" />
@@ -171,15 +183,27 @@ function AtAGlanceSection({
 function SubjectAreasSection({
   profile,
   loading,
+  error,
+  onRetry,
 }: {
   profile: LearningDNADTO | undefined
   loading: boolean
+  error?: boolean
+  onRetry?: () => void
 }) {
   if (loading) {
     return (
       <section aria-label="Subject areas">
         <SectionHeading>Subject areas</SectionHeading>
         <LoadingState variant="row" rows={3} />
+      </section>
+    )
+  }
+  if (error) {
+    return (
+      <section aria-label="Subject areas">
+        <SectionHeading>Subject areas</SectionHeading>
+        <ErrorState title="Failed to load subject areas" onRetry={onRetry} />
       </section>
     )
   }
@@ -209,10 +233,14 @@ function SubjectAreasSection({
 function RecentSessionsSection({
   sessions,
   loading,
+  error,
+  onRetry,
   onSessionClick,
 }: {
   sessions: SessionSummaryDTO[]
   loading: boolean
+  error?: boolean
+  onRetry?: () => void
   onSessionClick: (id: string) => void
 }) {
   if (loading) {
@@ -220,6 +248,14 @@ function RecentSessionsSection({
       <section aria-label="Recent sessions">
         <SectionHeading>Recent sessions</SectionHeading>
         <LoadingState variant="row" rows={3} />
+      </section>
+    )
+  }
+  if (error) {
+    return (
+      <section aria-label="Recent sessions">
+        <SectionHeading>Recent sessions</SectionHeading>
+        <ErrorState title="Failed to load recent sessions" onRetry={onRetry} />
       </section>
     )
   }
@@ -289,15 +325,27 @@ function RecentSessionsSection({
 function NoticedSection({
   causalMap,
   loading,
+  error,
+  onRetry,
 }: {
   causalMap: CausalMapDTO | undefined
   loading: boolean
+  error?: boolean
+  onRetry?: () => void
 }) {
   if (loading) {
     return (
       <section aria-label="What we have noticed">
         <SectionHeading>What we have noticed</SectionHeading>
         <LoadingState variant="row" rows={3} />
+      </section>
+    )
+  }
+  if (error) {
+    return (
+      <section aria-label="What we have noticed">
+        <SectionHeading>What we have noticed</SectionHeading>
+        <ErrorState title="Failed to load insights" onRetry={onRetry} />
       </section>
     )
   }
@@ -324,10 +372,14 @@ function NoticedSection({
 function WhatHelpsSection({
   causalMap,
   loading,
+  error,
+  onRetry,
   onStartSession,
 }: {
   causalMap: CausalMapDTO | undefined
   loading: boolean
+  error?: boolean
+  onRetry?: () => void
   onStartSession: (presetId: string) => void
 }) {
   if (loading) {
@@ -335,6 +387,14 @@ function WhatHelpsSection({
       <section aria-label="What would help next">
         <SectionHeading>What would help next</SectionHeading>
         <LoadingState variant="row" rows={2} />
+      </section>
+    )
+  }
+  if (error) {
+    return (
+      <section aria-label="What would help next">
+        <SectionHeading>What would help next</SectionHeading>
+        <ErrorState title="Failed to load recommendations" onRetry={onRetry} />
       </section>
     )
   }
@@ -434,7 +494,7 @@ export default function ParentDashboardPage() {
   }
 
   const contentLoading = profileQuery.isPending || sessionsQuery.isPending || childrenQuery.isPending
-  const hasNoSessions = !sessionsQuery.isPending && sessions.length === 0 && activeChildId.length > 0
+  const hasNoSessions = !sessionsQuery.isPending && !sessionsQuery.isError && sessions.length === 0 && activeChildId.length > 0
 
   return (
     <AppShell variant="student-parent">
@@ -450,6 +510,8 @@ export default function ParentDashboardPage() {
           readiness={pathwayReadiness?.composite_readiness ?? 0}
           readinessText={compositeReadinessLabel(pathwayReadiness?.composite_label ?? 'developing')}
           loading={profileQuery.isPending || childrenQuery.isPending}
+          error={profileQuery.isError}
+          onRetry={() => void profileQuery.refetch()}
         />
 
         {/* Empty: child has no sessions yet */}
@@ -469,30 +531,49 @@ export default function ParentDashboardPage() {
           </Card>
         ) : (
           <>
-            {/* Block 3: At a glance */}
+            {/* Block 3: At a glance — profileQuery (Topics Mastered) + sessionsQuery (sessions tiles) */}
             <AtAGlanceSection
               sessions={sessions}
               profile={profileQuery.data}
               loading={contentLoading}
+              error={profileQuery.isError || sessionsQuery.isError}
+              onRetry={() => {
+                if (profileQuery.isError) void profileQuery.refetch()
+                if (sessionsQuery.isError) void sessionsQuery.refetch()
+              }}
             />
 
-            {/* Block 4: Subject areas */}
-            <SubjectAreasSection profile={profileQuery.data} loading={profileQuery.isPending} />
+            {/* Block 4: Subject areas — profileQuery 1:many (group guard: useless without profile) */}
+            <SubjectAreasSection
+              profile={profileQuery.data}
+              loading={profileQuery.isPending}
+              error={profileQuery.isError}
+              onRetry={() => void profileQuery.refetch()}
+            />
 
-            {/* Block 5: Recent sessions */}
+            {/* Block 5: Recent sessions — sessionsQuery 1:many (group guard: useless without sessions) */}
             <RecentSessionsSection
               sessions={sessions}
               loading={sessionsQuery.isPending}
+              error={sessionsQuery.isError}
+              onRetry={() => void sessionsQuery.refetch()}
               onSessionClick={(id) => router.push(`/results/${id}`)}
             />
 
-            {/* Block 6: What we have noticed */}
-            <NoticedSection causalMap={causalMapQuery.data} loading={causalMapQuery.isPending} />
+            {/* Block 6: What we have noticed — causalMapQuery 1:many (group guard: useless without map) */}
+            <NoticedSection
+              causalMap={causalMapQuery.data}
+              loading={causalMapQuery.isPending}
+              error={causalMapQuery.isError}
+              onRetry={() => void causalMapQuery.refetch()}
+            />
 
-            {/* Block 7: What would help next */}
+            {/* Block 7: What would help next — causalMapQuery 1:many (group guard: useless without map) */}
             <WhatHelpsSection
               causalMap={causalMapQuery.data}
               loading={causalMapQuery.isPending}
+              error={causalMapQuery.isError}
+              onRetry={() => void causalMapQuery.refetch()}
               onStartSession={(presetId) =>
                 router.push(`/session-selection?child=${activeChildId}&preset=${presetId}`)
               }

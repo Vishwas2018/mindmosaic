@@ -12,8 +12,10 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   LoadingState,
   TopBar,
+  UpgradeState,
 } from '@mm/ui'
 import { usePathways } from '@mm/sdk'
 import type { PathwayDTO } from '@mm/types'
@@ -23,21 +25,18 @@ import { TeacherSidebarNav } from '../../../../components/teacher/TeacherSidebar
 
 // ── State components ──────────────────────────────────────────────────────────
 
-function ErrorState() {
-  return <EmptyState title={C.loadErrorTitle} description={C.loadError} />
-}
-
 function EmptyState_() {
   return <EmptyState title={C.emptyTitle} description={C.emptyDesc} />
 }
 
-function UpgradeState({ lockedList }: { lockedList: PathwayDTO[] }) {
+function LockedPathwayCards({ lockedList }: { lockedList: PathwayDTO[] }) {
+  const router = useRouter()
   return (
     <section aria-label="Upgrade required pathways">
       <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide mb-3">
         {C.upgradeTitle}
       </p>
-      <div className="space-y-3 opacity-60 pointer-events-none">
+      <div className="space-y-3">
         {lockedList.map((p) => (
           <Card key={p.id} className="p-4 flex items-center gap-5">
             <div className="flex-1 min-w-0">
@@ -48,6 +47,14 @@ function UpgradeState({ lockedList }: { lockedList: PathwayDTO[] }) {
                 {C.upgradeDesc}
               </p>
             </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push('/billing?intent=upgrade')}
+              aria-label={`Upgrade to unlock ${p.display_name}`}
+            >
+              Upgrade to unlock
+            </Button>
           </Card>
         ))}
       </div>
@@ -93,7 +100,7 @@ function PathwayGrid({
         </section>
       )}
       {lockedList.length > 0 && (
-        <UpgradeState lockedList={lockedList} />
+        <LockedPathwayCards lockedList={lockedList} />
       )}
     </div>
   )
@@ -105,7 +112,7 @@ export default function ExamContentPage() {
   const router = useRouter()
   const pathname = usePathname()
 
-  const { data: pathways, isLoading, isError } = usePathways()
+  const { data: pathways, isLoading, isError, refetch } = usePathways()
 
   const list = pathways ?? []
   const lockedList = list.filter((p) => p.entitled === false)
@@ -121,9 +128,20 @@ export default function ExamContentPage() {
         {[0, 1, 2].map((i) => <LoadingState key={i} variant="card" />)}
       </div>
     )
-    if (isError) return <ErrorState />
+    if (isError) return (
+      <ErrorState
+        title={C.loadErrorTitle}
+        description={C.loadError}
+        onRetry={() => void refetch()}
+      />
+    )
     if (list.length === 0) return <EmptyState_ />
-    if (availableList.length === 0) return <UpgradeState lockedList={lockedList} />
+    if (availableList.length === 0) return (
+      <UpgradeState
+        tier="Standard"
+        onUpgrade={() => router.push('/billing?intent=upgrade')}
+      />
+    )
     return (
       <PathwayGrid
         availableList={availableList}

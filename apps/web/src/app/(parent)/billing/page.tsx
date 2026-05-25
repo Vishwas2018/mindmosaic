@@ -17,6 +17,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   LoadingState,
   Table,
   TableHead,
@@ -247,6 +248,12 @@ export default function BillingPage() {
         <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {[1, 2, 3].map((i) => <LoadingState key={i} variant="card" />)}
         </div>
+      ) : catalogQuery.isError ? (
+        <ErrorState
+          title="Failed to load plans"
+          onRetry={() => void catalogQuery.refetch()}
+          className="max-w-md mx-auto"
+        />
       ) : (
         <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {displayPlans.map((plan) => {

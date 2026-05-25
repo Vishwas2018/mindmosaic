@@ -18,6 +18,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   LoadingState,
   NavLink,
   Sidebar,
@@ -152,10 +153,17 @@ function StudentHero({
 // Q-38.UI-2: NAPLAN tab only — domain_profiles keys are strand names, not pathway slugs (ISSUE-0030).
 
 function StrandMasteryCard({ studentId }: { studentId: string }) {
-  const { data, isLoading, isError } = useLearnerProfile(studentId)
+  const { data, isLoading, isError, refetch } = useLearnerProfile(studentId)
 
   if (isLoading) return <LoadingState variant="row" rows={3} />
-  if (isError || !data) {
+  if (isError) {
+    return (
+      <Card>
+        <ErrorState title="Failed to load strand mastery" onRetry={() => void refetch()} />
+      </Card>
+    )
+  }
+  if (!data) {
     return (
       <Card>
         <EmptyState title="Strand mastery unavailable" description="Mastery data will appear after sessions." />
@@ -216,10 +224,10 @@ function formatDate(iso: string | null): string {
 }
 
 function AssignmentTable({ studentId }: { studentId: string }) {
-  const { data: assignments, isLoading, isError } = useStudentAssignments(studentId)
+  const { data: assignments, isLoading, isError, refetch } = useStudentAssignments(studentId)
 
   if (isLoading) return <LoadingState variant="row" rows={3} />
-  if (isError) return <p className="text-sm text-[var(--error)]">Failed to load assignments.</p>
+  if (isError) return <ErrorState title="Failed to load assignments" onRetry={() => void refetch()} />
 
   const list = assignments ?? []
 
@@ -280,10 +288,10 @@ function ScoreTrendSection() {
 // ── Section 5b: Activity feed ─────────────────────────────────────────────────
 
 function ActivityFeed({ studentId }: { studentId: string }) {
-  const { data: sessions, isLoading, isError } = useTeacherRecentSessions(studentId, 5)
+  const { data: sessions, isLoading, isError, refetch } = useTeacherRecentSessions(studentId, 5)
 
   if (isLoading) return <LoadingState variant="row" rows={3} />
-  if (isError) return <p className="text-sm text-[var(--error)]">Failed to load activity.</p>
+  if (isError) return <ErrorState title="Failed to load activity" onRetry={() => void refetch()} />
   if (!sessions || sessions.length === 0) {
     return <p className="text-sm text-[var(--muted)]">No recent sessions.</p>
   }

@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   LoadingState,
   PageHeader,
   TopBar,
@@ -256,17 +257,11 @@ export default function SessionSelectionPage() {
           )}
 
           {pathwaysQuery.isError && (
-            <Card>
-              <EmptyState
-                title="Could not load pathways"
-                description="Something went wrong fetching your study options."
-                action={
-                  <Button variant="secondary" onClick={() => void pathwaysQuery.refetch()}>
-                    Try again
-                  </Button>
-                }
-              />
-            </Card>
+            <ErrorState
+              title="Could not load pathways"
+              description="Something went wrong fetching your study options."
+              onRetry={() => void pathwaysQuery.refetch()}
+            />
           )}
 
           {pathwaysQuery.isSuccess && filteredPathways.length === 0 && (

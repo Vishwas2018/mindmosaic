@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   Dialog,
+  ErrorState,
   FocusHeader,
   LoadingState,
   QuestionMap,
@@ -446,7 +447,21 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> }
     )
   }
 
-  if (sessionState.isError || currentItem === null) {
+  if (sessionState.isError) {
+    return (
+      <AppShell variant="focus">
+        <FocusHeader onExit={() => router.push('/dashboard')} />
+        <main className="max-w-5xl mx-auto px-6 py-8">
+          <ErrorState
+            title="Could not load session"
+            description="Something went wrong. Try again."
+            onRetry={() => void sessionState.refetch()}
+          />
+        </main>
+      </AppShell>
+    )
+  }
+  if (currentItem === null) {
     return (
       <AppShell variant="focus">
         <FocusHeader onExit={() => router.push('/dashboard')} />

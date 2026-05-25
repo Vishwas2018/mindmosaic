@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   LoadingState,
   NavLink,
   ProgressBar,
@@ -69,7 +70,7 @@ function ClassSwitcher({
 // ── Block 2: Class KPI Strip ──────────────────────────────────────────────────
 
 function ClassKpiStrip({ classId }: { classId: string }) {
-  const { data, isLoading, isError } = useClassKpi(classId)
+  const { data, isLoading, isError, refetch } = useClassKpi(classId)
 
   if (isLoading) {
     return (
@@ -79,7 +80,7 @@ function ClassKpiStrip({ classId }: { classId: string }) {
     )
   }
   if (isError || !data) {
-    return <p className="text-sm text-[var(--error)]">Failed to load class stats.</p>
+    return <ErrorState title="Failed to load class stats" onRetry={() => void refetch()} />
   }
 
   return (
@@ -99,11 +100,11 @@ function ClassKpiStrip({ classId }: { classId: string }) {
 // ── Block 3: Intervention Alerts ──────────────────────────────────────────────
 
 function InterventionAlertsSection({ classId }: { classId: string }) {
-  const { data: alerts, isLoading, isError } = useInterventionAlerts(classId)
+  const { data: alerts, isLoading, isError, refetch } = useInterventionAlerts(classId)
   const { mutate: patchAlert, isPending } = useDismissAlert()
 
   if (isLoading) return <LoadingState variant="row" rows={3} />
-  if (isError) return <p className="text-sm text-[var(--error)]">Failed to load alerts.</p>
+  if (isError) return <ErrorState title="Failed to load alerts" onRetry={() => void refetch()} />
 
   const active = (alerts ?? []).filter((a) => a.status === 'active')
 
@@ -174,7 +175,7 @@ function formatDate(iso: string | null): string {
 function StudentPerformanceTable({ classId }: { classId: string }) {
   const [sortKey, setSortKey] = useState<SortKey>('display_name')
   const [sortAsc, setSortAsc] = useState(true)
-  const { data, isLoading, isError } = useClassStudents(classId, 1)
+  const { data, isLoading, isError, refetch } = useClassStudents(classId, 1)
 
   const sorted = useMemo(() => {
     const rows = data?.students ?? []
@@ -199,7 +200,7 @@ function StudentPerformanceTable({ classId }: { classId: string }) {
   }
 
   if (isLoading) return <LoadingState variant="row" rows={4} />
-  if (isError) return <p className="text-sm text-[var(--error)]">Failed to load student data.</p>
+  if (isError) return <ErrorState title="Failed to load student data" onRetry={() => void refetch()} />
   if (!data || data.students.length === 0) {
     return (
       <EmptyState
@@ -292,10 +293,10 @@ function TopicMasterySection() {
 // ── Block 6: Assignments Widget ───────────────────────────────────────────────
 
 function AssignmentsWidget({ classId }: { classId: string }) {
-  const { data: assignments, isLoading, isError } = useAssignmentsForClass(classId)
+  const { data: assignments, isLoading, isError, refetch } = useAssignmentsForClass(classId)
 
   if (isLoading) return <LoadingState variant="row" rows={3} />
-  if (isError) return <p className="text-sm text-[var(--error)]">Failed to load assignments.</p>
+  if (isError) return <ErrorState title="Failed to load assignments" onRetry={() => void refetch()} />
 
   const published = (assignments ?? []).filter(
     (a) => a.status === 'published' && a.archived_at === null,

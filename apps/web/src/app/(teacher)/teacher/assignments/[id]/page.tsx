@@ -14,6 +14,7 @@ import {
   Card,
   Dialog,
   EmptyState,
+  ErrorState,
   LoadingState,
   NavLink,
   Sidebar,
@@ -124,7 +125,7 @@ export default function AssignmentTrackingPage() {
   const [archiveOpen, setArchiveOpen] = useState(false)
 
   const { data: assignment } = useAssignment(id)
-  const { data: tracking, isLoading, isError } = useAssignmentTracking(id)
+  const { data: tracking, isLoading, isError, refetch } = useAssignmentTracking(id)
   const archiveMutation = useArchiveAssignment()
 
   const isPublished = assignment?.status === 'published'
@@ -181,19 +182,15 @@ export default function AssignmentTrackingPage() {
 
             {isLoading ? (
               <div className="space-y-3">
-                {/* stat tiles skeleton */}
                 <div className="grid grid-cols-3 gap-4 mb-6">
                   {[0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="h-20 rounded-card border border-[var(--border)] animate-pulse bg-[var(--surface)]"
-                    />
+                    <LoadingState key={i} variant="card" />
                   ))}
                 </div>
                 <LoadingState variant="row" rows={4} />
               </div>
             ) : isError ? (
-              <EmptyState title="Failed to load" description={C.loadTrackError} />
+              <ErrorState title="Failed to load" description={C.loadTrackError} onRetry={() => void refetch()} />
             ) : (
               <>
                 {/* 3-stat grid */}

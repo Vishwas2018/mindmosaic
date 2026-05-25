@@ -5,6 +5,7 @@ import {
   AppShell,
   Button,
   Card,
+  ErrorState,
   FocusHeader,
   LoadingState,
   PageHeader,
@@ -341,7 +342,21 @@ export default function PracticePage({
     )
   }
 
-  if (sessionState.isError || currentItem === null) {
+  if (sessionState.isError) {
+    return (
+      <AppShell variant="focus">
+        <FocusHeader onExit={() => router.push('/dashboard')} />
+        <main className="max-w-3xl mx-auto px-6 py-8">
+          <ErrorState
+            title="Could not load session"
+            description="Something went wrong fetching this practice session."
+            onRetry={() => void sessionState.refetch()}
+          />
+        </main>
+      </AppShell>
+    )
+  }
+  if (currentItem === null) {
     return (
       <AppShell variant="focus">
         <FocusHeader onExit={() => router.push('/dashboard')} />

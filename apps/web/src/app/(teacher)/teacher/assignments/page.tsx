@@ -18,6 +18,7 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
   LoadingState,
   NavLink,
   Sidebar,
@@ -189,7 +190,7 @@ export default function AssignmentsPage() {
   const { data: classesData } = useMyClasses()
   const classId = classesData?.classes[0]?.id ?? ''
 
-  const { data: assignments, isLoading, isError } = useAssignmentsForClass(classId)
+  const { data: assignments, isLoading, isError, refetch } = useAssignmentsForClass(classId)
 
   const list = assignments ?? []
   const counts: Record<DbStatus, number> = {
@@ -228,7 +229,7 @@ export default function AssignmentsPage() {
             {isLoading ? (
               <LoadingState variant="row" rows={3} />
             ) : isError ? (
-              <EmptyState title="Failed to load" description={C.loadError} />
+              <ErrorState title="Failed to load" description={C.loadError} onRetry={() => void refetch()} />
             ) : (
               <>
                 <TabStrip
