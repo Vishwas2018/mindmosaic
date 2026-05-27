@@ -6,7 +6,7 @@
 ## Position
 
 - Last completed stage: v1.1 Polish — Clusters A–G (2026-05-24)
-- Next stage: v1.1 preview/E2E gate — axe-core live run (ISSUE-0038), Playwright 19 tests, deploy to preview env
+- Next stage: v1.1 preview/E2E gate — axe-core live run (ISSUE-0038), Playwright 20 tests, deploy to preview env
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
 - Active branch: `v1.1/exam-content` — 33 commits ahead of origin/main (9376d98 v1.0.0):
   a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · 8c86690 v1.1-S6 chore · 4453ddc S7-prep step 1a · bd3a310 S7-prep step 1b feat · 5dd8f4e S7-prep step 1b chore · a5140e0 S7-prep step 1c feat · (S7-prep step 1c chore) · 5144b9a Cluster A · 9705579 Cluster B · 3a2fca6 Cluster C · 4353d78 Cluster D · 5e158f8 Cluster E · e525d2a Cluster F · 57c3b95 Cluster G · (this chore)
@@ -34,7 +34,7 @@
 | pgTAP            | ✅ green      | 451/451 (migrations 0001–0020); 0021 + 0022 SQL files on disk (deferred-validation)                                               | 2026-06-07 |
 | Contract         | ✅ green      | included in 945 Vitest total                                                                                                       | 2026-05-24 |
 | E2E (Vitest)     | ✅ green      | 1/1 (assignments-svc lifecycle)                                                                                                    | 2026-05-23 |
-| E2E (Playwright) | ⚠ opt-in     | 13 specs / 19 tests (gated; all test.skip-guarded; ISSUE-0035, ISSUE-0038)                                                        | n/a        |
+| E2E (Playwright) | ⚠ opt-in     | 13 specs / 20 tests (gated; all test.skip-guarded; ISSUE-0035, ISSUE-0038)                                                        | n/a        |
 | RLS              | ✅ green      | 451/451 (53 tables; pgTAP 0001–0020 covers all); 0021 + 0022 deferred-validation                                                  | 2026-06-07 |
 | Replay           | ✅ green      | 58/58 assertions + 100 billing-svc replay assertions (2-pass 50-event)                                                            | 2026-06-01 |
 | axe-core         | ✅ green      | 31 Vitest files / 75 assertions (Stage 48 sweep); S4+S5 added 2 Playwright axe-core specs / 4 guarded tests pending ISSUE-0038   | 2026-06-07 |
@@ -103,7 +103,7 @@ Full table: `docs/dev/perf/measurements.md`.
 
 **Launch-window operational verification (owner: deploy operator):**
 - Run k6/session-loop.js (500 VU / 1h) + k6/billing-webhook.js against deployed env
-- Run Playwright 13 specs / 19 tests against deployed Supabase (incl. ISSUE-0038 axe-core gate)
+- Run Playwright 13 specs / 20 tests against deployed Supabase (incl. ISSUE-0038 axe-core gate)
 - Run scripts/validate-content.ts (requires seeded content, 50 items, 10 misconceptions)
 - 24h pipeline.dead_letter.count = 0 soak
 - Supabase backup + restore drill (staging project)

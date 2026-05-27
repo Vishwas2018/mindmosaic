@@ -46,7 +46,7 @@
 - Lint ✅ · Typecheck ✅ (17/17) · Tests ✅ 945/945 (0 failed, 2 skipped) · Build ❌ (ISSUE-0067 TLS unchanged) · RLS ✅
 
 **Tomorrow — first thing:**
-v1.1 preview/E2E gate — provision preview env; run axe-core live (ISSUE-0038) + Playwright 19 tests.
+v1.1 preview/E2E gate — provision preview env; run axe-core live (ISSUE-0038) + Playwright 20 tests.
 
 ---
 
