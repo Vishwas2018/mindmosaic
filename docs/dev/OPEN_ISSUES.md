@@ -21,6 +21,29 @@ Related: ISSUE-0063 (shared UpgradeState primitive)
 
 ---
 
+### ISSUE-0071 — New partitions created by pg_partman/manual carve-ups born RLS-disabled
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-27 (ISSUE-0060 empirical resolution — partition layout audit)
+- Area: infra (supabase/migrations/)
+- Tags: rls · security · partition · v1.1
+
+**Summary.** Migration 0025 fixes ISSUE-0060 by enabling RLS + deny-all on the current `_default` partitions (`learning_event_default`, `intelligence_audit_log_default`). However, when v1.1 introduces pg_partman or manual monthly range partitions (e.g., `learning_event_2026_06`, `intelligence_audit_log_2026_06`), each new partition is created without RLS enabled by default — PostgreSQL does not propagate `ENABLE ROW LEVEL SECURITY` from parent to new child partitions. This reopens the same direct-partition read bypass that ISSUE-0060 closed.
+
+**Fix (before first pg_partman or monthly-carve-up migration).** Each new partition creation must be immediately followed by:
+```sql
+ALTER TABLE <partition_name> ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "<prefix>_deny_all" ON <partition_name> FOR ALL USING (false);
+```
+For pg_partman: configure `after_partition_created_proc` to a stored procedure that applies the above pattern automatically. For manual monthly migrations: include the ALTER/CREATE POLICY in the same migration statement as the `CREATE TABLE ... PARTITION OF`. Never create a partition without immediately applying the deny-all.
+
+**Scope.** Affects any future partition of `learning_event` and `intelligence_audit_log`. Other partitioned tables do not exist in v1 schema.
+
+Related: ISSUE-0060, migration 0025, migration 0004 (`learning_event`), migration 0005 (`intelligence_audit_log`)
+
+---
+
 ### ISSUE-0070 — ISSUE-0045 AT announcement carry to preview gate
 
 - Status: open
@@ -205,28 +228,19 @@ Related: ISSUE-0058 (root cause), spec §6.4, spec §15.1, spec §15.6
 
 ### ISSUE-0060 — RLS disabled on intelligence_audit_log_default + learning_event_default
 
-- Status: open
+- Status: resolved (pending re-run) — 2026-05-27 (migration 0025 filed; confirmation gate = rls-check-e2e.sql exit 0)
 - Severity: medium
 - Reported: 2026-05-21 (v1.1-S7.1 Gate III — surfaced by `supabase db query` advisory)
 - Area: infra (supabase/migrations/)
 - Tags: rls · security · audit-log
 
-**Summary.** `supabase db query` advisory reports that `public.intelligence_audit_log_default` and `public.learning_event_default` have Row Level Security disabled. Per the advisory, these tables are fully exposed to the `anon` and `authenticated` roles. This violates the project RLS non-negotiable (CLAUDE.md: "RLS in the same migration as CREATE TABLE").
+**Summary.** `supabase db query` advisory reports that `public.intelligence_audit_log_default` and `public.learning_event_default` have Row Level Security disabled. rls-check-e2e.sql q2 + q4 empirical gate confirmed the bypass: both queries returned N_ROWS as `anon`, proving the _default partitions do not inherit the parent's RLS in PostgreSQL 15 when queried directly.
 
-**Do NOT enable RLS without adding policies first** — enabling without policies blocks all access to these tables, which would break any queries against them. The correct fix is:
-1. Identify the intended access pattern for each table (service-role only? authenticated read? tenant-scoped?)
-2. Write appropriate RLS policies (or confirm service-role-only = Pattern G from migration 0018)
-3. Enable RLS in a new migration with the policies in the same transaction
+**Resolution.** Migration 0025 (`0025_default_partition_rls.sql`) adds `ENABLE ROW LEVEL SECURITY` + a deny-all `USING(false)` policy (`led_deny_all` / `iald_deny_all`) to each _default partition. Partition policies in PostgreSQL 15 apply only on direct partition access; parent-table queries (the app path) continue to use the parent's full policy sets (migrations 0004/0005) unaffected. Service_role (BYPASSRLS) and SECURITY DEFINER write paths are unaffected. Resolution is confirmed when rls-check-e2e.sql reruns and exits 0 with q2 + q4 = 0_ROWS or ERROR.
 
-**Remediation SQL (do not run until policies are decided):**
-```sql
-ALTER TABLE public.intelligence_audit_log_default ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.learning_event_default ENABLE ROW LEVEL SECURITY;
-```
+**v1.1 follow-up.** See ISSUE-0071 — new partitions created by pg_partman or manual carve-ups are born RLS-disabled and reopen this bypass. The creation path must apply the same ENABLE RLS + deny-all pattern.
 
-**Context.** These appear to be partitioned table defaults (the `_default` suffix is a Postgres partitioning convention). Triage should confirm whether these are partition roots or default partitions and whether the parent partition tables already have RLS enabled (RLS on the parent does not automatically cover default partitions in all Postgres versions).
-
-Related: CLAUDE.md RLS non-negotiable, migration 0018 Pattern G precedent
+Related: migration 0025, ISSUE-0071, rls-check-e2e.sql q2+q4, migration 0004 (le_ policies), migration 0005 (ial_ policies)
 
 ---
 

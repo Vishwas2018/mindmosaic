@@ -9,6 +9,7 @@
 --
 -- Usage:
 --   psql "$DATABASE_URL" -f scripts/rls-check-e2e.sql
+-- NOTE: must run as supabase_admin on Supabase (postgres lacks rolsuper → GUARD 1 fails).
 --
 -- Query map:
 --   q1  item SELECT (student, positive test)
