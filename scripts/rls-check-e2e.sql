@@ -32,10 +32,13 @@
 -- committed; ROLLBACK at the end cleans everything.
 --
 -- Runs in BEGIN…ROLLBACK — no data persists regardless of pass/fail.
--- ON_ERROR_STOP off ensures ROLLBACK executes even when a RAISE EXCEPTION fires.
+-- ON_ERROR_STOP on: psql exits 3 (non-zero) when the DO block raises RAISE EXCEPTION.
+-- On failure, psql exits before sending ROLLBACK; the server rolls back the aborted
+-- transaction automatically on connection close — probe rows never persist.
+-- On success, the DO block returns normally, ROLLBACK executes, psql exits 0.
 -- =============================================================================
 
-\set ON_ERROR_STOP off
+\set ON_ERROR_STOP on
 
 BEGIN;
 

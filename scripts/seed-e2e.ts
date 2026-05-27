@@ -16,7 +16,9 @@
  * Usage (from repo root):
  *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... pnpm tsx scripts/seed-e2e.ts
  *
- * Env resolved in order:
+ * Env resolved in order (first file found wins):
+ *   apps/web/.env.e2e → .env.local → .env → shell env
+ * Variables read:
  *   SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL
  *   SUPABASE_SERVICE_ROLE_KEY
  */
@@ -25,6 +27,7 @@ import { config } from 'dotenv'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 
+config({ path: resolve(process.cwd(), 'apps/web/.env.e2e') })
 config({ path: resolve(process.cwd(), '.env.local') })
 config({ path: resolve(process.cwd(), '.env') })
 
