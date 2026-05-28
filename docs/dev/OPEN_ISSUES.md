@@ -21,6 +21,45 @@ Related: ISSUE-0063 (shared UpgradeState primitive)
 
 ---
 
+### ISSUE-0072 — signup raw_user_meta_data key mismatch: full_name sent, display_name read by trigger
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-28 (deployment auth debug — side observation during app_metadata fix)
+- Area: backend (supabase/functions/auth-svc/index.ts, supabase/migrations/0001_enums_tenancy_auth.sql)
+- Tags: auth · signup · display_name · user_profile
+
+**Summary.** `auth-svc POST /auth/signup` passes `full_name` in `raw_user_meta_data`:
+
+```typescript
+// auth-svc/index.ts:131
+options: { data: { full_name: fullName.trim(), role: "parent" } }
+```
+
+`handle_new_user()` reads `display_name` from the same metadata:
+
+```sql
+-- 0001_enums_tenancy_auth.sql:244-246
+v_display_name := COALESCE(
+  NEW.raw_user_meta_data ->> 'display_name',
+  split_part(NEW.email, '@', 1)
+);
+```
+
+Because `display_name` is absent, the `COALESCE` always falls through to `split_part(email, '@', 1)`. Every `user_profile.display_name` created via the signup flow is the email prefix (e.g., `"john"` from `"john@example.com"`) rather than the user's submitted full name.
+
+**Fix.** Two equivalent options — either:
+1. Change `auth-svc/index.ts:131` to send `display_name: fullName.trim()` instead of `full_name`; or
+2. Change `0001_enums_tenancy_auth.sql:245` to read `'full_name'` instead of `'display_name'`.
+
+Option 1 (auth-svc rename) is preferred — keeps the DB trigger generic and avoids a migration for a pure metadata-key fix.
+
+**Backfill.** Existing `user_profile` rows have incorrect `display_name`. After deploying the auth-svc fix, a SQL UPDATE sourcing `auth.users.raw_user_meta_data ->> 'full_name'` corrects them. Trivial for small user counts.
+
+Related: auth-svc/index.ts:131, 0001_enums_tenancy_auth.sql:244-246
+
+---
+
 ### ISSUE-0071 — New partitions created by pg_partman/manual carve-ups born RLS-disabled
 
 - Status: open

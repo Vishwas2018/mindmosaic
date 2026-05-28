@@ -125,7 +125,7 @@ async function handleSignup(req: Request, traceId: string): Promise<Response> {
     );
   }
 
-  const { error } = await anonClient().auth.signUp({
+  const { data: signUpData, error } = await anonClient().auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName.trim(), role: "parent" } },
@@ -137,6 +137,37 @@ async function handleSignup(req: Request, traceId: string): Promise<Response> {
       return jsonOk({ message: "Check your email to confirm your account." }, traceId);
     }
     return jsonError("SIGNUP_FAILED", error.message, traceId, 400);
+  }
+
+  // Synchronous app_metadata write — no poll needed.
+  // handle_new_user() is AFTER INSERT; it commits user_profile+tenant before
+  // signUp() returns, so tenant_id is queryable immediately.
+  const newUserId = signUpData?.user?.id;
+  if (newUserId) {
+    const svc = serviceClient();
+    const { data: profile } = await svc
+      .from("user_profile")
+      .select("tenant_id, role")
+      .eq("id", newUserId)
+      .single();
+    if (profile) {
+      const { error: metaErr } = await svc.auth.admin.updateUserById(newUserId, {
+        app_metadata: { tenant_id: profile.tenant_id, role: profile.role },
+      });
+      if (metaErr) {
+        console.error(JSON.stringify({
+          level: "error", trace_id: traceId,
+          event: "app_metadata_write_failed",
+          user_id: newUserId, err: metaErr.message,
+        }));
+      }
+    } else {
+      console.error(JSON.stringify({
+        level: "error", trace_id: traceId,
+        event: "user_profile_missing_after_signup",
+        user_id: newUserId,
+      }));
+    }
   }
 
   return jsonOk({ message: "Check your email to confirm your account." }, traceId);

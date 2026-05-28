@@ -481,12 +481,7 @@ export default function ParentDashboardPage() {
         <main className="max-w-4xl mx-auto px-6 py-8">
           <EmptyState
             title="Link your first child"
-            description="Add a child profile to start tracking their learning journey."
-            action={
-              <Button variant="primary" onClick={() => router.push('/parent/children')}>
-                Add your first child
-              </Button>
-            }
+            description="Child accounts are created by invitation — available in a future release."
           />
         </main>
       </AppShell>
