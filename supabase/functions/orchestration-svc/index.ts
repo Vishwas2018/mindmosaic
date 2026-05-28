@@ -21,6 +21,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getTraceId } from '../_shared/trace-id.ts';
 import { jsonOk, jsonError } from '../_shared/error-envelope.ts';
+import { CORS_HEADERS } from '../_shared/cors.ts';
 import { log } from '../_shared/logger.ts';
 import { verifyBearer } from '../_shared/auth.ts';
 import {
@@ -48,12 +49,7 @@ Deno.serve(async (req: Request) => {
     if (method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: {
-          'X-Trace-Id': traceId,
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers':
-            'Content-Type, Authorization, x-mm-service-role, x-mm-trace-id, Idempotency-Key',
-        },
+        headers: { 'X-Trace-Id': traceId, ...CORS_HEADERS },
       });
     }
 
@@ -244,7 +240,7 @@ Deno.serve(async (req: Request) => {
         return jsonError('INTERNAL_ERROR', result.message ?? 'Database error', traceId, 500);
       }
       status = 204;
-      return new Response(null, { status: 204, headers: { 'X-Trace-Id': traceId } });
+      return new Response(null, { status: 204, headers: { 'X-Trace-Id': traceId, 'Access-Control-Allow-Origin': CORS_HEADERS['Access-Control-Allow-Origin'] } });
     }
 
     // ------------------------------------------------------------------
