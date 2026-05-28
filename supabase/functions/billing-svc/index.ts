@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
   const traceId = getTraceId(req);
   const method = req.method;
   const url = new URL(req.url);
-  const path = url.pathname.replace(/\/$/, '');
+  const path = url.pathname.replace(/^\/(functions\/v1\/)?billing-svc/, '').replace(/\/$/, '');
   let status = 200;
 
   try {
