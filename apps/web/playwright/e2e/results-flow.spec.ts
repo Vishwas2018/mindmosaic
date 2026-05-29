@@ -24,7 +24,7 @@
  * per Q-19.9.
  */
 import { expect, test } from '@playwright/test';
-import { randomUUID } from 'crypto';
+import { signUpAndGetToken } from './helpers/auth';
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL'];
 const E2E_BASE_URL = process.env['E2E_BASE_URL'];
@@ -39,21 +39,6 @@ test.skip(
   'Stage 24 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_TEST_PATHWAY_ID + E2E_SUPABASE_ANON',
 );
 
-async function signUpAndGetToken(baseUrl: string, anon: string): Promise<string> {
-  const email = `test-${randomUUID()}@example.com`;
-  const password = 'TestPassword123!';
-  const res = await fetch(`${baseUrl}/auth/v1/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) throw new Error(`signup failed: ${res.status}`);
-  const body = (await res.json()) as { access_token?: string };
-  const token = body.access_token;
-  if (token === undefined) throw new Error('signup: no access_token in response');
-  return token;
-}
-
 test('results flow — signup → exam → submit → /results/{id} renders score', async ({
   page,
 }) => {
@@ -64,7 +49,7 @@ test('results flow — signup → exam → submit → /results/{id} renders scor
   const anon = E2E_ANON as string;
 
   // 1. Sign up + inject session cookie.
-  const token = await signUpAndGetToken(baseUrl, anon);
+  const token = await signUpAndGetToken(baseUrl, anon, 'student', 'test');
   await page.goto(`${webUrl}/session-selection`);
   await page.evaluate(
     ([t]: string[]) => {

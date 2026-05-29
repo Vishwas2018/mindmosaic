@@ -18,7 +18,7 @@
  * Skips when env not provisioned.
  */
 import { expect, test } from '@playwright/test'
-import { randomUUID } from 'crypto'
+import { signUpAndGetToken } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -29,39 +29,12 @@ test.skip(
   'Stage 36 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
 )
 
-async function signUpParentAndGetToken(baseUrl: string, anon: string): Promise<string> {
-  const email = `parent-${randomUUID()}@example.com`
-  const password = 'TestPassword123!'
-
-  // Use auth-svc (not raw /auth/v1/signup) so the synchronous app_metadata write
-  // fires and the resulting JWT carries tenant_id + role. Tests the real success
-  // path: children returns 200 [] (not 403 FORBIDDEN from a missing role claim).
-  const signupRes = await fetch(`${baseUrl}/auth-svc/auth/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password, fullName: 'Test Parent', role: 'parent' }),
-  })
-  if (!signupRes.ok) throw new Error(`signup failed: ${signupRes.status}`)
-
-  // auth-svc returns { data: { message } } — login separately to get the JWT
-  const loginRes = await fetch(`${baseUrl}/auth-svc/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password }),
-  })
-  if (!loginRes.ok) throw new Error(`login failed: ${loginRes.status}`)
-  const loginBody = (await loginRes.json()) as { data?: { access_token?: string } }
-  const token = loginBody.data?.access_token
-  if (token === undefined) throw new Error('login: no access_token in response')
-  return token
-}
-
 test('parent dashboard — fresh parent sees no-children empty state', async ({ page }) => {
   const webUrl = E2E_WEB_URL as string
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpParentAndGetToken(baseUrl, anon)
+  const token = await signUpAndGetToken(baseUrl, anon, 'parent', 'parent')
   await page.goto(`${webUrl}/parent`)
   await page.evaluate(([t]: string[]) => {
     localStorage.setItem('sb-access-token', t ?? '')

@@ -17,7 +17,7 @@
  */
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { randomUUID } from 'crypto'
+import { signUpAndGetToken } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -28,22 +28,9 @@ test.skip(
   'v1.1-S5 a11y requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
 )
 
-async function signUpStudentAndGetToken(baseUrl: string, anon: string): Promise<string> {
-  const email = `student-a11y-${randomUUID()}@example.com`
-  const password = 'TestPassword123!'
-  const res = await fetch(`${baseUrl}/auth/v1/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password, data: { role: 'student' } }),
-  })
-  if (!res.ok) throw new Error(`signup failed: ${res.status}`)
-  const data = await res.json() as { access_token: string }
-  return data.access_token
-}
-
 test.describe('axe-core a11y — /practice', () => {
   test('zero serious/critical violations on /practice (LoadingState → Content)', async ({ page }) => {
-    const token = await signUpStudentAndGetToken(E2E_BASE_URL!, E2E_ANON!)
+    const token = await signUpAndGetToken(E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
     await page.goto(`${E2E_WEB_URL}/practice`)
     await page.evaluate((t) => { localStorage.setItem('sb-access-token', t) }, token)
     await page.goto(`${E2E_WEB_URL}/practice`)
@@ -71,7 +58,7 @@ test.describe('axe-core a11y — /practice', () => {
 
 test.describe('axe-core a11y — /exam-sim', () => {
   test('zero serious/critical violations on /exam-sim (LoadingState → Content)', async ({ page }) => {
-    const token = await signUpStudentAndGetToken(E2E_BASE_URL!, E2E_ANON!)
+    const token = await signUpAndGetToken(E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
     await page.goto(`${E2E_WEB_URL}/exam-sim`)
     await page.evaluate((t) => { localStorage.setItem('sb-access-token', t) }, token)
     await page.goto(`${E2E_WEB_URL}/exam-sim`)

@@ -49,9 +49,14 @@ test('session lifecycle — signup → 5 responses → submit → score returned
     data: { email, password, role: 'student' },
   });
   expect(signup.ok(), `signup body: ${await signup.text()}`).toBeTruthy();
-  const signupJson = await signup.json();
-  const accessToken = signupJson?.data?.access_token ?? signupJson?.access_token;
-  expect(accessToken, 'access token from signup').toBeTruthy();
+  const loginReq = await request.post(`${baseUrl}/auth-svc/auth/login`, {
+    headers: { 'Content-Type': 'application/json', apikey: anon },
+    data: { email, password },
+  });
+  expect(loginReq.ok(), `login body: ${await loginReq.text()}`).toBeTruthy();
+  const loginJson = await loginReq.json();
+  const accessToken = loginJson?.data?.access_token ?? loginJson?.access_token;
+  expect(accessToken, 'access token from login').toBeTruthy();
 
   // ── 2. Create session ────────────────────────────────────────────────────
   const create = await request.post(`${baseUrl}/assessment-svc/sessions/create`, {

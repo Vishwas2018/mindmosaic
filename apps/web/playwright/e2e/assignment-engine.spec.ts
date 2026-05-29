@@ -23,7 +23,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { randomUUID } from 'crypto'
+import { signUpAndGetToken } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -34,27 +34,12 @@ test.skip(
   'Stage 39 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
 )
 
-async function signUpTeacherAndGetToken(baseUrl: string, anon: string): Promise<string> {
-  const email = `teacher-asgn-${randomUUID()}@example.com`
-  const password = 'TestPassword123!'
-  const res = await fetch(`${baseUrl}/auth/v1/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password, data: { role: 'teacher' } }),
-  })
-  if (!res.ok) throw new Error(`signup failed: ${res.status}`)
-  const body = (await res.json()) as { access_token?: string }
-  const token = body.access_token
-  if (!token) throw new Error('signup: no access_token in response')
-  return token
-}
-
 test('assignment list — fresh teacher sees empty Active tab', async ({ page }) => {
   const webUrl = E2E_WEB_URL as string
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpTeacherAndGetToken(baseUrl, anon)
+  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
 
   await page.goto(`${webUrl}/teacher/assignments`)
   await page.evaluate((tok: string) => {
@@ -72,7 +57,7 @@ test('wizard — practice assignment publish flow', async ({ page }) => {
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpTeacherAndGetToken(baseUrl, anon)
+  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
 
   await page.goto(`${webUrl}/teacher/assignments/new`)
   await page.evaluate((tok: string) => {
@@ -123,7 +108,7 @@ test('wizard — cancel returns to assignments list', async ({ page }) => {
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpTeacherAndGetToken(baseUrl, anon)
+  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
 
   await page.goto(`${webUrl}/teacher/assignments/new`)
   await page.evaluate((tok: string) => {
@@ -143,7 +128,7 @@ test('wizard step 1 — Continue disabled until type selected', async ({ page })
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpTeacherAndGetToken(baseUrl, anon)
+  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
 
   await page.goto(`${webUrl}/teacher/assignments/new`)
   await page.evaluate((tok: string) => {

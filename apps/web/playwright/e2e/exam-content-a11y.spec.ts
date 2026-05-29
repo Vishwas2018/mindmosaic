@@ -17,7 +17,7 @@
  */
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { randomUUID } from 'crypto'
+import { signUpAndGetToken } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -28,22 +28,9 @@ test.skip(
   'v1.1-S4 a11y requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
 )
 
-async function signUpTeacherAndGetToken(baseUrl: string, anon: string): Promise<string> {
-  const email = `teacher-a11y-${randomUUID()}@example.com`
-  const password = 'TestPassword123!'
-  const res = await fetch(`${baseUrl}/auth/v1/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password, data: { role: 'teacher' } }),
-  })
-  if (!res.ok) throw new Error(`signup failed: ${res.status}`)
-  const data = await res.json() as { access_token: string }
-  return data.access_token
-}
-
 test.describe('axe-core a11y — /teacher/content', () => {
   test('zero serious/critical violations on /teacher/content (LoadingState → Content)', async ({ page }) => {
-    const token = await signUpTeacherAndGetToken(E2E_BASE_URL!, E2E_ANON!)
+    const token = await signUpAndGetToken(E2E_BASE_URL!, E2E_ANON!, 'teacher', 'teacher-a11y')
     await page.goto(`${E2E_WEB_URL}/teacher/content`)
     await page.evaluate((t) => { localStorage.setItem('sb-access-token', t) }, token)
     await page.goto(`${E2E_WEB_URL}/teacher/content`)
@@ -71,7 +58,7 @@ test.describe('axe-core a11y — /teacher/content', () => {
 
 test.describe('axe-core a11y — /teacher/content/new', () => {
   test('zero serious/critical violations on /teacher/content/new (ComposerForm Content state)', async ({ page }) => {
-    const token = await signUpTeacherAndGetToken(E2E_BASE_URL!, E2E_ANON!)
+    const token = await signUpAndGetToken(E2E_BASE_URL!, E2E_ANON!, 'teacher', 'teacher-a11y')
     await page.goto(`${E2E_WEB_URL}/teacher/content/new`)
     await page.evaluate((t) => { localStorage.setItem('sb-access-token', t) }, token)
     await page.goto(`${E2E_WEB_URL}/teacher/content/new`)
