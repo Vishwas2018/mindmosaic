@@ -12,6 +12,7 @@ out
 # Environment variables
 .env.local
 .env.*.local
+.env.e2e
 !.env.example
 
 # Debug logs

@@ -32,15 +32,27 @@ test.skip(
 async function signUpParentAndGetToken(baseUrl: string, anon: string): Promise<string> {
   const email = `parent-${randomUUID()}@example.com`
   const password = 'TestPassword123!'
-  const res = await fetch(`${baseUrl}/auth/v1/signup`, {
+
+  // Use auth-svc (not raw /auth/v1/signup) so the synchronous app_metadata write
+  // fires and the resulting JWT carries tenant_id + role. Tests the real success
+  // path: children returns 200 [] (not 403 FORBIDDEN from a missing role claim).
+  const signupRes = await fetch(`${baseUrl}/auth-svc/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password, data: { role: 'parent' } }),
+    body: JSON.stringify({ email, password, fullName: 'Test Parent', role: 'parent' }),
   })
-  if (!res.ok) throw new Error(`signup failed: ${res.status}`)
-  const body = (await res.json()) as { access_token?: string }
-  const token = body.access_token
-  if (token === undefined) throw new Error('signup: no access_token in response')
+  if (!signupRes.ok) throw new Error(`signup failed: ${signupRes.status}`)
+
+  // auth-svc returns { data: { message } } — login separately to get the JWT
+  const loginRes = await fetch(`${baseUrl}/auth-svc/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: anon },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!loginRes.ok) throw new Error(`login failed: ${loginRes.status}`)
+  const loginBody = (await loginRes.json()) as { data?: { access_token?: string } }
+  const token = loginBody.data?.access_token
+  if (token === undefined) throw new Error('login: no access_token in response')
   return token
 }
 
@@ -61,7 +73,9 @@ test('parent dashboard — fresh parent sees no-children empty state', async ({ 
     page.getByText(/link your first child/i),
   ).toBeVisible({ timeout: 10000 })
 
+  // Invite-only copy replaces the "Add your first child" CTA button (removed in
+  // 7ee9565 — CHILDREN_INVITE_ONLY; no /parent/children page exists).
   await expect(
-    page.getByRole('button', { name: /add your first child/i }),
+    page.getByText(/child accounts are created by invitation/i),
   ).toBeVisible()
 })

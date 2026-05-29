@@ -10,6 +10,12 @@
  * three Edge Functions (auth-svc, content-svc, assessment-svc) running.
  */
 import { defineConfig, devices } from '@playwright/test';
+import { config as loadDotenv } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env.e2e so operators can store live env vars once rather than
+// exporting them manually before every run.
+loadDotenv({ path: resolve(__dirname, '.env.e2e') });
 
 export default defineConfig({
   testDir: './playwright/e2e',
