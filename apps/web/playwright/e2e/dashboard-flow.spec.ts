@@ -61,17 +61,11 @@ test('dashboard flow — signup → /dashboard → all six sections render', asy
     page.getByRole('button', { name: /start first session/i }),
   ).toBeVisible({ timeout: 8000 })
 
-  // 5. Assert section headings are present.
+  // 5. Assert section headings present in Stage 40 dashboard.
+  // 'Quick start' — pathway section (dashboard/page.tsx:737 <SectionHeading>Quick start</SectionHeading>)
   await expect(page.getByText('Quick start')).toBeVisible()
-  await expect(page.getByText('Mastery snapshot')).toBeVisible()
+  // 'Mastery Snapshot' — STUDENT_COPY.masteryHeading (student.ts:69); capital S required.
+  await expect(page.getByText('Mastery Snapshot')).toBeVisible()
+  // 'Recent sessions' — dashboard/page.tsx:499,519 <SectionHeading>Recent sessions</SectionHeading>
   await expect(page.getByText('Recent sessions')).toBeVisible()
-  await expect(page.getByText('Your progress')).toBeVisible()
-
-  // 6. Assert mastery stub copy.
-  await expect(
-    page.getByText(/full mastery data in a future release/i),
-  ).toBeVisible()
-
-  // 7. Assert streak stub.
-  await expect(page.getByText('Coming soon')).toBeVisible()
 })

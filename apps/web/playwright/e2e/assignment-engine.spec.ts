@@ -108,7 +108,10 @@ test('wizard — cancel returns to assignments list', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Select Assignment Type' })).toBeVisible({
     timeout: 10_000,
   })
-  await page.getByRole('button', { name: 'Cancel' }).click()
+  // Two Cancel buttons exist on step 1: one in TopBar, one in the wizard footer
+  // (both navigate to /teacher/assignments). Scope to first to avoid strict-mode
+  // violation (page.tsx:744 header Cancel + page.tsx:784 footer Cancel).
+  await page.getByRole('button', { name: 'Cancel' }).first().click()
   await expect(page).toHaveURL(`${webUrl}/teacher/assignments`, { timeout: 5_000 })
 })
 

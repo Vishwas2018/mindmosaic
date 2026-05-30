@@ -60,7 +60,7 @@
 
   /* ── Brand orange scale — anchored on #D35400 ── */
   --brand-orange-50:  #FFF4ED;  /* light tint for backgrounds */
-  --brand-orange-500: #D35400;  /* canonical anchor */
+  --brand-orange-500: #C14A00;  /* canonical anchor — darkened from #D35400 for WCAG AA contrast ≥4.5 (4.95:1 on #fff) */
   --brand-orange-700: #B34700;  /* hover / active */
 
   /* ── Gradients ── */

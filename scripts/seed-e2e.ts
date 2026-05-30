@@ -165,6 +165,24 @@ async function seedItems(): Promise<void> {
   console.log(`  ✓ ${items.length} items (${activeCount} active — items #9 + #10)`)
 }
 
+async function seedFeatureFlag(): Promise<void> {
+  // pathway_naplan_y5 must exist in feature_flag for the seeded pathway to appear
+  // entitled (fetchEntitledFeatureKeys in content-svc/handlers.ts:191–207 queries
+  // feature_flag WHERE tenant_id = caller OR tenant_id IS NULL).
+  // tenant_id = NULL makes this a platform-wide flag visible to every fresh E2E tenant.
+  const { error } = await db.from('feature_flag').upsert(
+    {
+      feature_key: 'pathway_naplan_y5',
+      tenant_id:   null,
+      enabled:     true,
+      source:      'admin_override',
+    },
+    { onConflict: 'feature_key', ignoreDuplicates: false },
+  )
+  if (error) throw new Error(`feature_flag: ${error.message}`)
+  console.log('  ✓ feature_flag (pathway_naplan_y5 = enabled, platform-wide)')
+}
+
 async function seedItemVersions(): Promise<void> {
   const versions = ITEM_LIFECYCLES.map((_, i) => ({
     item_id: itemId(i + 1),
@@ -262,6 +280,7 @@ async function main(): Promise<void> {
   await seedPathway()
   await seedItems()
   await seedItemVersions()
+  await seedFeatureFlag()
   await verifyChain()
 }
 
