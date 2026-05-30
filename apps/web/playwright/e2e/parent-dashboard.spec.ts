@@ -18,7 +18,7 @@
  * Skips when env not provisioned.
  */
 import { expect, test } from '@playwright/test'
-import { signUpAndGetToken } from './helpers/auth'
+import { signUpAndInstallSession } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -34,11 +34,7 @@ test('parent dashboard — fresh parent sees no-children empty state', async ({ 
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'parent', 'parent')
-  await page.goto(`${webUrl}/parent`)
-  await page.evaluate(([t]: string[]) => {
-    localStorage.setItem('sb-access-token', t ?? '')
-  }, [token])
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'parent', 'parent')
   await page.goto(`${webUrl}/parent`)
 
   // Fresh parent has no children — empty state must render.

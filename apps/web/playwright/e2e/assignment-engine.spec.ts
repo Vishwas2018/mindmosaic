@@ -23,7 +23,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { signUpAndGetToken } from './helpers/auth'
+import { signUpAndInstallSession } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -39,13 +39,8 @@ test('assignment list — fresh teacher sees empty Active tab', async ({ page })
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
-
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments`)
-  await page.evaluate((tok: string) => {
-    localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: tok }))
-  }, token)
-  await page.reload()
 
   await expect(page).toHaveURL(`${webUrl}/teacher/assignments`, { timeout: 10_000 })
   await expect(page.getByRole('tab', { name: 'Active' })).toBeVisible()
@@ -57,13 +52,8 @@ test('wizard — practice assignment publish flow', async ({ page }) => {
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
-
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments/new`)
-  await page.evaluate((tok: string) => {
-    localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: tok }))
-  }, token)
-  await page.reload()
 
   await expect(page.getByRole('heading', { name: 'Select Assignment Type' })).toBeVisible({
     timeout: 10_000,
@@ -108,13 +98,8 @@ test('wizard — cancel returns to assignments list', async ({ page }) => {
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
-
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments/new`)
-  await page.evaluate((tok: string) => {
-    localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: tok }))
-  }, token)
-  await page.reload()
 
   await expect(page.getByRole('heading', { name: 'Select Assignment Type' })).toBeVisible({
     timeout: 10_000,
@@ -128,13 +113,8 @@ test('wizard step 1 — Continue disabled until type selected', async ({ page })
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher-asgn')
-
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments/new`)
-  await page.evaluate((tok: string) => {
-    localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: tok }))
-  }, token)
-  await page.reload()
 
   await expect(page.getByRole('heading', { name: 'Select Assignment Type' })).toBeVisible({
     timeout: 10_000,

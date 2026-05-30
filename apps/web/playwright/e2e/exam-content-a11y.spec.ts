@@ -17,7 +17,7 @@
  */
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { signUpAndGetToken } from './helpers/auth'
+import { signUpAndInstallSession } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -30,9 +30,7 @@ test.skip(
 
 test.describe('axe-core a11y — /teacher/content', () => {
   test('zero serious/critical violations on /teacher/content (LoadingState → Content)', async ({ page }) => {
-    const token = await signUpAndGetToken(E2E_BASE_URL!, E2E_ANON!, 'teacher', 'teacher-a11y')
-    await page.goto(`${E2E_WEB_URL}/teacher/content`)
-    await page.evaluate((t) => { localStorage.setItem('sb-access-token', t) }, token)
+    await signUpAndInstallSession(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'teacher', 'teacher-a11y')
     await page.goto(`${E2E_WEB_URL}/teacher/content`)
     await page.waitForLoadState('networkidle')
 
@@ -58,9 +56,7 @@ test.describe('axe-core a11y — /teacher/content', () => {
 
 test.describe('axe-core a11y — /teacher/content/new', () => {
   test('zero serious/critical violations on /teacher/content/new (ComposerForm Content state)', async ({ page }) => {
-    const token = await signUpAndGetToken(E2E_BASE_URL!, E2E_ANON!, 'teacher', 'teacher-a11y')
-    await page.goto(`${E2E_WEB_URL}/teacher/content/new`)
-    await page.evaluate((t) => { localStorage.setItem('sb-access-token', t) }, token)
+    await signUpAndInstallSession(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'teacher', 'teacher-a11y')
     await page.goto(`${E2E_WEB_URL}/teacher/content/new`)
     await page.waitForLoadState('networkidle')
 

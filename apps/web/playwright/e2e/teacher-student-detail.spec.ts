@@ -23,7 +23,7 @@
  */
 import { expect, test } from '@playwright/test'
 import { randomUUID } from 'crypto'
-import { signUpAndGetToken } from './helpers/auth'
+import { signUpAndInstallSession } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -36,13 +36,7 @@ test.skip(
 
 test.describe('Teacher student detail page', () => {
   test('not-found branch: accessing an unknown student ID shows empty state', async ({ page }) => {
-    const token = await signUpAndGetToken(E2E_BASE_URL as string, E2E_ANON as string, 'teacher', 'teacher-e2e')
-
-    // Inject token into localStorage so the SDK client picks it up
-    await page.goto(`${E2E_WEB_URL}/teacher`)
-    await page.evaluate((t) => {
-      localStorage.setItem('mm:token', t)
-    }, token)
+    await signUpAndInstallSession(page, E2E_WEB_URL as string, E2E_BASE_URL as string, E2E_ANON as string, 'teacher', 'teacher-e2e')
 
     const fakeStudentId = randomUUID()
     await page.goto(`${E2E_WEB_URL}/teacher/students/${fakeStudentId}`)

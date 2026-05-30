@@ -17,7 +17,7 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { signUpAndGetToken } from './helpers/auth'
+import { signUpAndInstallSession } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -33,13 +33,8 @@ test('assignments page — fresh student sees heading and three tabs', async ({ 
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'student', 'student-asgn')
-
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
   await page.goto(`${webUrl}/assignments`)
-  await page.evaluate((tok: string) => {
-    localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: tok }))
-  }, token)
-  await page.reload()
 
   await expect(page).toHaveURL(`${webUrl}/assignments`, { timeout: 10_000 })
   await expect(page.getByRole('heading', { name: 'My Assignments' })).toBeVisible()
@@ -53,13 +48,8 @@ test('assignments page — empty Assigned tab shows empty state copy', async ({ 
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'student', 'student-asgn')
-
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
   await page.goto(`${webUrl}/assignments`)
-  await page.evaluate((tok: string) => {
-    localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: tok }))
-  }, token)
-  await page.reload()
 
   await expect(page.getByRole('heading', { name: 'My Assignments' })).toBeVisible({ timeout: 10_000 })
   await expect(page.getByText(/No assignments yet/i)).toBeVisible()
@@ -70,13 +60,8 @@ test('dashboard — student nav contains Assignments link', async ({ page }) => 
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'student', 'student-asgn')
-
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
   await page.goto(`${webUrl}/dashboard`)
-  await page.evaluate((tok: string) => {
-    localStorage.setItem('supabase.auth.token', JSON.stringify({ access_token: tok }))
-  }, token)
-  await page.reload()
 
   await expect(page).toHaveURL(`${webUrl}/dashboard`, { timeout: 10_000 })
   await expect(page.getByRole('link', { name: 'Assignments' })).toBeVisible()

@@ -18,7 +18,7 @@
  * Skips when env not provisioned.
  */
 import { expect, test } from '@playwright/test'
-import { signUpAndGetToken } from './helpers/auth'
+import { signUpAndInstallSession } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -34,11 +34,7 @@ test('teacher dashboard — fresh teacher sees no-classes empty state', async ({
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpAndGetToken(baseUrl, anon, 'teacher', 'teacher')
-  await page.goto(`${webUrl}/teacher`)
-  await page.evaluate(([t]: string[]) => {
-    localStorage.setItem('sb-access-token', t ?? '')
-  }, [token])
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher')
   await page.goto(`${webUrl}/teacher`)
 
   // Fresh teacher has no classes — empty state must render.

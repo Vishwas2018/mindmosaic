@@ -24,7 +24,7 @@
  * per Q-19.9.
  */
 import { expect, test } from '@playwright/test';
-import { signUpAndGetToken } from './helpers/auth';
+import { signUpAndInstallSession } from './helpers/auth';
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL'];
 const E2E_BASE_URL = process.env['E2E_BASE_URL'];
@@ -48,15 +48,8 @@ test('results flow — signup → exam → submit → /results/{id} renders scor
   const baseUrl = E2E_BASE_URL as string;
   const anon = E2E_ANON as string;
 
-  // 1. Sign up + inject session cookie.
-  const token = await signUpAndGetToken(baseUrl, anon, 'student', 'test');
-  await page.goto(`${webUrl}/session-selection`);
-  await page.evaluate(
-    ([t]: string[]) => {
-      localStorage.setItem('sb-access-token', t ?? '');
-    },
-    [token],
-  );
+  // 1. Install Supabase session cookie before first navigation.
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'test');
   await page.goto(`${webUrl}/session-selection`);
 
   // 2. Start a scored session — click first available pathway start button.
