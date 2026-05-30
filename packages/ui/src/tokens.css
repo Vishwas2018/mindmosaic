@@ -55,10 +55,10 @@
 
   /* ── Extended brand (Stage 14: Brand component + auth panel) ── */
   --brand-primary:    var(--brand-500);   /* canonical bright-purple #5D3FD3 */
-  --brand-secondary:  var(--brand-orange-500);  /* canonical burnt-sienna #D35400 */
+  --brand-secondary:  var(--brand-orange-500);  /* canonical burnt-sienna #C14A00 */
   --brand-text-deep:  var(--brand-900);   /* canonical dark brand text #1a1a60 */
 
-  /* ── Brand orange scale — anchored on #D35400 ── */
+  /* ── Brand orange scale — anchored on #C14A00 ── */
   --brand-orange-50:  #FFF4ED;  /* light tint for backgrounds */
   --brand-orange-500: #C14A00;  /* canonical anchor — darkened from #D35400 for WCAG AA contrast ≥4.5 (4.95:1 on #fff) */
   --brand-orange-700: #B34700;  /* hover / active */
