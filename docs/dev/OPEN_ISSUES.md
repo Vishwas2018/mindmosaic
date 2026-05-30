@@ -21,6 +21,26 @@ Related: ISSUE-0063 (shared UpgradeState primitive)
 
 ---
 
+### ISSUE-0073 — E2E suite tests all roles as parent; student/teacher role coverage silently dropped
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-30 (E2E signup-route fix pass 3 — auth-svc G1 constraint analysis)
+- Area: tests (apps/web/playwright/e2e/)
+- Tags: e2e · role-coverage · auth-svc · g1
+
+**Summary.** `handle_new_user()` raises an exception for any non-`'parent'` role, and auth-svc `handleSignup` hardcodes `role: "parent"` in the Supabase `signUp` call regardless of the role sent in the request body. All 13 affected E2E specs create parent accounts; the JWT carries `app_metadata.role = 'parent'` for every test. Tests that navigate to student-specific routes (`/assignments`, `/practice`, `/exam-sim`, `/results`) or teacher-specific routes (`/teacher`, `/teacher/assignments`, `/teacher/content`, `/teacher/students`) run as a parent user; whether the page gate passes or redirects depends on each route's role check.
+
+**Affected specs (13):** dashboard-flow, results-flow, teacher-dashboard, assignment-engine (×4 tests), student-assignments (×3 tests), exam-content-a11y (×2 tests), student-composer-a11y (×2 tests), parent-dashboard, teacher-student-detail, exam-flow, practice-flow, session-flow.
+
+**Fix.** Two options:
+1. **Admin-API path in helper.** After the parent-account signup, use `E2E_TEST_SERVICE_ROLE` (already in .env.e2e) to: (a) `PATCH /rest/v1/user_profile` to set the correct role, (b) `PUT /auth/v1/admin/users/{id}` to update `app_metadata.role`. Requires adding `E2E_TEST_SERVICE_ROLE` to module-level skip guards on affected specs.
+2. **auth-svc test-user endpoint.** Add service-role-authenticated `POST /auth/admin/test-user` to auth-svc that uses the admin API to create arbitrary-role accounts with proper tenant + user_profile rows. Gated behind service-role key; never reachable by anon/authenticated.
+
+Related: auth-svc/index.ts:119–131, supabase/migrations/0001_enums_tenancy_auth.sql (handle_new_user), apps/web/playwright/e2e/helpers/auth.ts
+
+---
+
 ### ISSUE-0072 — signup raw_user_meta_data key mismatch: full_name sent, display_name read by trigger
 
 - Status: open

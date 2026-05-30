@@ -50,7 +50,8 @@ test('practice flow — signup → select pathway → 5 responses → end → re
   const password = 'pw-' + Math.random().toString(36).slice(2);
   const signup = await request.post(`${baseUrl}/auth-svc/auth/signup`, {
     headers: { 'Content-Type': 'application/json', apikey: anon },
-    data: { email, password, role: 'student' },
+    // role:'parent' — only supported self-signup role (G1 / handle_new_user trigger).
+    data: { email, password, role: 'parent', fullName: 'E2E Test' },
   });
   expect(signup.ok(), `signup body: ${await signup.text()}`).toBeTruthy();
 

@@ -30,8 +30,10 @@ Deno.serve(async (req: Request) => {
   const traceId = getTraceId(req);
 
   const url = new URL(req.url);
-  // Strip function prefix: /functions/v1/auth-svc/auth/signup → /auth/signup
-  const path = url.pathname.replace(/^\/functions\/v1\/auth-svc/, "");
+  // Strip function prefix — handle both forms the Supabase gateway may send:
+  //   /functions/v1/auth-svc/auth/signup  (full path forwarded)
+  //   /auth-svc/auth/signup               (/functions/v1 already stripped by gateway)
+  const path = url.pathname.replace(/^\/(functions\/v1\/)?auth-svc/, "").replace(/\/$/, "");
   const method = req.method;
 
   let status = 200;

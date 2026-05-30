@@ -46,7 +46,8 @@ test('session lifecycle — signup → 5 responses → submit → score returned
       'Content-Type': 'application/json',
       apikey: anon,
     },
-    data: { email, password, role: 'student' },
+    // role:'parent' — only supported self-signup role (G1 / handle_new_user trigger).
+    data: { email, password, role: 'parent', fullName: 'E2E Test' },
   });
   expect(signup.ok(), `signup body: ${await signup.text()}`).toBeTruthy();
   const loginReq = await request.post(`${baseUrl}/auth-svc/auth/login`, {
