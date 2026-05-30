@@ -17,20 +17,24 @@
  */
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { signUpAndInstallSession } from './helpers/auth'
+import { signUpAndInstallSessionAs } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
 const E2E_ANON = process.env['E2E_SUPABASE_ANON']
+const E2E_SERVICE_ROLE = process.env['E2E_TEST_SERVICE_ROLE']
 
 test.skip(
-  E2E_WEB_URL === undefined || E2E_BASE_URL === undefined || E2E_ANON === undefined,
-  'v1.1-S5 a11y requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
+  E2E_WEB_URL === undefined ||
+    E2E_BASE_URL === undefined ||
+    E2E_ANON === undefined ||
+    E2E_SERVICE_ROLE === undefined,
+  'v1.1-S5 a11y requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON + E2E_TEST_SERVICE_ROLE',
 )
 
 test.describe('axe-core a11y — /practice', () => {
   test('zero serious/critical violations on /practice (LoadingState → Content)', async ({ page }) => {
-    await signUpAndInstallSession(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
+    await signUpAndInstallSessionAs(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
     await page.goto(`${E2E_WEB_URL}/practice`)
     await page.waitForLoadState('networkidle')
 
@@ -56,7 +60,7 @@ test.describe('axe-core a11y — /practice', () => {
 
 test.describe('axe-core a11y — /exam-sim', () => {
   test('zero serious/critical violations on /exam-sim (LoadingState → Content)', async ({ page }) => {
-    await signUpAndInstallSession(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
+    await signUpAndInstallSessionAs(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
     await page.goto(`${E2E_WEB_URL}/exam-sim`)
     await page.waitForLoadState('networkidle')
 

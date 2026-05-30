@@ -23,15 +23,19 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { signUpAndInstallSession } from './helpers/auth'
+import { signUpAndInstallSessionAs } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
 const E2E_ANON = process.env['E2E_SUPABASE_ANON']
+const E2E_SERVICE_ROLE = process.env['E2E_TEST_SERVICE_ROLE']
 
 test.skip(
-  E2E_WEB_URL === undefined || E2E_BASE_URL === undefined || E2E_ANON === undefined,
-  'Stage 39 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
+  E2E_WEB_URL === undefined ||
+    E2E_BASE_URL === undefined ||
+    E2E_ANON === undefined ||
+    E2E_SERVICE_ROLE === undefined,
+  'Stage 39 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON + E2E_TEST_SERVICE_ROLE',
 )
 
 test('assignment list — fresh teacher sees empty Active tab', async ({ page }) => {
@@ -39,7 +43,7 @@ test('assignment list — fresh teacher sees empty Active tab', async ({ page })
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments`)
 
   await expect(page).toHaveURL(`${webUrl}/teacher/assignments`, { timeout: 10_000 })
@@ -52,7 +56,7 @@ test('wizard — practice assignment publish flow', async ({ page }) => {
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments/new`)
 
   await expect(page.getByRole('heading', { name: 'Select Assignment Type' })).toBeVisible({
@@ -98,7 +102,7 @@ test('wizard — cancel returns to assignments list', async ({ page }) => {
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments/new`)
 
   await expect(page.getByRole('heading', { name: 'Select Assignment Type' })).toBeVisible({
@@ -113,7 +117,7 @@ test('wizard step 1 — Continue disabled until type selected', async ({ page })
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'teacher', 'teacher-asgn')
   await page.goto(`${webUrl}/teacher/assignments/new`)
 
   await expect(page.getByRole('heading', { name: 'Select Assignment Type' })).toBeVisible({

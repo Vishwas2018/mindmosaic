@@ -23,9 +23,10 @@ Related: ISSUE-0063 (shared UpgradeState primitive)
 
 ### ISSUE-0073 — E2E suite tests all roles as parent; student/teacher role coverage silently dropped
 
-- Status: open
+- Status: resolved
 - Severity: medium
 - Reported: 2026-05-30 (E2E signup-route fix pass 3 — auth-svc G1 constraint analysis)
+- Resolved: 2026-05-30 (ROUND B1 — admin-API helper)
 - Area: tests (apps/web/playwright/e2e/)
 - Tags: e2e · role-coverage · auth-svc · g1
 
@@ -33,9 +34,7 @@ Related: ISSUE-0063 (shared UpgradeState primitive)
 
 **Affected specs (13):** dashboard-flow, results-flow, teacher-dashboard, assignment-engine (×4 tests), student-assignments (×3 tests), exam-content-a11y (×2 tests), student-composer-a11y (×2 tests), parent-dashboard, teacher-student-detail, exam-flow, practice-flow, session-flow.
 
-**Fix.** Two options:
-1. **Admin-API path in helper.** After the parent-account signup, use `E2E_TEST_SERVICE_ROLE` (already in .env.e2e) to: (a) `PATCH /rest/v1/user_profile` to set the correct role, (b) `PUT /auth/v1/admin/users/{id}` to update `app_metadata.role`. Requires adding `E2E_TEST_SERVICE_ROLE` to module-level skip guards on affected specs.
-2. **auth-svc test-user endpoint.** Add service-role-authenticated `POST /auth/admin/test-user` to auth-svc that uses the admin API to create arbitrary-role accounts with proper tenant + user_profile rows. Gated behind service-role key; never reachable by anon/authenticated.
+**Resolution.** Implemented Option 1 (Admin-API path). Added `signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, role, prefix)` to `helpers/auth.ts`. For non-parent roles: (1) admin-creates user with `user_metadata.role='parent'` to satisfy trigger, (2) PATCHes `user_profile.role` via service-role REST, (3) PUTs `app_metadata.role` via admin API so JWT carries correct claim, (4) signs in via password auth and installs cookie. Migrated 8 specs using `signUpAndInstallSession` + 2 inline-signup specs (exam-flow, practice-flow converted from localStorage to cookie path). `E2E_TEST_SERVICE_ROLE` added to module-level skip guards on all 10 migrated specs. `parent-dashboard` and `session-flow` unchanged.
 
 Related: auth-svc/index.ts:119–131, supabase/migrations/0001_enums_tenancy_auth.sql (handle_new_user), apps/web/playwright/e2e/helpers/auth.ts
 

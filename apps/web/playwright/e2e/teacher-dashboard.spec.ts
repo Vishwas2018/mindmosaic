@@ -18,15 +18,19 @@
  * Skips when env not provisioned.
  */
 import { expect, test } from '@playwright/test'
-import { signUpAndInstallSession } from './helpers/auth'
+import { signUpAndInstallSessionAs } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
 const E2E_ANON = process.env['E2E_SUPABASE_ANON']
+const E2E_SERVICE_ROLE = process.env['E2E_TEST_SERVICE_ROLE']
 
 test.skip(
-  E2E_WEB_URL === undefined || E2E_BASE_URL === undefined || E2E_ANON === undefined,
-  'Stage 37 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
+  E2E_WEB_URL === undefined ||
+    E2E_BASE_URL === undefined ||
+    E2E_ANON === undefined ||
+    E2E_SERVICE_ROLE === undefined,
+  'Stage 37 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON + E2E_TEST_SERVICE_ROLE',
 )
 
 test('teacher dashboard — fresh teacher sees no-classes empty state', async ({ page }) => {
@@ -34,7 +38,7 @@ test('teacher dashboard — fresh teacher sees no-classes empty state', async ({
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'teacher', 'teacher')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'teacher', 'teacher')
   await page.goto(`${webUrl}/teacher`)
 
   // Fresh teacher has no classes — empty state must render.

@@ -2,8 +2,7 @@
  * Stage 23 e2e — Exam Engine keyboard-only happy path.
  *
  * Flow (DEV_PLAN Stage 23 deliverable):
- *   1. Sign up + login a fresh student via auth-svc (UI signup is a
- *      later stage).
+ *   1. Sign up + login a fresh student via admin-API helper (ISSUE-0073 fix).
  *   2. Navigate to /session-selection.
  *   3. Tab to the first pathway's "Exam" button; activate via Enter.
  *   4. Assert redirect to /session/{id}/exam.
@@ -17,68 +16,38 @@
  *   E2E_BASE_URL          Edge Functions base
  *   E2E_SUPABASE_ANON     Anon key
  *   E2E_TEST_PATHWAY_ID   Pathway slug seeded for the test tenant
+ *   E2E_TEST_SERVICE_ROLE Service-role key for admin user creation
  *
  * Skips when env not provisioned. CI integration deferred to Stage 26
  * per Q-19.9.
  */
 import { expect, test } from '@playwright/test';
+import { signUpAndInstallSessionAs } from './helpers/auth';
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL'];
 const E2E_BASE_URL = process.env['E2E_BASE_URL'];
 const E2E_PATHWAY = process.env['E2E_TEST_PATHWAY_ID'];
 const E2E_ANON = process.env['E2E_SUPABASE_ANON'];
+const E2E_SERVICE_ROLE = process.env['E2E_TEST_SERVICE_ROLE'];
 
 test.skip(
   E2E_WEB_URL === undefined ||
     E2E_BASE_URL === undefined ||
     E2E_PATHWAY === undefined ||
-    E2E_ANON === undefined,
-  'Stage 23 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_TEST_PATHWAY_ID + E2E_SUPABASE_ANON',
+    E2E_ANON === undefined ||
+    E2E_SERVICE_ROLE === undefined,
+  'Stage 23 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_TEST_PATHWAY_ID + E2E_SUPABASE_ANON + E2E_TEST_SERVICE_ROLE',
 );
 
 test('exam flow — keyboard-only signup → 5 responses → end → results', async ({
   page,
-  request,
 }) => {
   const webUrl = E2E_WEB_URL!;
   const baseUrl = E2E_BASE_URL!;
   const anon = E2E_ANON!;
 
-  // ── 1. Signup + login ──────────────────────────────────────────────
-  const email = `e2e-${Date.now()}@example.com`;
-  const password = 'pw-' + Math.random().toString(36).slice(2);
-  const signup = await request.post(`${baseUrl}/auth-svc/auth/signup`, {
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    // role:'parent' — only supported self-signup role (G1 / handle_new_user trigger).
-    data: { email, password, role: 'parent', fullName: 'E2E Test' },
-  });
-  expect(signup.ok(), `signup body: ${await signup.text()}`).toBeTruthy();
-
-  const loginRes = await request.post(`${baseUrl}/auth-svc/auth/login`, {
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    data: { email, password },
-  });
-  expect(loginRes.ok(), `login body: ${await loginRes.text()}`).toBeTruthy();
-  const loginJson = await loginRes.json();
-  const accessToken = loginJson?.data?.access_token ?? loginJson?.access_token;
-  const refreshToken = loginJson?.data?.refresh_token ?? loginJson?.refresh_token;
-
-  await page.addInitScript(
-    ([token, refresh]: [string, string]) => {
-      const session = {
-        access_token: token,
-        refresh_token: refresh,
-        token_type: 'bearer',
-        expires_in: 3600,
-        user: null,
-      };
-      window.localStorage.setItem(
-        'supabase.auth.token',
-        JSON.stringify({ currentSession: session }),
-      );
-    },
-    [accessToken, refreshToken] as [string, string],
-  );
+  // ── 1. Install session cookie for a fresh student account ──────────
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'student', 'e2e-exam');
 
   // ── 2. /session-selection ──────────────────────────────────────────
   await page.goto(`${webUrl}/session-selection`);

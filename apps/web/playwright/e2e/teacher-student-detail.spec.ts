@@ -23,20 +23,24 @@
  */
 import { expect, test } from '@playwright/test'
 import { randomUUID } from 'crypto'
-import { signUpAndInstallSession } from './helpers/auth'
+import { signUpAndInstallSessionAs } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
 const E2E_ANON = process.env['E2E_SUPABASE_ANON']
+const E2E_SERVICE_ROLE = process.env['E2E_TEST_SERVICE_ROLE']
 
 test.skip(
-  E2E_WEB_URL === undefined || E2E_BASE_URL === undefined || E2E_ANON === undefined,
-  'Stage 38 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
+  E2E_WEB_URL === undefined ||
+    E2E_BASE_URL === undefined ||
+    E2E_ANON === undefined ||
+    E2E_SERVICE_ROLE === undefined,
+  'Stage 38 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON + E2E_TEST_SERVICE_ROLE',
 )
 
 test.describe('Teacher student detail page', () => {
   test('not-found branch: accessing an unknown student ID shows empty state', async ({ page }) => {
-    await signUpAndInstallSession(page, E2E_WEB_URL as string, E2E_BASE_URL as string, E2E_ANON as string, 'teacher', 'teacher-e2e')
+    await signUpAndInstallSessionAs(page, E2E_WEB_URL as string, E2E_BASE_URL as string, E2E_ANON as string, 'teacher', 'teacher-e2e')
 
     const fakeStudentId = randomUUID()
     await page.goto(`${E2E_WEB_URL}/teacher/students/${fakeStudentId}`)

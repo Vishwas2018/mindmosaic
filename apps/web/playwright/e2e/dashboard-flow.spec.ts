@@ -23,15 +23,19 @@
  * per Q-19.9.
  */
 import { expect, test } from '@playwright/test'
-import { signUpAndInstallSession } from './helpers/auth'
+import { signUpAndInstallSessionAs } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
 const E2E_ANON = process.env['E2E_SUPABASE_ANON']
+const E2E_SERVICE_ROLE = process.env['E2E_TEST_SERVICE_ROLE']
 
 test.skip(
-  E2E_WEB_URL === undefined || E2E_BASE_URL === undefined || E2E_ANON === undefined,
-  'Stage 25 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
+  E2E_WEB_URL === undefined ||
+    E2E_BASE_URL === undefined ||
+    E2E_ANON === undefined ||
+    E2E_SERVICE_ROLE === undefined,
+  'Stage 25 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON + E2E_TEST_SERVICE_ROLE',
 )
 
 test('dashboard flow — signup → /dashboard → all six sections render', async ({ page }) => {
@@ -40,7 +44,7 @@ test('dashboard flow — signup → /dashboard → all six sections render', asy
   const anon = E2E_ANON as string
 
   // 1. Install Supabase session cookie before first navigation.
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'test')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'student', 'test')
   await page.goto(`${webUrl}/dashboard`)
 
   // 2. Wait for the dashboard to load (greeting h1 appears).

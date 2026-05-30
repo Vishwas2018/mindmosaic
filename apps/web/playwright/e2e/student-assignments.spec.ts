@@ -17,15 +17,19 @@
  */
 
 import { expect, test } from '@playwright/test'
-import { signUpAndInstallSession } from './helpers/auth'
+import { signUpAndInstallSessionAs } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
 const E2E_ANON = process.env['E2E_SUPABASE_ANON']
+const E2E_SERVICE_ROLE = process.env['E2E_TEST_SERVICE_ROLE']
 
 test.skip(
-  E2E_WEB_URL === undefined || E2E_BASE_URL === undefined || E2E_ANON === undefined,
-  'Stage 40 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
+  E2E_WEB_URL === undefined ||
+    E2E_BASE_URL === undefined ||
+    E2E_ANON === undefined ||
+    E2E_SERVICE_ROLE === undefined,
+  'Stage 40 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON + E2E_TEST_SERVICE_ROLE',
 )
 
 test('assignments page — fresh student sees heading and three tabs', async ({ page }) => {
@@ -33,7 +37,7 @@ test('assignments page — fresh student sees heading and three tabs', async ({ 
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
   await page.goto(`${webUrl}/assignments`)
 
   await expect(page).toHaveURL(`${webUrl}/assignments`, { timeout: 10_000 })
@@ -48,7 +52,7 @@ test('assignments page — empty Assigned tab shows empty state copy', async ({ 
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
   await page.goto(`${webUrl}/assignments`)
 
   await expect(page.getByRole('heading', { name: 'My Assignments' })).toBeVisible({ timeout: 10_000 })
@@ -60,7 +64,7 @@ test('dashboard — student nav contains Assignments link', async ({ page }) => 
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
+  await signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, 'student', 'student-asgn')
   await page.goto(`${webUrl}/dashboard`)
 
   await expect(page).toHaveURL(`${webUrl}/dashboard`, { timeout: 10_000 })
