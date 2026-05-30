@@ -175,7 +175,7 @@ Deno.serve(async (req: Request) => {
   const traceId = getTraceId(req);
 
   const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/functions\/v1\/assessment-svc/, '');
+  const path = url.pathname.replace(/^\/(functions\/v1\/)?assessment-svc/, '').replace(/\/$/, '');
   const method = req.method;
 
   let status = 200;

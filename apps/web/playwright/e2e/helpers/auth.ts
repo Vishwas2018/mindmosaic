@@ -38,8 +38,8 @@ export async function signUpAndGetToken(
     body: JSON.stringify({ email, password }),
   })
   if (!loginRes.ok) throw new Error(`login failed: ${loginRes.status} ${await loginRes.text()}`)
-  const loginBody = (await loginRes.json()) as { data?: { access_token?: string } }
-  const token = loginBody.data?.access_token
+  const loginBody = (await loginRes.json()) as { access_token?: string }
+  const token = loginBody.access_token
   if (token === undefined) throw new Error('login: no access_token in response')
   return token
 }
