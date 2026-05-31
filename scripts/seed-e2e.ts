@@ -170,16 +170,36 @@ async function seedFeatureFlag(): Promise<void> {
   // entitled (fetchEntitledFeatureKeys in content-svc/handlers.ts:191–207 queries
   // feature_flag WHERE tenant_id = caller OR tenant_id IS NULL).
   // tenant_id = NULL makes this a platform-wide flag visible to every fresh E2E tenant.
-  const { error } = await db.from('feature_flag').upsert(
-    {
-      feature_key: 'pathway_naplan_y5',
-      tenant_id:   null,
-      enabled:     true,
-      source:      'admin_override',
-    },
-    { onConflict: 'feature_key', ignoreDuplicates: false },
-  )
-  if (error) throw new Error(`feature_flag: ${error.message}`)
+  //
+  // Cannot use upsert: feature_flag has partial unique indexes (idx_ff_platform WHERE
+  // tenant_id IS NULL; idx_ff_tenant on (tenant_id, feature_key) WHERE tenant_id IS NOT NULL)
+  // rather than a named unique constraint — PostgREST cannot resolve onConflict against
+  // a partial index. Check-then-insert mirrors seedPathway() error-handling pattern.
+  const { data: existing, error: selectError } = await db
+    .from('feature_flag')
+    .select('id')
+    .eq('feature_key', 'pathway_naplan_y5')
+    .is('tenant_id', null)
+    .maybeSingle()
+  if (selectError) throw new Error(`feature_flag (select): ${selectError.message}`)
+
+  if (existing) {
+    const { error: updateError } = await db
+      .from('feature_flag')
+      .update({ enabled: true, source: 'admin_override' })
+      .eq('id', existing.id)
+    if (updateError) throw new Error(`feature_flag (update): ${updateError.message}`)
+  } else {
+    const { error: insertError } = await db
+      .from('feature_flag')
+      .insert({
+        feature_key: 'pathway_naplan_y5',
+        tenant_id:   null,
+        enabled:     true,
+        source:      'admin_override',
+      })
+    if (insertError) throw new Error(`feature_flag (insert): ${insertError.message}`)
+  }
   console.log('  ✓ feature_flag (pathway_naplan_y5 = enabled, platform-wide)')
 }
 
