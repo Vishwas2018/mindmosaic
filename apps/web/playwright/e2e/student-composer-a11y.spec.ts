@@ -36,7 +36,7 @@ test.describe('axe-core a11y — /practice', () => {
   test('zero serious/critical violations on /practice (LoadingState → Content)', async ({ page }) => {
     await signUpAndInstallSessionAs(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
     await page.goto(`${E2E_WEB_URL}/practice`)
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -62,7 +62,7 @@ test.describe('axe-core a11y — /exam-sim', () => {
   test('zero serious/critical violations on /exam-sim (LoadingState → Content)', async ({ page }) => {
     await signUpAndInstallSessionAs(page, E2E_WEB_URL!, E2E_BASE_URL!, E2E_ANON!, 'student', 'student-a11y')
     await page.goto(`${E2E_WEB_URL}/exam-sim`)
-    await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
