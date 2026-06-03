@@ -44,6 +44,7 @@ import {
   createMockSupabase,
   type MockResponses,
 } from '../../_test-helpers/mock-supabase.ts';
+import { FrameworkConfigSchema } from '@mm/engines';
 import type { EngineItem, LinearEngineState, SkillEngineState } from '@mm/engines';
 
 // ─── Test data builders ─────────────────────────────────────────────────────
@@ -104,28 +105,29 @@ function buildPathwayRow() {
 }
 
 function buildFrameworkConfigRow() {
-  return {
-    id: FC_ID,
-    config: {
-      engine_type: 'linear',
-      scoring_rules: {
-        scaled_score_formula: 'identity',
-        bands: [{ min: 0, max: 100, label: 'unbanded' }],
-      },
-      time_limit_ms: null,
-      back_navigation_enabled: true,
-      flag_for_review_enabled: true,
-      mastery_threshold: 0.85,
-      difficulty_step_up: 0.1,
-      difficulty_step_down: 0.15,
-      cognitive_load_threshold: 0.8,
-      cognitive_load_step_down: 0.1,
-      expected_time_per_item_ms: 30000,
-      max_items: 20,
-      confidence_threshold: 0.7,
-      diagnostic_start_difficulty: 0.5,
+  const configInput = {
+    engine_type: 'linear',
+    scoring_rules: {
+      scaled_score_formula: 'identity',
+      bands: [{ min: 0, max: 100, label: 'unbanded' }],
     },
+    time_limit_ms: null,
+    back_navigation_enabled: true,
+    flag_for_review_enabled: true,
+    mastery_threshold: 0.85,
+    difficulty_step_up: 0.1,
+    difficulty_step_down: 0.15,
+    cognitive_load_threshold: 0.8,
+    cognitive_load_step_down: 0.1,
+    expected_time_per_item_ms: 30000,
+    max_items: 20,
+    confidence_threshold: 0.7,
+    diagnostic_start_difficulty: 0.5,
   };
+  // Parse against the live schema so any future shape divergence fails the
+  // test build rather than silently returning undefined fields (ADR-0044).
+  const config = FrameworkConfigSchema.parse(configInput);
+  return { id: FC_ID, config };
 }
 
 function buildSessionRow(over: Partial<Record<string, unknown>> = {}) {

@@ -114,6 +114,43 @@ async function seedFrameworkConfig(): Promise<void> {
           statistics:  0.2,
         },
       },
+      // config: FrameworkConfig shape required by migration 0027 NOT NULL constraint.
+      // Uses a minimal single-stage adaptive_rules with the two active items (ADR-0044).
+      config: {
+        engine_type: 'adaptive',
+        scoring_rules: {
+          scaled_score_formula: 'percentage',
+          bands: [
+            { min: 0,  max: 49,  label: 'developing' },
+            { min: 50, max: 79,  label: 'proficient' },
+            { min: 80, max: 100, label: 'advanced' },
+          ],
+        },
+        time_limit_ms: null,
+        back_navigation_enabled: true,
+        flag_for_review_enabled: true,
+        mastery_threshold: 0.85,
+        difficulty_step_up: 0.1,
+        difficulty_step_down: 0.15,
+        cognitive_load_threshold: 0.8,
+        cognitive_load_step_down: 0.1,
+        expected_time_per_item_ms: 30_000,
+        max_items: 20,
+        confidence_threshold: 0.7,
+        diagnostic_start_difficulty: 0.5,
+        adaptive_rules: {
+          stages: ['s1'],
+          start_testlet_id: 't1',
+          routing_table: [],
+          testlets: {
+            t1: {
+              stage_id: 's1',
+              time_limit_ms: 600_000,
+              item_ids: [itemId(9), itemId(10)],
+            },
+          },
+        },
+      },
     },
     { onConflict: 'exam_family,version', ignoreDuplicates: true },
   )

@@ -4,7 +4,7 @@
 
 -- ─── framework_configs (2) ───────────────────────────────────────────────────
 
-INSERT INTO framework_config (id, exam_family, version, structure, adaptive_rules, scoring_rules, constraints, difficulty_bands, blueprint)
+INSERT INTO framework_config (id, exam_family, version, structure, adaptive_rules, scoring_rules, constraints, difficulty_bands, blueprint, config)
 VALUES
 (
   'a0000005-0000-0000-0000-000000000001',
@@ -40,7 +40,11 @@ VALUES
   '{"model":"adaptive_path","scaled_score":{"min":0,"max":1000,"mean":500},"path_multipliers":{"easy":0.7,"medium":1.0,"hard":1.3}}',
   '{"require_skill_coverage":true,"min_skills_assessed":3}',
   '{"easy":[0.0,0.35],"mid":[0.35,0.70],"hard":[0.70,1.0]}',
-  '{"strands":[{"slug":"number-algebra","weight":0.6},{"slug":"measurement-space","weight":0.4}]}'
+  '{"strands":[{"slug":"number-algebra","weight":0.6},{"slug":"measurement-space","weight":0.4}]}',
+  -- config: FrameworkConfig shape for engine consumption (ADR-0044).
+  -- time_limit_ms=null: per-stage timer in adaptive_rules.testlets[*].time_limit_ms.
+  -- adaptive_rules mirrors the adaptive_rules column (AdaptiveRulesSchema shape).
+  '{"engine_type":"adaptive","scoring_rules":{"scaled_score_formula":"percentage","bands":[{"min":0,"max":49,"label":"developing"},{"min":50,"max":79,"label":"proficient"},{"min":80,"max":100,"label":"advanced"}]},"time_limit_ms":null,"back_navigation_enabled":true,"flag_for_review_enabled":true,"mastery_threshold":0.85,"difficulty_step_up":0.1,"difficulty_step_down":0.15,"cognitive_load_threshold":0.8,"cognitive_load_step_down":0.1,"expected_time_per_item_ms":30000,"max_items":20,"confidence_threshold":0.7,"diagnostic_start_difficulty":0.5,"adaptive_rules":{"stages":["s1","s2","s3"],"start_testlet_id":"t1","routing_table":[{"stage_id":"s1","score_min":0,"score_max":2,"next_testlet_id":"t2_easy"},{"stage_id":"s1","score_min":3,"score_max":3,"next_testlet_id":"t2_medium"},{"stage_id":"s1","score_min":4,"score_max":5,"next_testlet_id":"t2_hard"},{"stage_id":"s2","score_min":0,"score_max":2,"next_testlet_id":"t3_easy"},{"stage_id":"s2","score_min":3,"score_max":3,"next_testlet_id":"t3_medium"},{"stage_id":"s2","score_min":4,"score_max":5,"next_testlet_id":"t3_hard"}],"testlets":{"t1":{"stage_id":"s1","time_limit_ms":900000,"item_ids":["a0000010-0000-0000-0000-000000000001","a0000010-0000-0000-0000-000000000002","a0000010-0000-0000-0000-000000000003","a0000010-0000-0000-0000-000000000004","a0000010-0000-0000-0000-000000000005"]},"t2_easy":{"stage_id":"s2","time_limit_ms":900000,"item_ids":["a0000010-0000-0000-0000-000000000006","a0000010-0000-0000-0000-000000000007","a0000010-0000-0000-0000-000000000008","a0000010-0000-0000-0000-000000000009","a0000010-0000-0000-0000-000000000010"]},"t2_medium":{"stage_id":"s2","time_limit_ms":900000,"item_ids":["a0000010-0000-0000-0000-000000000011","a0000010-0000-0000-0000-000000000012","a0000010-0000-0000-0000-000000000013","a0000010-0000-0000-0000-000000000014","a0000010-0000-0000-0000-000000000015"]},"t2_hard":{"stage_id":"s2","time_limit_ms":900000,"item_ids":["a0000010-0000-0000-0000-000000000016","a0000010-0000-0000-0000-000000000017","a0000010-0000-0000-0000-000000000018","a0000010-0000-0000-0000-000000000019","a0000010-0000-0000-0000-000000000020"]},"t3_easy":{"stage_id":"s3","time_limit_ms":600000,"item_ids":["a0000010-0000-0000-0000-000000000021","a0000010-0000-0000-0000-000000000022","a0000010-0000-0000-0000-000000000023","a0000010-0000-0000-0000-000000000024","a0000010-0000-0000-0000-000000000025"]},"t3_medium":{"stage_id":"s3","time_limit_ms":600000,"item_ids":["a0000010-0000-0000-0000-000000000026","a0000010-0000-0000-0000-000000000027","a0000010-0000-0000-0000-000000000028","a0000010-0000-0000-0000-000000000029","a0000010-0000-0000-0000-000000000030"]},"t3_hard":{"stage_id":"s3","time_limit_ms":600000,"item_ids":["a0000010-0000-0000-0000-000000000031","a0000010-0000-0000-0000-000000000032","a0000010-0000-0000-0000-000000000033","a0000010-0000-0000-0000-000000000034","a0000010-0000-0000-0000-000000000035"]}}}}'
 ),
 (
   'a0000005-0000-0000-0000-000000000002',
@@ -51,7 +55,9 @@ VALUES
   '{"model":"raw","marks_per_item":1,"total_marks":25}',
   '{"fixed_order":true}',
   '{"easy":[0.0,0.35],"mid":[0.35,0.70],"hard":[0.70,1.0]}',
-  '{"sections":[{"name":"Mathematics","item_count":25}]}'
+  '{"sections":[{"name":"Mathematics","item_count":25}]}',
+  -- config: time_limit_ms=3600000 from structure.time_minutes=60. ADR-0044.
+  '{"engine_type":"linear","scoring_rules":{"scaled_score_formula":"percentage","bands":[{"min":0,"max":49,"label":"developing"},{"min":50,"max":79,"label":"proficient"},{"min":80,"max":100,"label":"advanced"}]},"time_limit_ms":3600000,"back_navigation_enabled":true,"flag_for_review_enabled":true,"mastery_threshold":0.85,"difficulty_step_up":0.1,"difficulty_step_down":0.15,"cognitive_load_threshold":0.8,"cognitive_load_step_down":0.1,"expected_time_per_item_ms":30000,"max_items":20,"confidence_threshold":0.7,"diagnostic_start_difficulty":0.5}'
 )
 ON CONFLICT (exam_family, version) DO NOTHING;
 
