@@ -21,7 +21,7 @@
   --slate-100: #E9E5F5;  /* border default */
   --slate-150: #D6D0E8;  /* border strong */
   --slate-300: #A8A0C0;  /* icon disabled, muted-2 */
-  --slate-500: #7C7399;  /* muted text */
+  --slate-500: #726A8E;  /* muted text — darkened from #7C7399 for WCAG AA ≥4.5:1 on #FAF8FF/white */
   --slate-600: #3B3566;  /* secondary text */
   --slate-800: #1E1B4B;  /* primary text */
   --slate-950: #0e1118;  /* admin dark sidebar only */

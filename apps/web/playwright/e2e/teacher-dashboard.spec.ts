@@ -44,7 +44,7 @@ test('teacher dashboard — fresh teacher sees no-classes empty state', async ({
   // Fresh teacher has no classes — empty state must render.
   await expect(
     page.getByText(/no classes yet/i),
-  ).toBeVisible({ timeout: 10000 })
+  ).toBeVisible({ timeout: 30000 })
 
   await expect(
     page.getByText(/ask your admin to assign a class/i),

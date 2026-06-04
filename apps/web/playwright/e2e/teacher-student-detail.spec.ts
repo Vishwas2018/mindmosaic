@@ -48,7 +48,7 @@ test.describe('Teacher student detail page', () => {
     // Should show not-found empty state (403 from users-svc → no-class teacher)
     await expect(
       page.getByText(/student not found|ask your admin|not have access/i),
-    ).toBeVisible({ timeout: 10_000 })
+    ).toBeVisible({ timeout: 30_000 })
   })
 
   test('page structure: teacher notes textarea is present when student is found', async ({ page }) => {

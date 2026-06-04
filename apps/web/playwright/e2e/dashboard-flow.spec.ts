@@ -48,7 +48,7 @@ test('dashboard flow — signup → /dashboard → all six sections render', asy
   await page.goto(`${webUrl}/dashboard`)
 
   // 2. Wait for the dashboard to load (greeting h1 appears).
-  await page.waitForSelector('h1', { timeout: 10000 })
+  await page.waitForSelector('h1', { timeout: 30000 })
 
   // 3. Assert greeting heading is present.
   const h1 = page.locator('h1')

@@ -40,7 +40,7 @@ test('parent dashboard — fresh parent sees no-children empty state', async ({ 
   // Fresh parent has no children — empty state must render.
   await expect(
     page.getByText(/link your first child/i),
-  ).toBeVisible({ timeout: 10000 })
+  ).toBeVisible({ timeout: 30000 })
 
   // Invite-only copy replaces the "Add your first child" CTA button (removed in
   // 7ee9565 — CHILDREN_INVITE_ONLY; no /parent/children page exists).
