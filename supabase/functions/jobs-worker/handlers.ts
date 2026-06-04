@@ -194,6 +194,7 @@ async function dispatchJob(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${serviceRoleKey}`,
         'x-mm-service-role': serviceRoleKey,
         'x-mm-trace-id': traceId,
         'Idempotency-Key': job.idempotency_key,

@@ -5,6 +5,37 @@
 
 ## Open
 
+### ISSUE-0074 — fetchContentSelect missing Authorization header; Supabase gateway returns 401 before content-svc is invoked
+
+- Status: resolved
+- Severity: high
+- Reported: 2026-06-04 (ISSUE-0074 investigation — session creation 401 path)
+- Resolved: 2026-06-04
+- Area: backend (supabase/functions/assessment-svc/index.ts)
+- Tags: auth · edge-function · service-to-service · session-create
+
+**Summary.** `POST /sessions/create` fails with a 401 when `fetchContentSelect` calls `content-svc /content/select`. The 401 is **not** from content-svc's application code — content-svc returns 403 for a bad service-role header, not 401. The 401 is from Supabase's function invocation gateway (`${SUPABASE_URL}/functions/v1/*`), which requires a valid JWT in `Authorization: Bearer <token>` before invoking any Edge Function. There are no per-function `config.toml` files and no `verify_jwt = false` override, so JWT verification is on by default.
+
+`fetchContentSelect` (assessment-svc/index.ts:117–120) sends:
+```typescript
+headers: {
+  'Content-Type': 'application/json',
+  'x-mm-service-role': SERVICE_ROLE_KEY,  // application-level — never reached
+}
+```
+The `Authorization` header is absent. The gateway rejects with 401 before the request reaches content-svc; content-svc/index.ts:116–130 is never executed. `supabase functions logs content-svc` will show no log entry for the failing request — the function was not invoked.
+
+**Fix.** Add `'Authorization': \`Bearer ${SERVICE_ROLE_KEY}\`` to the `fetchContentSelect` headers object at assessment-svc/index.ts:117. The existing `x-mm-service-role` header stays as the intra-application guard.
+
+**Verification steps before closing.**
+1. D — Hit `POST /content/select` with E2E student JWT: expect 403 FORBIDDEN (service-role header missing), not 401.
+2. E — Hit with `Authorization: Bearer <SERVICE_ROLE_KEY>` + `x-mm-service-role: <SERVICE_ROLE_KEY>`: expect 200.
+3. `supabase functions logs content-svc` after fix should show the request arriving at content-svc.
+
+Related: assessment-svc/index.ts:114–135, content-svc/index.ts:62, 116–130, assessment-svc/index.ts:56 (CONTENT_SVC_URL default)
+
+---
+
 ### ISSUE-0068 — teacher/content locked pathway cards non-interactive (pointer-events-none blocks upgrade CTA)
 
 - Status: resolved — 2026-05-24 (Cluster G G3 commit 57c3b95)

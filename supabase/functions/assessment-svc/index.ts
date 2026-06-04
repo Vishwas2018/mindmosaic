@@ -30,6 +30,7 @@ import { verifyBearer } from '../_shared/auth.ts';
 import { log } from '../_shared/logger.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { withIdempotency } from '../_shared/idempotency.ts';
+import { buildInternalHeaders } from '../_shared/internal-headers.ts';
 import {
   createSession,
   respondToSession,
@@ -87,8 +88,7 @@ const fetchProcessIntelligence: ProcessIntelligenceFetcher = async ({ sessionId,
     const res = await fetch(`${INTELLIGENCE_SVC_URL}/intelligence/process-session/${sessionId}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-mm-service-role': SERVICE_ROLE_KEY,
+        ...buildInternalHeaders(SERVICE_ROLE_KEY),
         'x-mm-trace-id': traceId,
       },
       body: JSON.stringify({}),
@@ -114,10 +114,7 @@ const fetchProcessIntelligence: ProcessIntelligenceFetcher = async ({ sessionId,
 const fetchContentSelect: ContentSelectFetcher = async (input) => {
   const res = await fetch(`${CONTENT_SVC_URL}/content/select`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-mm-service-role': SERVICE_ROLE_KEY,
-    },
+    headers: buildInternalHeaders(SERVICE_ROLE_KEY),
     body: JSON.stringify(input),
   });
   if (!res.ok) {
