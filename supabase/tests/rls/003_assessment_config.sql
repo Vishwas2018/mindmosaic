@@ -41,12 +41,13 @@ SELECT plan(40);
 -- TEST SETUP — insert seed data as postgres (RLS bypassed)
 -- =============================================================================
 
-INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint)
+INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint, config)
 VALUES (
   '00000000-0000-0000-0003-000000000001',
   'au_numeracy_y5_format', 'v_setup_003',
   '{"name":"NAPLAN Numeracy Y5"}'::jsonb,
-  '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb
+  '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, '{}'::jsonb,
+  '{}'::jsonb
 );
 
 INSERT INTO blueprint (id, sections)
@@ -201,7 +202,7 @@ SELECT set_config('request.jwt.claims',
 SET ROLE authenticated;
 
 SELECT throws_like(
-  $$INSERT INTO framework_config (exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint) VALUES ('au_numeracy_y5_format','v_g4','{}','{}','{}','{}','{}')$$,
+  $$INSERT INTO framework_config (exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint, config) VALUES ('au_numeracy_y5_format','v_g4','{}','{}','{}','{}','{}','{}')$$,
   '%violates row-level security%',
   'G4.1: parent cannot INSERT into framework_config'
 );
@@ -244,7 +245,7 @@ SELECT set_config('request.jwt.claims',
 SET ROLE authenticated;
 
 SELECT lives_ok(
-  $$INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint) VALUES ('00000000-0000-0000-0003-000000000011','au_numeracy_y5_format','v_g5_fc','{}','{}','{}','{}','{}')$$,
+  $$INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint, config) VALUES ('00000000-0000-0000-0003-000000000011','au_numeracy_y5_format','v_g5_fc','{}','{}','{}','{}','{}','{}')$$,
   'G5.1: platform_admin can INSERT into framework_config'
 );
 

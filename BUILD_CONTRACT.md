@@ -299,7 +299,7 @@ Set the template once: `.gitmessage` at repo root, `git config commit.template .
 ```bash
 pnpm install
 pnpm turbo typecheck lint test
-supabase db reset && pnpm test:rls
+pnpm test:db
 ```
 
 If any step fails → fix locally → **do not push**. A red CI on `main` blocks every subsequent stage.
@@ -380,7 +380,7 @@ Do not roll a fix into an in-progress stage commit. Keep fixes atomic and revert
 A stage is merge-ready to `main` ONLY when:
 
 1. All tests pass locally and in CI.
-2. `supabase db reset && pnpm test:rls` green.
+2. `pnpm test:db` green.
 3. `pnpm turbo build && pnpm turbo typecheck lint test` clean.
 4. Rate limit, feature flag, and idempotency considered for new endpoints.
 5. `OWNERS.md` and `docs/dev/PROJECT_STATE.md` updated.

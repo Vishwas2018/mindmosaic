@@ -56,7 +56,7 @@ Pre-push gate:
 ```bash
 pnpm install
 pnpm turbo typecheck lint test
-supabase db reset && pnpm test:rls
+pnpm test:db
 ```
 
 ---

@@ -46,14 +46,15 @@ VALUES (
   ARRAY['au_numeracy_y5_format']::exam_family[]
 );
 
-INSERT INTO item_version (item_id, version, stem, response_config, difficulty, is_current)
+INSERT INTO item_version (item_id, version, stem, response_config, difficulty, is_current, authoring_method)
 VALUES (
   '00000000-0000-0000-0021-000000000001',
   1,
   '{"kind":"plain_text","value":"Setup item version 1"}',
   '{"options":["a","b","c","d"]}',
   0.4,
-  true
+  true,
+  'human'
 );
 
 INSERT INTO stimulus (id, type, content)
@@ -143,24 +144,24 @@ SELECT set_config(
 );
 SET ROLE authenticated;
 
-SELECT throws_like(
+SELECT throws_ok(
   $$INSERT INTO item (response_type, skill_ids, difficulty, year_levels, exam_families)
     VALUES ('mcq', ARRAY['aaaaaaaa-0000-0000-0000-000000000001']::uuid[], 0.4, ARRAY[5], ARRAY['au_numeracy_y5_format']::exam_family[])$$,
-  '%42501%',
+  '42501', NULL,
   'G3.1: non-admin INSERT on item is denied (42501)'
 );
 
-SELECT throws_like(
-  $$INSERT INTO item_version (item_id, version, stem, response_config, difficulty)
-    VALUES ('00000000-0000-0000-0021-000000000001', 99, '{}', '{}', 0.4)$$,
-  '%42501%',
+SELECT throws_ok(
+  $$INSERT INTO item_version (item_id, version, stem, response_config, difficulty, authoring_method)
+    VALUES ('00000000-0000-0000-0021-000000000001', 99, '{}', '{}', 0.4, 'human')$$,
+  '42501', NULL,
   'G3.2: non-admin INSERT on item_version is denied (42501)'
 );
 
-SELECT throws_like(
+SELECT throws_ok(
   $$INSERT INTO stimulus (type, content)
     VALUES ('passage', '{"text":"unauthorized"}')$$,
-  '%42501%',
+  '42501', NULL,
   'G3.3: non-admin INSERT on stimulus is denied (42501)'
 );
 
@@ -192,11 +193,11 @@ SELECT lives_ok(
 
 -- G4.2: item_version INSERT uses item from G4.1 (same transaction, visible)
 SELECT lives_ok(
-  $$INSERT INTO item_version (item_id, version, stem, response_config, difficulty, is_current)
+  $$INSERT INTO item_version (item_id, version, stem, response_config, difficulty, is_current, authoring_method)
     VALUES ('00000000-0000-0000-0021-000000000003', 1,
             '{"kind":"plain_text","value":"Platform admin version"}',
             '{"options":["a","b","c","d"]}',
-            0.5, true)$$,
+            0.5, true, 'human')$$,
   'G4.2: platform_admin can INSERT into item_version'
 );
 
@@ -234,12 +235,12 @@ RESET ROLE;
 -- Service-role (postgres) bypasses RLS but not uniqueness constraints.
 -- =============================================================================
 
-SELECT throws_like(
-  $$INSERT INTO item_version (item_id, version, stem, response_config, difficulty, is_current)
+SELECT throws_ok(
+  $$INSERT INTO item_version (item_id, version, stem, response_config, difficulty, is_current, authoring_method)
     VALUES ('00000000-0000-0000-0021-000000000001', 2,
             '{"kind":"plain_text","value":"Duplicate current"}',
-            '{}', 0.4, true)$$,
-  '%23505%',
+            '{}', 0.4, true, 'human')$$,
+  '23505', NULL,
   'G6.1: duplicate is_current=true for same item_id violates idx_item_version_current_one (23505)'
 );
 

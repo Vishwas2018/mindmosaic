@@ -112,9 +112,9 @@ VALUES
    ARRAY['00000000-0000-0000-0004-000000000010'::uuid],
    0.6, ARRAY[5], ARRAY['au_numeracy_y5_format'::exam_family]);
 
-INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint)
+INSERT INTO framework_config (id, exam_family, version, structure, scoring_rules, constraints, difficulty_bands, blueprint, config)
 VALUES ('00000000-0000-0000-0004-000000000013', 'au_numeracy_y5_format', 'v_s5_test',
-        '{}', '{}', '{}', '{}', '{}');
+        '{}', '{}', '{}', '{}', '{}', '{}');
 
 INSERT INTO blueprint (id, sections)
 VALUES ('00000000-0000-0000-0004-000000000014', '{}');

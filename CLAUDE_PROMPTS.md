@@ -142,7 +142,7 @@ Stage <N> are demonstrably green. Specifically:
 Run, in this order, and report each result before claiming completion:
   1. pnpm install
   2. pnpm turbo typecheck lint test
-  3. supabase db reset && pnpm test:rls       (if migration touched)
+  3. pnpm test:db                              (if migration touched)
   4. pnpm test:migration                       (if migration touched)
   5. pnpm -C apps/web build                    (if UI touched)
   6. axe-core on touched stories               (if UI touched, Stage 13+)
@@ -225,7 +225,7 @@ Before loading the Stage <N+1> prompt:
 
 4. Run the full quality gate:
      pnpm turbo typecheck lint test
-     supabase db reset && pnpm test:rls
+     pnpm test:db
      pnpm -C apps/web build
    Report any regression vs last green run.
 
@@ -310,7 +310,7 @@ Stop current stage work. Hotfix mode.
 
 4. Run the full pre-push gate locally before pushing the fix:
      pnpm turbo typecheck lint test
-     supabase db reset && pnpm test:rls
+     pnpm test:db
 
 5. Push immediately after green.
 
@@ -389,7 +389,7 @@ Step 1 — Read in this order, then summarise:
 Step 2 — Run a health check and report:
   pnpm install
   pnpm turbo typecheck lint test
-  supabase db reset && pnpm test:rls
+  pnpm test:db
   git log --oneline | head -10
 
 Step 3 — Produce a written summary covering:

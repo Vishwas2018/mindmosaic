@@ -512,7 +512,7 @@ Cuts 1–4 should be exhausted before cut 5. Cut 6 is a last resort that require
    - Pull today's stage from §2. Re-read its exit criteria.
 2. **AM → PM:** Execute the C-C-D-V prompt in Claude Code. Run tests locally. Fix until green.
 3. **End of day:**
-   - `pnpm turbo typecheck lint test && supabase db reset && pnpm test:rls`
+   - `pnpm turbo typecheck lint test && pnpm test:db`
    - If green → commit + push to `main` (one stage = one commit).
    - Run evening prompt (see `CLAUDE.md`). Updates `DAILY_LOG.md`, `PROJECT_STATE.md`; files ADRs/deviations/bugs/questions.
    - Commit dev-context separately: `chore(dev-context): stage N close`.
