@@ -5,6 +5,27 @@
 
 ## Open
 
+### ISSUE-0080 — CI E2E: `pnpm exec playwright install` fails — playwright not in root workspace
+
+- Status: open
+- Severity: high (blocks every CI E2E run; Playwright never installs, test matrix unobservable)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013717709)
+- Area: infra (CI — .github/workflows/ci.yml)
+- Tags: ci · playwright · e2e · pnpm-workspace · ISSUE-0079
+
+**Summary.** The "Install Playwright browsers" step in the E2E job runs `pnpm exec playwright install --with-deps chromium`. `pnpm exec` resolves binaries against the root workspace; `@playwright/test` is only declared in `apps/web/package.json`, so the binary is absent from the root node_modules and the command exits 254 (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "playwright" not found`).
+
+**Fix.** Scope the install command to the `@mm/web` package:
+```yaml
+run: pnpm --filter @mm/web exec playwright install --with-deps chromium
+```
+
+This is the same filter used on the subsequent `Run E2E tests` step (`pnpm --filter @mm/web e2e`), so it resolves the binary from `apps/web/node_modules/.bin/`.
+
+Related: ISSUE-0079, `.github/workflows/ci.yml` line 97, `apps/web/package.json`
+
+---
+
 ### ISSUE-0078 — pgTAP column-assertion sweep: verify column existence for all `.from('<table>').select('<cols>')` call sites
 
 - Status: open
