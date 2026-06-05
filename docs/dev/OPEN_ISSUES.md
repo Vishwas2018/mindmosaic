@@ -45,25 +45,36 @@ InvalidWorkerCreation: worker boot error: ... invalid peer certificate: UnknownI
     at async Object.handler (file:///var/tmp/sb-compile-edge-runtime/root/index.ts:224:22)
 ```
 
-**Root cause.** Deno builds the full module dependency graph — including TypeScript `.d.ts` type declaration files — on every cold worker start. When the Deno module cache is warm (previously populated), network fetches are skipped. When the cache is cold or cleared, Deno attempts to re-fetch all transitive dependencies from `esm.sh`. The Docker container's outbound TLS stack does not trust the CA signing `esm.sh`'s certificate (`UnknownIssuer`). This is the same environment-level TLS CA trust problem as ISSUE-0067 (Node.js `UNABLE_TO_VERIFY_LEAF_SIGNATURE` on Google Fonts), but manifesting inside the Docker container's Deno runtime.
+**Root cause (deepened — ROUND H2 2026-06-05).** The Deno cache Docker volume (`supabase_edge_runtime_mindmosaic`) lost entries for `@supabase/supabase-js` after a `supabase stop/start`. When workers cold-boot they try to re-download from `esm.sh`. The real CA signing `esm.sh` is **Norton Web/Mail Shield Root** (Norton Antivirus SSL/TLS scanning — confirmed by `openssl s_client -connect esm.sh:443`, issuer `CN=Norton Web/Mail Shield Root`). The edge-runtime v1.73.13 uses a **compiled-in Rust `webpki-roots` Mozilla CA bundle** — Norton's CA is not in it and cannot be added via any standard mechanism:
 
-**This is NOT a code bug.** auth-svc code is syntactically correct. All `_shared/` imports resolve. All env vars have `?? ""` fallbacks. No recent commit introduced a regression — the failure is environment/cache state.
+| Bypass attempted | Result |
+|---|---|
+| `DENO_UNSAFELY_IGNORE_CERTIFICATE_ERRORS=esm.sh` (container env) | ❌ Ignored — edge-runtime worker TLS is Rust-level, not Deno env-level |
+| `DENO_CERT=/certs/norton-ca.pem` (valid Norton CA PEM, verified OK) | ❌ Ignored — same reason; worker TLS config is compiled-in |
+| `update-ca-certificates` (Norton CA added to Debian system store) | ❌ Ignored — edge-runtime uses compiled-in `webpki-roots`, not system store |
+| `vendor: true` in `deno.json` + `supabase/functions/vendor/` created | ❌ Partially — edge-runtime v1.73.13 uses explicit `importMapPath` in `EdgeRuntime.userWorkers.create()`, which bypasses `deno.json` discovery; vendor directory not used |
+| Import map redirect to vendor files | ❌ Incompatible — vendored `.mjs` files use `/@supabase/...` CDN-relative paths that only resolve inside Deno's vendor resolution context |
 
-**Scope.** ALL Edge Functions, not auth-svc alone. `content-svc` returns identical BOOT_ERROR (direct probe confirmed). Every function importing from `https://esm.sh/*` fails identically on cold boot. Deployed functions on remote Supabase are unaffected.
+**Current state (2026-06-05).** `vendor: true` added to `deno.json`; `supabase/functions/vendor/` (6.2 MB, 406 files, `@supabase/supabase-js@2.107.0` + `stripe@16.12.0` full graph) created by running standard `denoland/deno:2.1.4` with `DENO_CERT` (standard Deno DOES respect `DENO_CERT`). `supabase/functions/deno.lock` also created. These changes are **unstaged** — pending operator decision on commit path.
 
-**Proximate trigger.** The Deno module cache inside the `supabase_edge_runtime_mindmosaic` container was cleared at some point (most likely after a `supabase stop && supabase start` cycle following the CORS refactor on 2026-05-28). Once cleared, every cold boot re-attempts network fetches and hits the TLS failure.
+**What WILL work:**
+1. **Disable Norton SSL scanning for Docker traffic** (Norton GUI → Firewall settings → Application exception for Docker) — most direct; no code change needed.
+2. **Run H1 E2E gate in CI** (GitHub Actions / cloud environment where Norton is absent) — edge-runtime downloads esm.sh with real Mozilla CA → workers boot → H1 passes.
+3. **Upgrade Supabase CLI to a version where edge-runtime respects `vendor: true` in worker context** — once done, the already-committed vendor directory resolves the issue automatically.
 
-**E2E impact.** 17/19 specs fail. The 2 that pass without hitting any Edge Function are: test 20 (skipped — `E2E_SEED_STUDENT_ID` unset). Tests 16/17 (G2 axe-core) and tests 5, 9, 18, 19 (G3 timeout targets) cannot flip green until this is resolved.
+**This is NOT a code bug.** All function code is correct. Deployed Supabase (remote) is unaffected.
 
-**Workarounds / fix options.**
+**E2E impact.** 17/19 specs blocked locally. H1 gate must run in CI or after Norton exclusion.
 
-1. **(Preferred — restore warm cache)** Run `supabase functions serve` once in a shell environment with valid outbound TLS (e.g., with `NODE_TLS_REJECT_UNAUTHORIZED=0` or on a machine without corporate SSL inspection). This populates the Deno module cache inside the container. Subsequent cold boots read from cache without network fetches. Verify by re-running the E2E suite.
+**Workarounds / fix options (updated).**
 
-2. **(Alternative — `DENO_TLS_CA_STORE=system` or `--unsafely-ignore-certificate-errors` flag)** The Supabase edge runtime Docker image can be configured to use the system CA store or disable TLS verification. This is a Docker environment config change and may not be available in the CLI-managed image.
+1. **(Local — disable Norton SSL scanning for Docker)** Norton GUI → Settings → Firewall → Application Traffic → add Docker Desktop / `com.docker.backend` to exclusions. No code change. After exclusion: `docker restart supabase_edge_runtime_mindmosaic` and re-run H1.
 
-3. **(Long-term — pre-bundle / vendor imports)** Move `esm.sh` imports to a vendored `vendor/` directory using `deno vendor`. This eliminates the runtime network dependency entirely. Requires a `deno.json` `vendor: true` setting and a vendoring step in CI/local setup. Cleanest fix but requires effort proportional to import count.
+2. **(CI — run H1 in GitHub Actions)** Edge-runtime downloads esm.sh normally (no Norton in CI). Alternatively, commit the `vendor/` directory first (ISSUE-0076) so CI also doesn't need network access.
 
-Related: ISSUE-0067 (host Node.js TLS failure — same root CA trust gap, different runtime), `supabase_edge_runtime_mindmosaic` Docker container, all 12 Edge Functions under `supabase/functions/`.
+3. **(Long-term — Supabase CLI upgrade + vendor)** `vendor: true` + `supabase/functions/vendor/` are already implemented (unstaged). Once edge-runtime respects `vendor: true` in worker context (newer CLI/runtime version), all future cold boots are network-free.
+
+Related: ISSUE-0076 (vendor implementation), ISSUE-0067 (host Node.js TLS — same Norton root), ISSUE-0077 (selectItems 500 — TBD pending H1), `supabase_edge_runtime_mindmosaic` Docker container, all 12 Edge Functions.
 
 ---
 
@@ -85,19 +96,29 @@ Related: ISSUE-0075 (BOOT_ERROR), ISSUE-0074 (Authorization header fix, 7629b5c)
 
 ### ISSUE-0076 — Deno vendor: eliminate esm.sh network dependency at Edge Function boot (durable fix for ISSUE-0075)
 
-- Status: open
-- Severity: low
+- Status: open — partially implemented (unstaged, pending operator commit decision)
+- Severity: **medium** (promoted from low 2026-06-05 — pre-merge gate; ISSUE-0075 Option 1 proved not viable locally; vendor is the path forward)
 - Reported: 2026-06-05 (ISSUE-0075 root-cause analysis)
 - Area: infra (supabase/functions/ — all 12 Edge Functions + deno.json)
-- Tags: edge-runtime · deno · vendor · tls · local-dev
+- Tags: edge-runtime · deno · vendor · tls · local-dev · pre-merge
 
-**Summary.** ISSUE-0075 Option 3 (long-term durable fix): move all `https://esm.sh/*` imports to a vendored `vendor/` directory using `deno vendor`. This eliminates the runtime network dependency at boot — the Deno module cache becomes a local directory checked into the repo rather than a container-scoped cache that resets on `supabase stop/start`. Subsequent cold boots read from `vendor/` without any network fetch, eliminating the `UnknownIssuer` TLS failure permanently.
+**Summary.** ISSUE-0075 Option 3 (long-term durable fix): vendor all `https://esm.sh/*` imports into a `vendor/` directory committed to the repo. Eliminates runtime network dependency at boot — no TLS required, no cache loss on `supabase stop/start`.
 
-**Implementation notes.** Requires: (1) `deno vendor` run against all function entry points; (2) `deno.json` `vendor: true` setting; (3) `vendor/` directory committed to repo; (4) CI step to run `deno vendor --check` on dependency changes. Import count across all 12 functions is moderate; main external dependency is `@supabase/supabase-js@2` and its transitive graph.
+**Current state (2026-06-05 — ROUND H2).** Partially implemented (unstaged):
+- `supabase/functions/deno.json`: `"vendor": true` added
+- `supabase/functions/vendor/`: 6.2 MB, 406 files — `@supabase/supabase-js@2.107.0`, `stripe@16.12.0`, full transitive graph. Created via `denoland/deno:2.1.4` container with `DENO_CERT` (standard Deno respects DENO_CERT; the edge-runtime binary does not). `supabase/functions/deno.lock` also created.
+- **Blocker:** edge-runtime v1.73.13 uses explicit `importMapPath` in `EdgeRuntime.userWorkers.create()` which bypasses `deno.json` discovery — vendor directory not used by local workers.
+- **Activation path:** (a) upgrade Supabase CLI to a version where edge-runtime respects `vendor: true` in worker context, OR (b) run H1 in CI (where Norton SSL scanning is absent — standard module download works).
 
-**Priority.** Low — ISSUE-0075 Option 1 (warm cache restore) is the immediate unblock for H1. This issue tracks the permanent structural fix for post-launch local dev resilience.
+**Implementation steps (when activating):**
+1. Commit the already-created `vendor/`, `deno.json` (`vendor: true`), `deno.lock` files.
+2. Verify CI passes with vendor (standard Deno in CI will use vendor directory).
+3. Update edge-runtime Docker mounts if required (vendor/ is inside the functions bind mount — already accessible).
+4. Add CI step: `denoland/deno cache` with `--check` to detect vendor drift on dep changes.
 
-Related: ISSUE-0075 (immediate unblock), `supabase/functions/deno.json`, all 12 Edge Functions
+**`deno vendor` note.** `deno vendor` was removed in Deno 2.x. The equivalent is `deno.json` `"vendor": true` + `deno cache`. Standard Deno 2.1.4 was used to populate the vendor directory via `DENO_CERT` bypassing Norton.
+
+Related: ISSUE-0075 (root cause + all bypass attempts), `supabase/functions/deno.json`, `supabase/functions/vendor/`, all 12 Edge Functions
 
 ---
 
