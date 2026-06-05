@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'v1.1/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'v1.1/**']
 
 env:
   HUSKY: 0
@@ -80,34 +80,27 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Check required secrets
-        id: check
-        run: |
-          if [[ -z "${{ secrets.E2E_BASE_URL }}" ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "E2E secrets not configured — skipping (pre-deploy gate not yet open)."
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
       - uses: actions/checkout@v5
-        if: steps.check.outputs.skip == 'false'
       - uses: pnpm/action-setup@v5
-        if: steps.check.outputs.skip == 'false'
       - uses: actions/setup-node@v5
-        if: steps.check.outputs.skip == 'false'
         with:
           node-version: "22"
           cache: "pnpm"
       - name: Install dependencies
-        if: steps.check.outputs.skip == 'false'
         run: pnpm install --frozen-lockfile
+      - name: Seed E2E data
+        run: pnpm tsx scripts/seed-e2e.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       - name: Install Playwright browsers
-        if: steps.check.outputs.skip == 'false'
         run: pnpm exec playwright install --with-deps chromium
       - name: Run E2E tests
-        if: steps.check.outputs.skip == 'false'
         env:
           E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
-        run: pnpm turbo run test --filter=@mm/e2e
+          E2E_WEB_URL: https://mindmosaic-web-git-v11-exam-content-vishwas2018s-projects.vercel.app
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON: ${{ secrets.E2E_SUPABASE_ANON }}
+          E2E_TEST_SERVICE_ROLE: ${{ secrets.E2E_TEST_SERVICE_ROLE }}
+          E2E_TEST_PATHWAY_ID: 00000000-e2e0-0000-0000-000000000002
+        run: pnpm --filter @mm/web e2e
