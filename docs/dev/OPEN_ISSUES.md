@@ -5,6 +5,24 @@
 
 ## Open
 
+### ISSUE-0078 — pgTAP column-assertion sweep: verify column existence for all `.from('<table>').select('<cols>')` call sites
+
+- Status: open
+- Severity: low
+- Reported: 2026-06-05 (ROUND I doc hygiene — ADR-0044 §Follow-ups origin)
+- Area: tests (supabase/tests/)
+- Tags: pgtap · schema-validation · content-svc · assessment-svc · pre-merge
+
+**Summary.** ADR-0044 §Follow-ups explicitly defers a pgTAP column-assertion test for `framework_config` that verifies the `.config` column exists in `information_schema.columns`. The same gap applies to any Edge Function that calls `.from('<table>').select('<cols>')` with named columns — if a column is dropped or renamed, the mismatch surfaces only at runtime (or in E2E), not at the pgTAP gate. The `framework_config.config` discovery (ADR-0044: column missing from migration 0003, undetected until E2E gate) establishes the precedent for why column-presence tests have value.
+
+**Scope.** Grep all named-column `.select()` calls across `supabase/functions/` and match each table+column pair against a `has_column()` assertion in the relevant pgTAP test file. Priority tables: `framework_config`, `item`, `item_version`, `blueprint`, `pathway`, `assessment_profile`.
+
+**Fix.** Add `has_column('<schema>', '<table>', '<col>', '<description>')` assertions to the relevant pgTAP test files. No migration or source code change required — tests only.
+
+Related: ADR-0044 §Follow-ups, `supabase/tests/rls/003_assessment_config.sql`, `supabase/tests/migrations/0027_framework_config_config.sql`
+
+---
+
 ### ISSUE-0075 — Local Edge Function BOOT_ERROR: Deno TLS cert failure on esm.sh (all functions, cold cache)
 
 - Status: open
@@ -329,7 +347,7 @@ Related: ISSUE-0047 (inline LoadingState on teacher content pages), UI_CONTRACT 
 
 ### ISSUE-0061 — ItemCreateDTOSchema and ItemUpdateDTOSchema use z.string() for DB enum fields
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster C `ItemCreateDTOSchema` / `ItemUpdateDTOSchema` tightened to `z.enum()` for `response_type`, `bloom_level`; commit 3a2fca6)
 - Severity: medium
 - Reported: 2026-05-22 (v1.1 pre-polish audit P2)
 - Area: backend (packages/types/src/content.ts)
@@ -616,7 +634,7 @@ Decision between (A) and (B) deferred to implementation. Value increases with co
 
 ### ISSUE-0047 — Inline LoadingState in S4 teacher content pages
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster F replaced 13 inline skeletons with `LoadingState` primitive across 6 pages; commit e525d2a)
 - Severity: low
 - Reported: 2026-05-18 (v1.1-S5 chore close — P4 audit)
 - Area: frontend (apps/web/src/app/(teacher)/content/)
@@ -630,7 +648,7 @@ Decision between (A) and (B) deferred to implementation. Value increases with co
 
 ### ISSUE-0046 — role="alert" misuse on non-urgent form validation messages
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster E corrected `role="alert"` → `role="status"` on `StudentComposerForm` validation messages + overdue banner; commit 5e158f8)
 - Severity: low
 - Reported: 2026-05-18 (v1.1-S5 chore close — P5 audit)
 - Area: frontend (apps/web/src/components/student/StudentComposerForm.tsx)
@@ -672,7 +690,7 @@ Decision between (A) and (B) deferred to implementation. Value increases with co
 
 ### ISSUE-0043 — assessment-svc /respond and /submit missing Idempotency-Key enforcement
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster C added `Idempotency-Key` header extraction + idempotency-window validation to `/respond` and `/submit`; commit 3a2fca6)
 - Severity: medium
 - Reported: 2026-05-18 (v1.1-S5 chore close — P2 audit)
 - Area: backend (supabase/functions/assessment-svc/index.ts)
@@ -686,7 +704,7 @@ Decision between (A) and (B) deferred to implementation. Value increases with co
 
 ### ISSUE-0041 — N+1 query patterns in assignments-svc
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster C batched `fetchDisplayName` lookups into single `IN (...)` query per handler in `assignments-svc/handlers.ts`; commit 3a2fca6)
 - Severity: medium
 - Reported: 2026-05-18 (v1.1-S5 chore close — P7 audit)
 - Area: backend (supabase/functions/assignments-svc/handlers.ts)
@@ -707,7 +725,7 @@ Under small class sizes (v1 launch), these are acceptable. At scale (50+ student
 
 ### ISSUE-0040 — SDK hooks missing staleTime causes refetch storms
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster D added `staleTime` to 16 hooks across 6 files in `packages/sdk/src/`; commit 4353d78)
 - Severity: medium
 - Reported: 2026-05-18 (v1.1-S5 chore close — P7 audit)
 - Area: frontend (packages/sdk/src/hooks/content.ts, session.ts, assignments.ts)
@@ -721,7 +739,7 @@ Under small class sizes (v1 launch), these are acceptable. At scale (50+ student
 
 ### ISSUE-0039 — Submit error does not discriminate 402 Upgrade Required
 
-- Status: open
+- Status: resolved — 2026-05-24 (Cluster B added 402/`FEATURE_GATED` discrimination on session-selection + student assignments `isError` guard; `StudentComposerForm` and `teacher/content/new` wired to `<UpgradeState />`; commit 9705579)
 - Severity: medium
 - Reported: 2026-05-18 (v1.1-S5 chore close — P3 + P4 audit)
 - Area: frontend (apps/web/src/components/student/StudentComposerForm.tsx, apps/web/src/app/(teacher)/content/new/page.tsx)

@@ -8,7 +8,7 @@
 - Last completed stage: v1.1 Polish — Clusters A–G (2026-05-24)
 - Next stage: v1.1 preview/E2E gate (H1-UNBLOCK first — see ISSUE-0075)
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
-- Active branch: `v1.1/exam-content` — 37 commits ahead of origin/main (9376d98 v1.0.0):
+- Active branch: `v1.1/exam-content` — 72 commits ahead of origin/main (9376d98 v1.0.0) — recount 2026-06-05 (`git rev-list --count HEAD ^origin/main`):
   a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · 8c86690 v1.1-S6 chore · 4453ddc S7-prep step 1a · bd3a310 S7-prep step 1b feat · 5dd8f4e S7-prep step 1b chore · a5140e0 S7-prep step 1c feat · (S7-prep step 1c chore) · 5144b9a Cluster A · 9705579 Cluster B · 3a2fca6 Cluster C · 4353d78 Cluster D · 5e158f8 Cluster E · e525d2a Cluster F · 57c3b95 Cluster G · 8e83552 polish chore · 62d16b1 framework_config.config · 6a4dc83 pgTAP unlock · dd33739 ISSUE-0074 fix-1 · 7629b5c ISSUE-0074 fix-2 · d3d76cd G2+G3 E2E · (this chore)
 - Buffer days consumed total: ~16.5 of 26 allocated (DEV_PLAN §3.1) — v1.1 unbudgeted
 - Phase 0 complete: Stages 1–14. Phase 0 buffer at close: 0 of 3 consumed.
@@ -29,26 +29,26 @@
 
 | Suite            | Status       | Count                                                                                                                              | Last run   |
 | ---------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| Unit             | ✅ green      | 945 passed / 2 skipped / 0 failed                                                                                                 | 2026-05-24 |
+| Unit             | ✅ green      | 946 passed / 2 skipped / 0 failed                                                                                                 | 2026-06-05 |
 | Integration      | n/a          | n/a                                                                                                                                | n/a        |
 | pgTAP            | ✅ green      | 468/468 (migrations 0001–0027; 0021–0027 unlocked 2026-06-04, +17 from 0021 fixture unlock)                                      | 2026-06-04 |
-| Contract         | ✅ green      | included in 945 Vitest total                                                                                                       | 2026-05-24 |
+| Contract         | ✅ green      | included in 946 Vitest total                                                                                                       | 2026-06-05 |
 | E2E (Vitest)     | ✅ green      | 1/1 (assignments-svc lifecycle)                                                                                                    | 2026-05-23 |
 | E2E (Playwright) | ⚠ opt-in     | 13 specs / 20 tests (gated; ISSUE-0035, ISSUE-0038); 17/19 blocked by ISSUE-0075 (BOOT_ERROR)                                    | n/a        |
 | RLS              | ✅ green      | 468/468 (53 tables + _default partitions; pgTAP 0001–0027 covers all incl. 0025 deny-all)                                        | 2026-06-04 |
 | Replay           | ✅ green      | 58/58 assertions + 100 billing-svc replay assertions (2-pass 50-event)                                                            | 2026-06-01 |
 | axe-core         | ✅ green      | 31 Vitest files / 75 assertions (Stage 48 sweep); S4+S5 added 2 Playwright axe-core specs / 4 guarded tests pending ISSUE-0038   | 2026-06-07 |
 
-Unit + contract breakdown (full `pnpm -r test` 2026-05-24 post-Cluster-G + BUG-0003 fix):
-162 (@mm/types) + 81 (@mm/sdk) + 81 (@mm/ui) + 118 (@mm/engines) + 9 (@mm/core) + 78 (content-svc) + 50 (assessment-svc) + 53 (intelligence-svc) + 6 (jobs-worker, 1 skipped) + 31 (analytics-svc) + 19 (orchestration-svc) + 27 (assignments-svc) + 17 (notifications-svc) + 7 (users-svc) + 147 (apps/web, 1 skipped) + 59 (billing-svc) = **945 passed, 2 skipped, 0 failed** (947 total).
+Unit + contract breakdown (full `pnpm -r test` 2026-06-05 recount; jobs-worker +1 vs 2026-05-24 baseline):
+162 (@mm/types) + 81 (@mm/sdk) + 81 (@mm/ui) + 118 (@mm/engines) + 9 (@mm/core) + 78 (content-svc) + 50 (assessment-svc) + 53 (intelligence-svc) + 7 (jobs-worker, 1 skipped) + 31 (analytics-svc) + 19 (orchestration-svc) + 27 (assignments-svc) + 17 (notifications-svc) + 7 (users-svc) + 147 (apps/web, 1 skipped) + 59 (billing-svc) = **946 passed, 2 skipped, 0 failed** (948 total).
 
 ## Quality gates
 
 | Gate                | Last status                                                                        | Last run   |
 | ------------------- | ---------------------------------------------------------------------------------- | ---------- |
 | pnpm lint           | ✅ green (7/7 packages with lint scripts; 0 warnings/errors)                      | 2026-05-24 |
-| pnpm typecheck      | ✅ green (17/17 packages, 0 turbo-cached — --force run)                           | 2026-05-22 |
-| pnpm test           | ✅ green (945 passed / 2 skipped / 0 failed)                                      | 2026-05-24 |
+| pnpm typecheck      | ✅ green (17/17 packages, 0 turbo-cached — --force run)                           | 2026-06-05 |
+| pnpm test           | ✅ green (946 passed / 2 skipped / 0 failed)                                      | 2026-06-05 |
 | pnpm test:replay    | ✅ green (58/58 assertions)                                                        | 2026-05-16 |
 | pnpm build          | ❌ BLOCKED — local TLS cert issue (Google Fonts); CI/Vercel unaffected (ISSUE-0067) | 2026-05-22 |
 | RLS coverage        | ✅ 53/53 tables + _default partitions enabled + tested (pgTAP 0001–0027 468/468)  | 2026-06-04 |
