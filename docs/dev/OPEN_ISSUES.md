@@ -55,12 +55,12 @@ InvalidWorkerCreation: worker boot error: ... invalid peer certificate: UnknownI
 | `vendor: true` in `deno.json` + `supabase/functions/vendor/` created | ❌ Partially — edge-runtime v1.73.13 uses explicit `importMapPath` in `EdgeRuntime.userWorkers.create()`, which bypasses `deno.json` discovery; vendor directory not used |
 | Import map redirect to vendor files | ❌ Incompatible — vendored `.mjs` files use `/@supabase/...` CDN-relative paths that only resolve inside Deno's vendor resolution context |
 
-**Current state (2026-06-05).** `vendor: true` added to `deno.json`; `supabase/functions/vendor/` (6.2 MB, 406 files, `@supabase/supabase-js@2.107.0` + `stripe@16.12.0` full graph) created by running standard `denoland/deno:2.1.4` with `DENO_CERT` (standard Deno DOES respect `DENO_CERT`). `supabase/functions/deno.lock` also created. These changes are **unstaged** — pending operator decision on commit path.
+**Current state (2026-06-05 — ROUND I-CLEANUP).** The partial vendor implementation (`deno.json` `vendor:true`, `supabase/functions/vendor/`, `supabase/functions/deno.lock`) was **discarded** — reverted/deleted in ROUND I-CLEANUP 2026-06-05. Working tree is clean. **This is a local-only blocker on this dev machine** caused by Norton Web/Mail Shield SSL/TLS inspection; no other dev machine or CI environment is affected.
 
 **What WILL work:**
-1. **Disable Norton SSL scanning for Docker traffic** (Norton GUI → Firewall settings → Application exception for Docker) — most direct; no code change needed.
-2. **Run H1 E2E gate in CI** (GitHub Actions / cloud environment where Norton is absent) — edge-runtime downloads esm.sh with real Mozilla CA → workers boot → H1 passes.
-3. **Upgrade Supabase CLI to a version where edge-runtime respects `vendor: true` in worker context** — once done, the already-committed vendor directory resolves the issue automatically.
+1. **Disable Norton SSL scanning for Docker traffic** (Norton GUI → Firewall settings → Application exception for Docker Desktop) — most direct; no code change needed. Local unblock workaround.
+2. **Run H1 E2E gate in CI** (GitHub Actions / cloud environment where Norton is absent) — edge-runtime downloads esm.sh with real Mozilla CA → workers boot → H1 passes. **Merge gate moves to CI E2E (ISSUE-0079).**
+3. **Upgrade Supabase CLI + vendor (ISSUE-0076, post-merge DX)** — tracked separately as ISSUE-0076; activates only after edge-runtime upgrade supports `vendor: true` in worker context.
 
 **This is NOT a code bug.** All function code is correct. Deployed Supabase (remote) is unaffected.
 
@@ -94,25 +94,45 @@ Related: ISSUE-0075 (BOOT_ERROR), ISSUE-0074 (Authorization header fix, 7629b5c)
 
 ---
 
+### ISSUE-0079 — Set up CI E2E: GitHub Actions against Vercel preview deployments (merge gate)
+
+- Status: open
+- Severity: medium
+- Reported: 2026-06-05 (ROUND I-CLEANUP — ISSUE-0075 local-blocked by Norton; merge gate moves to CI)
+- Area: infra (CI — .github/workflows/)
+- Tags: ci · e2e · playwright · merge-gate · vercel-preview
+
+**Summary.** Local E2E (H1 Playwright gate) is blocked on this dev machine by ISSUE-0075 (Norton SSL inspection incompatible with edge-runtime compiled CA bundle). CI is unaffected — GitHub Actions runners have no Norton and download `esm.sh` with real Mozilla CAs. Setting up CI E2E against Vercel preview deployments replaces the local H1 gate as the pre-merge quality gate.
+
+**Scope.**
+1. Add a GitHub Actions workflow (`.github/workflows/e2e.yml`) that triggers on pull_request to `main` and `v1.1/*` branches.
+2. Deploy to Vercel preview (or reuse an existing preview URL via env var injection).
+3. Run all 13 Playwright specs / 20 tests against the preview URL (`E2E_WEB_URL`, `E2E_TEST_ANON`, `E2E_TEST_SERVICE_ROLE`).
+4. Gate: workflow must pass before merge is permitted (branch protection rule).
+
+**Why not vendor instead.** ISSUE-0076 (vendor) would eliminate the network dependency at boot but requires a Supabase CLI upgrade before edge-runtime respects `vendor:true` in worker context. CI E2E is immediately actionable and covers the same quality gate without waiting for the CLI upgrade.
+
+**Activation.** Resolves ISSUE-0075 as a merge-gate blocker (local remains blocked until Norton exclusion or CLI upgrade; CI path unblocks merge). ISSUE-0077 (selectItems 500 TBD) resolves when CI E2E runs clean.
+
+Related: ISSUE-0075 (root cause), ISSUE-0076 (vendor long-term DX), ISSUE-0077 (selectItems 500 — resolves on CI E2E run)
+
+---
+
 ### ISSUE-0076 — Deno vendor: eliminate esm.sh network dependency at Edge Function boot (durable fix for ISSUE-0075)
 
-- Status: open — partially implemented (unstaged, pending operator commit decision)
-- Severity: **medium** (promoted from low 2026-06-05 — pre-merge gate; ISSUE-0075 Option 1 proved not viable locally; vendor is the path forward)
+- Status: open — partial implementation discarded (ROUND I-CLEANUP 2026-06-05; not blocking merge gate)
+- Severity: **low** (reverted to low 2026-06-05 — post-merge DX, not pre-merge gate; CI E2E doesn't need vendor; vendor activates only after edge-runtime upgrade supports `vendor: true` in worker context)
 - Reported: 2026-06-05 (ISSUE-0075 root-cause analysis)
 - Area: infra (supabase/functions/ — all 12 Edge Functions + deno.json)
-- Tags: edge-runtime · deno · vendor · tls · local-dev · pre-merge
+- Tags: edge-runtime · deno · vendor · tls · local-dev · post-merge-dx
 
-**Summary.** ISSUE-0075 Option 3 (long-term durable fix): vendor all `https://esm.sh/*` imports into a `vendor/` directory committed to the repo. Eliminates runtime network dependency at boot — no TLS required, no cache loss on `supabase stop/start`.
+**Summary.** ISSUE-0075 Option 3 (long-term durable fix): vendor all `https://esm.sh/*` imports into a `vendor/` directory committed to the repo. Eliminates runtime network dependency at boot — no TLS required, no cache loss on `supabase stop/start`. **Not a merge-gate prerequisite.** CI E2E (ISSUE-0079) does not need vendor; merge gate moves to CI. Vendor is a post-merge DX improvement once edge-runtime supports `deno.json` `vendor:true` in worker context.
 
-**Current state (2026-06-05 — ROUND H2).** Partially implemented (unstaged):
-- `supabase/functions/deno.json`: `"vendor": true` added
-- `supabase/functions/vendor/`: 6.2 MB, 406 files — `@supabase/supabase-js@2.107.0`, `stripe@16.12.0`, full transitive graph. Created via `denoland/deno:2.1.4` container with `DENO_CERT` (standard Deno respects DENO_CERT; the edge-runtime binary does not). `supabase/functions/deno.lock` also created.
-- **Blocker:** edge-runtime v1.73.13 uses explicit `importMapPath` in `EdgeRuntime.userWorkers.create()` which bypasses `deno.json` discovery — vendor directory not used by local workers.
-- **Activation path:** (a) upgrade Supabase CLI to a version where edge-runtime respects `vendor: true` in worker context, OR (b) run H1 in CI (where Norton SSL scanning is absent — standard module download works).
+**Current state (2026-06-05 — ROUND I-CLEANUP).** Partial implementation **discarded** — `supabase/functions/deno.json` reverted, `supabase/functions/vendor/` and `supabase/functions/deno.lock` deleted. Rationale: CI E2E (ISSUE-0079) does not require vendor (no Norton in CI); the merge gate moves to CI, not vendor. Blocker remains: edge-runtime v1.73.13 uses explicit `importMapPath` bypassing `deno.json` discovery — vendor would not activate until a Supabase CLI upgrade enables `vendor:true` in worker context.
 
-**Implementation steps (when activating):**
-1. Commit the already-created `vendor/`, `deno.json` (`vendor: true`), `deno.lock` files.
-2. Verify CI passes with vendor (standard Deno in CI will use vendor directory).
+**Implementation steps (when activating — post-merge DX):**
+1. Re-run `denoland/deno:2.1.4` with `DENO_CERT` to regenerate `vendor/`, `deno.json` (`vendor: true`), `deno.lock` once edge-runtime upgrade is available.
+2. Commit and verify CI passes with vendor (standard Deno in CI uses vendor directory).
 3. Update edge-runtime Docker mounts if required (vendor/ is inside the functions bind mount — already accessible).
 4. Add CI step: `denoland/deno cache` with `--check` to detect vendor drift on dep changes.
 

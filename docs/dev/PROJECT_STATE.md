@@ -77,10 +77,10 @@ Full table: `docs/dev/perf/measurements.md`.
 - ADRs accepted: **45** (ADR-0001 through ADR-0045; ADR-0044 = framework_config.config column 2026-06-03; ADR-0045 = verify_jwt=false service-only functions 2026-06-04)
 - ADRs proposed: **0**
 - Workspaces: **17** — unchanged
-- Issues critical / high / medium / low: **1 / 0 / 16 / 22**
-  - Critical (1): ISSUE-0075 (BOOT_ERROR — Deno TLS cert failure, all Edge Functions; blocks 17/19 local E2E specs)
-  - Medium (16): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0049, ISSUE-0050, ISSUE-0051, ISSUE-0052, ISSUE-0053, ISSUE-0060 (resolved-pending-rerun), ISSUE-0067 (local prod build TLS cert), ISSUE-0071 (new partitions born RLS-disabled)
-  - Low (22): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038, ISSUE-0044, ISSUE-0066, ISSUE-0069 (preview carry), ISSUE-0070 (preview carry), ISSUE-0072 (full_name/display_name key mismatch), ISSUE-0076 (deno vendor durable fix), ISSUE-0077 (selectItems 500 — TBD pending H1 run)
+- Issues critical / high / medium / low: **1 / 0 / 16 / 24**
+  - Critical (1): ISSUE-0075 (BOOT_ERROR — local-only blocker; Norton SSL inspection incompatible with edge-runtime compiled CA bundle; merge gate moves to CI E2E via ISSUE-0079)
+  - Medium (16): ISSUE-0009, ISSUE-0010, ISSUE-0011, ISSUE-0014, ISSUE-0021, ISSUE-0023, ISSUE-0027, ISSUE-0030, ISSUE-0049, ISSUE-0050, ISSUE-0051, ISSUE-0052, ISSUE-0053, ISSUE-0060 (resolved-pending-rerun), ISSUE-0071 (new partitions born RLS-disabled), ISSUE-0079 (CI E2E merge gate)
+  - Low (24): ISSUE-0015, ISSUE-0016, ISSUE-0017, ISSUE-0019, ISSUE-0020, ISSUE-0022, ISSUE-0024, ISSUE-0025, ISSUE-0028, ISSUE-0031, ISSUE-0032, ISSUE-0033, ISSUE-0034, ISSUE-0035, ISSUE-0038, ISSUE-0044, ISSUE-0066, ISSUE-0067 (local prod build TLS cert), ISSUE-0069 (preview carry), ISSUE-0070 (preview carry), ISSUE-0072 (full_name/display_name key mismatch), ISSUE-0076 (deno vendor — post-merge DX, not pre-merge gate), ISSUE-0077 (selectItems 500 — TBD pending CI E2E run), ISSUE-0078 (pgTAP column-assertion sweep)
   - Resolved 2026-06-03/04: ISSUE-0074 (fetchContentSelect 401 — commits dd33739 + 7629b5c, ADR-0045)
   - Resolved by A–G: ISSUE-0039, 0040, 0041, 0043, 0045, 0046, 0047, 0061, 0062, 0063, 0064, 0065, 0068
 - Migrations: **0001–0027** (0001–0020 pgTAP-verified; 0021 content_authoring; 0022 composer/simulation jsonb; 0023 authoring_method NOT NULL; 0024 exam_family rename; **0025 _default partition RLS deny-all**; **0026 public-schema grants to service_role/authenticated/anon**; **0027 framework_config.config jsonb NOT NULL + backfill**)
@@ -91,11 +91,13 @@ Full table: `docs/dev/perf/measurements.md`.
 
 ## Notes for next session
 
-**ISSUE-0075 (critical) — BOOT_ERROR blocks H1 E2E gate.** All 12 Edge Functions return `503 BOOT_ERROR` in local dev. Deno module cache was cleared (proximate: `supabase stop/start` after CORS refactor 2026-05-28); Docker container TLS stack doesn't trust `esm.sh` CA (`UnknownIssuer`). Three options in ISSUE-0075; Option 1 (run `supabase functions serve` once in a TLS-permissive shell to warm cache) is the lowest-effort unblock. Must resolve before H1 full Playwright run.
+**ISSUE-0075 (critical) — H1 E2E gate local-blocked by Norton SSL.** Confirmed local-only blocker on this dev machine. Norton Web/Mail Shield SSL/TLS inspection issues a non-Mozilla CA cert for `esm.sh`; edge-runtime v1.73.13 uses compiled-in `webpki-roots` and rejects it. All vendor bypass attempts failed (ROUND H2). Vendor partial (deno.json + vendor/ + deno.lock) discarded in ROUND I-CLEANUP 2026-06-05.
+- **Local unblock:** Norton Docker Desktop exclusion (Norton GUI → Firewall → Application exception for Docker Desktop). After exclusion: `docker restart supabase_edge_runtime_mindmosaic` and re-run H1.
+- **Merge gate:** moves to CI E2E (ISSUE-0079) — GitHub Actions runners have no Norton. Implement ISSUE-0079 before merge.
 
-**After BOOT_ERROR unblocked (H1-UNBLOCK → H1 gate):** Run full 19-spec / 20-test Playwright suite against local env. ISSUE-0077 (selectItems 500) status becomes clear from H1 run results.
+**ISSUE-0079 (medium) — CI E2E merge gate (NEW).** Set up GitHub Actions Playwright against Vercel preview. Pre-merge requirement replacing local H1. ISSUE-0077 (selectItems 500) resolves when CI E2E run completes clean.
 
-**ISSUE-0076 (low):** deno vendor follow-up filed — durable long-term fix to eliminate esm.sh network dependency at boot. Not blocking H1.
+**ISSUE-0076 (low):** Demoted to post-merge DX. Vendor does not activate until edge-runtime upgrade supports `vendor:true` in worker context; not a merge-gate prerequisite.
 
 **ISSUE-0060 T3 flag — resolved-pending-rerun.** Q-1.1-AUDIT-1 operator decision still required before fully closing.
 
