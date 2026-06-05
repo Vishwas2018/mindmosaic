@@ -103,4 +103,5 @@ jobs:
           E2E_SUPABASE_ANON: ${{ secrets.E2E_SUPABASE_ANON }}
           E2E_TEST_SERVICE_ROLE: ${{ secrets.E2E_TEST_SERVICE_ROLE }}
           E2E_TEST_PATHWAY_ID: 00000000-e2e0-0000-0000-000000000002
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: pnpm --filter @mm/web e2e

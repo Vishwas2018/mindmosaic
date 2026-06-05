@@ -30,6 +30,15 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:3000',
+    // Bypass Vercel deployment protection in CI and local preview runs.
+    // Header is a no-op against localhost or non-Vercel URLs.
+    extraHTTPHeaders: process.env['VERCEL_AUTOMATION_BYPASS_SECRET']
+      ? {
+          'x-vercel-protection-bypass':
+            process.env['VERCEL_AUTOMATION_BYPASS_SECRET'],
+          'x-vercel-set-bypass-cookie': 'true',
+        }
+      : undefined,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
