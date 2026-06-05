@@ -5,9 +5,77 @@
 
 ## Open
 
-### ISSUE-0080 — CI E2E: `pnpm exec playwright install` fails — playwright not in root workspace
+### ISSUE-0083 — E2E auth-svc signup returns 404/empty via E2E_BASE_URL (tests 9, 12)
 
 - Status: open
+- Severity: high (blocks session-flow and parent-dashboard E2E; API chain untestable)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
+- Area: infra (CI secrets + Supabase Edge Function routing)
+- Tags: ci · e2e · auth-svc · secrets · ISSUE-0079
+
+**Summary.** Two tests fail at the `signUpAndInstallSession` helper (`playwright/e2e/helpers/auth.ts:45`):
+- Test 9 (parent-dashboard): `signup failed (intended role: parent): 404`
+- Test 12 (session-flow): `signup body: ` (empty, `signupRes.ok()` false)
+
+Both call `POST ${baseUrl}/auth-svc/auth/signup` where `baseUrl = process.env.E2E_BASE_URL`. The 404 on test 9 and empty response on test 12 indicate `E2E_BASE_URL` is either set to the Vercel web URL (which has no `auth-svc` route) rather than the Supabase project URL, or the test-12 `signupRes.ok()` result is falsy because the Vercel SSO redirect is consumed by the fetch and returns an HTML 200 with login page body (which the check `signupRes.ok()` passes but the empty body guard fails).
+
+**Investigation needed.** Verify `E2E_BASE_URL` secret value. If set to the Vercel web URL it should be the Supabase functions endpoint (`https://<project>.supabase.co`). If it is already the Supabase URL, check whether `auth-svc` has `verify_jwt = false` or is correctly accessible at `/functions/v1/auth-svc/auth/signup`.
+
+Related: ISSUE-0081 (Vercel SSO — may mask test-12 error), `playwright/e2e/helpers/auth.ts`, `supabase/functions/auth-svc`
+
+---
+
+### ISSUE-0082 — axe color-contrast: footer "Terms"/"Privacy Policy" links fail WCAG AA (tests 6, 7, 16, 17)
+
+- Status: open
+- Severity: medium (E2E axe gate red on 4 pages; WCAG AA violation ships to real users)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
+- Area: frontend (shared footer component)
+- Tags: a11y · wcag · color-contrast · axe · footer
+
+**Summary.** axe-core flags a `color-contrast` [serious] violation on every page that renders the shared footer. The offending elements are:
+
+```html
+<a href="/legal/terms"  class="... text-xs text-gray-600! ...">Terms</a>
+<a href="/legal/privacy-policy" class="... text-xs text-gray-600! ...">Privacy Policy</a>
+```
+
+Measured contrast: `#a8a8a8` foreground on `#fafafa` background = **2.27:1**. WCAG AA requires **4.5:1** for normal text at 12px. Failing tests: 6 (`/teacher/content`), 7 (`/teacher/content/new`), 16 (`/practice`), 17 (`/exam-sim`).
+
+**Fix.** Replace `text-gray-600!` with a darker shade that achieves ≥4.5:1 on `#fafafa`. `text-gray-500` = `#6b7280` gives ratio ~4.53:1 — just passes. Or use `text-gray-600` (non-important) and verify actual rendered bg. The `!` (Tailwind important) suggests the class is overriding something; trace which component applies it.
+
+Related: `apps/web/src/` footer component (locate with `grep -r "privacy-policy" --include="*.tsx"`), `playwright/e2e/exam-content-a11y.spec.ts`, `playwright/e2e/student-composer-a11y.spec.ts`
+
+---
+
+### ISSUE-0081 — Vercel preview deployment protection blocks all authenticated E2E navigation (13/20 tests)
+
+- Status: open
+- Severity: critical (blocks 13 of 20 E2E specs; CI gate cannot pass until resolved)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
+- Area: infra (Vercel project settings + CI workflow)
+- Tags: ci · e2e · vercel · deployment-protection · ISSUE-0079
+
+**Summary.** Every test that navigates to a URL under the Vercel preview domain is redirected to `vercel.com/login?next=<encoded-url>` before the test asserts anything. Playwright is not authenticated with Vercel's SSO and receives the Vercel login page instead of the app. Confirmed by verbatim URL mismatch in 13 tests, e.g.:
+
+```
+Expected: ".../teacher/assignments"
+Received: "https://vercel.com/login?next=%2Fsso-api%3Furl%3D..."
+```
+
+Tests affected: 1, 2, 3, 4, 5, 8, 10, 11, 13, 14, 15, 18, 19 (all require authenticated navigation). Tests 6, 7, 16, 17 (axe pages that load without auth) are NOT affected by this issue.
+
+**Fix options:**
+1. **(Recommended) Vercel Automation Bypass.** Vercel provides `VERCEL_AUTOMATION_BYPASS_SECRET` — a project-level secret that allows CI to bypass deployment protection by sending `x-vercel-protection-bypass: <secret>` in request headers. Steps: (a) In Vercel project settings → Deployment Protection → enable "Protection Bypass for Automation" and copy the generated secret. (b) Add `VERCEL_BYPASS_SECRET` GitHub Actions secret. (c) In `playwright.config.ts`, add `extraHTTPHeaders: { 'x-vercel-protection-bypass': process.env.VERCEL_BYPASS_SECRET ?? '' }`.
+2. **(Alternative) Disable protection on preview.** In Vercel project → Deployment Protection → disable for Preview deployments. Simpler but exposes the preview publicly.
+
+Related: ISSUE-0079, `.github/workflows/ci.yml`, `apps/web/playwright.config.ts`
+
+---
+
+### ISSUE-0080 — CI E2E: `pnpm exec playwright install` fails — playwright not in root workspace
+
+- Status: resolved — 2026-06-05 (commit fac945d: `pnpm --filter @mm/web exec playwright install --with-deps chromium`)
 - Severity: high (blocks every CI E2E run; Playwright never installs, test matrix unobservable)
 - Reported: 2026-06-05 (Round J-VERIFY — run 27013717709)
 - Area: infra (CI — .github/workflows/ci.yml)
