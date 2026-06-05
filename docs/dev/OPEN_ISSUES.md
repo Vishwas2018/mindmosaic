@@ -5,34 +5,98 @@
 
 ## Open
 
+### ISSUE-0075 — Local Edge Function BOOT_ERROR: Deno TLS cert failure on esm.sh (all functions, cold cache)
+
+- Status: open
+- Severity: critical (blocks 17/19 local E2E specs; all Edge Functions return 503 in local dev)
+- Reported: 2026-06-05 (Round H E2E investigation)
+- Area: infra (local dev — Docker edge runtime)
+- Tags: edge-runtime · deno · tls · local-dev · e2e-blocker
+
+**Summary.** Every local Edge Function call returns `503 {"code":"BOOT_ERROR","message":"Worker failed to boot (please check logs)"}`. The Docker container `supabase_edge_runtime_mindmosaic` (edge-runtime v1.73.13 / Deno v2.1.4) logs the following stack trace verbatim on every request to any function:
+
+```
+worker boot error: failed to bootstrap runtime: failed to create the graph:
+Import 'https://esm.sh/@supabase/auth-js@2.106.2/dist/module/index.d.ts' failed:
+error sending request for url
+(https://esm.sh/@supabase/auth-js@2.106.2/dist/module/index.d.ts):
+client error (Connect): invalid peer certificate: UnknownIssuer
+    at https://esm.sh/@supabase/auth-js@2.106.2/denonext/auth-js.mjs:1:1
+InvalidWorkerCreation: worker boot error: ... invalid peer certificate: UnknownIssuer
+    at async Function.create (ext:user_workers/user_workers.js:156:29)
+    at async Object.handler (file:///var/tmp/sb-compile-edge-runtime/root/index.ts:224:22)
+```
+
+**Root cause.** Deno builds the full module dependency graph — including TypeScript `.d.ts` type declaration files — on every cold worker start. When the Deno module cache is warm (previously populated), network fetches are skipped. When the cache is cold or cleared, Deno attempts to re-fetch all transitive dependencies from `esm.sh`. The Docker container's outbound TLS stack does not trust the CA signing `esm.sh`'s certificate (`UnknownIssuer`). This is the same environment-level TLS CA trust problem as ISSUE-0067 (Node.js `UNABLE_TO_VERIFY_LEAF_SIGNATURE` on Google Fonts), but manifesting inside the Docker container's Deno runtime.
+
+**This is NOT a code bug.** auth-svc code is syntactically correct. All `_shared/` imports resolve. All env vars have `?? ""` fallbacks. No recent commit introduced a regression — the failure is environment/cache state.
+
+**Scope.** ALL Edge Functions, not auth-svc alone. `content-svc` returns identical BOOT_ERROR (direct probe confirmed). Every function importing from `https://esm.sh/*` fails identically on cold boot. Deployed functions on remote Supabase are unaffected.
+
+**Proximate trigger.** The Deno module cache inside the `supabase_edge_runtime_mindmosaic` container was cleared at some point (most likely after a `supabase stop && supabase start` cycle following the CORS refactor on 2026-05-28). Once cleared, every cold boot re-attempts network fetches and hits the TLS failure.
+
+**E2E impact.** 17/19 specs fail. The 2 that pass without hitting any Edge Function are: test 20 (skipped — `E2E_SEED_STUDENT_ID` unset). Tests 16/17 (G2 axe-core) and tests 5, 9, 18, 19 (G3 timeout targets) cannot flip green until this is resolved.
+
+**Workarounds / fix options.**
+
+1. **(Preferred — restore warm cache)** Run `supabase functions serve` once in a shell environment with valid outbound TLS (e.g., with `NODE_TLS_REJECT_UNAUTHORIZED=0` or on a machine without corporate SSL inspection). This populates the Deno module cache inside the container. Subsequent cold boots read from cache without network fetches. Verify by re-running the E2E suite.
+
+2. **(Alternative — `DENO_TLS_CA_STORE=system` or `--unsafely-ignore-certificate-errors` flag)** The Supabase edge runtime Docker image can be configured to use the system CA store or disable TLS verification. This is a Docker environment config change and may not be available in the CLI-managed image.
+
+3. **(Long-term — pre-bundle / vendor imports)** Move `esm.sh` imports to a vendored `vendor/` directory using `deno vendor`. This eliminates the runtime network dependency entirely. Requires a `deno.json` `vendor: true` setting and a vendoring step in CI/local setup. Cleanest fix but requires effort proportional to import count.
+
+Related: ISSUE-0067 (host Node.js TLS failure — same root CA trust gap, different runtime), `supabase_edge_runtime_mindmosaic` Docker container, all 12 Edge Functions under `supabase/functions/`.
+
+---
+
+### ISSUE-0077 — selectItems 500 on POST /content/select after BOOT_ERROR unblock: status TBD pending H1 run
+
+- Status: open (TBD — cannot confirm until ISSUE-0075 resolved)
+- Severity: tbd — high if reproduces; n/a if BOOT_ERROR was masking a now-fixed path
+- Reported: 2026-06-05 (Round H E2E analysis — observed in pre-ISSUE-0075 trace)
+- Area: backend (supabase/functions/content-svc/handlers.ts — selectItems path)
+- Tags: content-svc · select-items · e2e-gate · tbd
+
+**Summary.** During the Round H E2E investigation, `POST /content/select` was observed returning 500 on at least one spec run. It is unclear whether: (a) the 500 was a secondary symptom of ISSUE-0075 (BOOT_ERROR on cold cache), (b) the 500 predated BOOT_ERROR and still exists post-unblock, or (c) ISSUE-0074 (missing Authorization header — now fixed in 7629b5c) was the root cause of the 500 and the fix already resolves it.
+
+**Gate.** Run H1 full Playwright suite after ISSUE-0075 unblock. If `POST /content/select` returns 500 during H1, triage the response body + edge function logs to identify root cause and re-file as a concrete bug. If H1 passes cleanly on all selectItems paths, close this issue as resolved-by-0074/0075.
+
+Related: ISSUE-0075 (BOOT_ERROR), ISSUE-0074 (Authorization header fix, 7629b5c), content-svc/handlers.ts `selectItems` handler
+
+---
+
+### ISSUE-0076 — Deno vendor: eliminate esm.sh network dependency at Edge Function boot (durable fix for ISSUE-0075)
+
+- Status: open
+- Severity: low
+- Reported: 2026-06-05 (ISSUE-0075 root-cause analysis)
+- Area: infra (supabase/functions/ — all 12 Edge Functions + deno.json)
+- Tags: edge-runtime · deno · vendor · tls · local-dev
+
+**Summary.** ISSUE-0075 Option 3 (long-term durable fix): move all `https://esm.sh/*` imports to a vendored `vendor/` directory using `deno vendor`. This eliminates the runtime network dependency at boot — the Deno module cache becomes a local directory checked into the repo rather than a container-scoped cache that resets on `supabase stop/start`. Subsequent cold boots read from `vendor/` without any network fetch, eliminating the `UnknownIssuer` TLS failure permanently.
+
+**Implementation notes.** Requires: (1) `deno vendor` run against all function entry points; (2) `deno.json` `vendor: true` setting; (3) `vendor/` directory committed to repo; (4) CI step to run `deno vendor --check` on dependency changes. Import count across all 12 functions is moderate; main external dependency is `@supabase/supabase-js@2` and its transitive graph.
+
+**Priority.** Low — ISSUE-0075 Option 1 (warm cache restore) is the immediate unblock for H1. This issue tracks the permanent structural fix for post-launch local dev resilience.
+
+Related: ISSUE-0075 (immediate unblock), `supabase/functions/deno.json`, all 12 Edge Functions
+
+---
+
 ### ISSUE-0074 — fetchContentSelect missing Authorization header; Supabase gateway returns 401 before content-svc is invoked
 
-- Status: resolved
+- Status: resolved — 2026-06-04 (commits dd33739 + 7629b5c, ADR-0045)
 - Severity: high
 - Reported: 2026-06-04 (ISSUE-0074 investigation — session creation 401 path)
 - Resolved: 2026-06-04
-- Area: backend (supabase/functions/assessment-svc/index.ts)
+- Area: backend (supabase/functions/assessment-svc/index.ts, content-svc/config.toml, intelligence-svc/config.toml)
 - Tags: auth · edge-function · service-to-service · session-create
 
-**Summary.** `POST /sessions/create` fails with a 401 when `fetchContentSelect` calls `content-svc /content/select`. The 401 is **not** from content-svc's application code — content-svc returns 403 for a bad service-role header, not 401. The 401 is from Supabase's function invocation gateway (`${SUPABASE_URL}/functions/v1/*`), which requires a valid JWT in `Authorization: Bearer <token>` before invoking any Edge Function. There are no per-function `config.toml` files and no `verify_jwt = false` override, so JWT verification is on by default.
+**Summary.** `POST /sessions/create` failed with a 401 when `fetchContentSelect` called `content-svc /content/select`. The gateway at `${SUPABASE_URL}/functions/v1/*` requires a valid JWT in `Authorization: Bearer` before invoking any Edge Function; the service_role JWT is not accepted as a user token by `auth.getUser()`.
 
-`fetchContentSelect` (assessment-svc/index.ts:117–120) sends:
-```typescript
-headers: {
-  'Content-Type': 'application/json',
-  'x-mm-service-role': SERVICE_ROLE_KEY,  // application-level — never reached
-}
-```
-The `Authorization` header is absent. The gateway rejects with 401 before the request reaches content-svc; content-svc/index.ts:116–130 is never executed. `supabase functions logs content-svc` will show no log entry for the failing request — the function was not invoked.
+**Resolution (two-pass).** Pass 1 (dd33739): Added `Authorization: Bearer SERVICE_ROLE_KEY` to `fetchContentSelect` + `fetchIntelligenceProcess` outbound headers. Still 401 — gateway validates JWTs as user tokens; service_role key is not a user token. Pass 2 (7629b5c): Added `verify_jwt = false` to `supabase/functions/content-svc/config.toml` and `intelligence-svc/config.toml`. Both functions are service-only callers and retain application-level `x-mm-service-role` gate for all routes. ADR-0045 documents the decision. `Authorization: Bearer SERVICE_ROLE_KEY` headers from pass 1 retained as defence-in-depth.
 
-**Fix.** Add `'Authorization': \`Bearer ${SERVICE_ROLE_KEY}\`` to the `fetchContentSelect` headers object at assessment-svc/index.ts:117. The existing `x-mm-service-role` header stays as the intra-application guard.
-
-**Verification steps before closing.**
-1. D — Hit `POST /content/select` with E2E student JWT: expect 403 FORBIDDEN (service-role header missing), not 401.
-2. E — Hit with `Authorization: Bearer <SERVICE_ROLE_KEY>` + `x-mm-service-role: <SERVICE_ROLE_KEY>`: expect 200.
-3. `supabase functions logs content-svc` after fix should show the request arriving at content-svc.
-
-Related: assessment-svc/index.ts:114–135, content-svc/index.ts:62, 116–130, assessment-svc/index.ts:56 (CONTENT_SVC_URL default)
+Related: assessment-svc/index.ts:114–135, content-svc/config.toml, intelligence-svc/config.toml, ADR-0045
 
 ---
 

@@ -2,6 +2,87 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1 E2E gate — pgTAP unlock + ISSUE-0074 fix + E2E batch G2+G3 — 2026-06-04
+
+**Planned (from 2026-06-03 note):** pgTAP fixtures for migrations 0021+; ISSUE-0074 (401 on session create); E2E colour-contrast + timeout hardening.
+
+**Actually delivered:**
+
+- pgTAP unlock: wired test:db runner for migrations 0021+; fixed pgTAP fixtures for 0027/0023/seed (11-arg RPC signature, pathway_id seed row, assignment_assigned event type). pgTAP now 468/468 (was 451; +17 assertions). Commit 6a4dc83.
+- ISSUE-0074 fix pass 1: Added `Authorization: Bearer SERVICE_ROLE_KEY` to `fetchContentSelect` + `fetchIntelligenceProcess` outbound headers in assessment-svc. Commit dd33739.
+- ISSUE-0074 fix pass 2: `verify_jwt = false` added to `supabase/functions/content-svc/config.toml` + `supabase/functions/intelligence-svc/config.toml`. ADR-0045 accepted. Commit 7629b5c. ISSUE-0074 closed.
+- E2E batch G2+G3: darkened `--slate-500` token for WCAG AA contrast compliance; raised cold-start-sensitive spec timeouts to 30 s. Commit d3d76cd.
+- ISSUE-0075 filed (critical) — BOOT_ERROR: Deno TLS cert failure on esm.sh on cold cache; all 12 Edge Functions return 503; blocks 17/19 local E2E specs. See OPEN_ISSUES.md.
+
+**Time spent:** ~4h
+
+**Surprises / departures:**
+
+- ISSUE-0074 required two passes: pass 1 (Authorization header, dd33739) still returned 401 because Supabase gateway validates JWTs as user tokens via `auth.getUser()` and the service_role JWT is not a user token. Root cause required pass 2: `verify_jwt = false` is the standard Supabase pattern for service-to-service calls (ADR-0045, 7629b5c).
+- After ISSUE-0074 fix resolved: BOOT_ERROR (ISSUE-0075) became the next E2E blocker. Investigation confirmed non-code root cause — cold Deno cache + corporate TLS CA gap identical to ISSUE-0067 (different runtime).
+
+**Decisions made (not in stage):**
+
+- ADR-0045: verify_jwt=false for service-only Edge Functions — accepted 2026-06-04.
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0074: closed (commits dd33739 + 7629b5c, ADR-0045).
+- ISSUE-0075: filed (critical — BOOT_ERROR, blocks E2E gate).
+
+**Quality gates at close:**
+
+- Lint n/a · Typecheck n/a · Tests ✅ 468/468 pgTAP (post-0021 unlock) · Build ❌ (ISSUE-0067 unchanged) · RLS ✅
+
+**Tomorrow — first thing:**
+Resolve ISSUE-0075 (H1-UNBLOCK); run H1 full Playwright E2E gate.
+
+---
+
+## v1.1 E2E gate prep — framework_config.config fix (ADR-0044) — 2026-06-03
+
+**Planned:** Diagnose + fix `column framework_config.config does not exist` 500 blocking createSession/submitSession; file ADR-0044; apply migration 0027.
+
+**Actually delivered:**
+
+- Diagnosis: `framework_config` table (migration 0003) never had a `config` column. `assessment-svc/handlers.ts` selects `.select('id, config')` at lines 264 + 632; PostgREST returns `42703` on both. Contract tests masked the gap via hand-crafted `buildFrameworkConfigRow()` objects that bypassed DB column validation entirely.
+- Migration `0027_framework_config_add_config.sql`: `ADD COLUMN config jsonb NOT NULL`; backfilled both v1 families (`au_numeracy_y5_format`: time_limit_ms null, back_navigation true, flag_for_review true; `au_math_paper_c_format`: time_limit_ms 3600000, back_navigation true, flag_for_review true) with full engine threshold JSON per spec §4.1 + §4.2.
+- `supabase/seeds/03_assessment_config.sql` + `scripts/seed-e2e.ts` updated with `config` field (required simultaneously — NOT NULL applied at migration time).
+- `buildFrameworkConfigRow()` in assessment-svc contract tests now calls `FrameworkConfigSchema.parse()` — future shape divergence fails at builder call.
+- ADR-0044 accepted (docs/dev/decisions/0044-framework-config-config-column.md). Commit 62d16b1.
+
+**Time spent:** ~2h
+
+**Surprises / departures:**
+
+- Breakage traced to migration 0003 (the assessment config migration). createSession + submitSession have both been non-functional since v1 Stage 3. Only manifested in the E2E gate run because all prior testing used mock objects with the correct TypeScript interface shape.
+
+**Decisions made (not in stage):**
+
+- ADR-0044: single atomic migration with backfill + NOT NULL (Option 1 over Option 2 nullable-first); accepted.
+- Q-44.1–Q-44.4 resolved: time_limit_ms values, back_navigation_enabled, flag_for_review_enabled, scoring_rules per spec §4.1, §4.2, phase-1-exit-report.md §2.2.
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ADR-0044 accepted.
+
+**Quality gates at close:**
+
+- Lint n/a · Typecheck n/a · Tests n/a (impl-only; full gate deferred to H1) · Build ❌ (ISSUE-0067 unchanged) · RLS n/a
+
+**Tomorrow — first thing:**
+Wire test:db pgTAP runner for 0021+; close ISSUE-0074.
+
+---
+
 ## v1.1 Polish — Clusters A–G close — 2026-05-22–2026-05-24
 
 **Planned (from v1.1-polish-stage-brief.md + ADR-0043):** Close 15 in-scope issues across 6 clusters (A–F). +27 min test floor. ADR-0043 proposed → accepted.
