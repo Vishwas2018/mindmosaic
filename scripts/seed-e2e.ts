@@ -159,7 +159,7 @@ async function seedFrameworkConfig(): Promise<void> {
         },
       },
     },
-    { onConflict: 'exam_family,version', ignoreDuplicates: true },
+    { onConflict: 'exam_family,version', ignoreDuplicates: false },
   )
   if (error) throw new Error(`framework_config: ${error.message}`)
   console.log('  ✓ framework_config (e2e-v1, au_numeracy_y5_format)')
