@@ -7,21 +7,15 @@
 
 ### ISSUE-0083 — E2E auth-svc signup returns 404/empty via E2E_BASE_URL (tests 9, 12)
 
-- Status: open
+- Status: resolved — 2026-06-06 (Round K — `E2E_BASE_URL` secret corrected to Supabase Edge Functions URL)
 - Severity: high (blocks session-flow and parent-dashboard E2E; API chain untestable)
 - Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
 - Area: infra (CI secrets + Supabase Edge Function routing)
 - Tags: ci · e2e · auth-svc · secrets · ISSUE-0079
 
-**Summary.** Two tests fail at the `signUpAndInstallSession` helper (`playwright/e2e/helpers/auth.ts:45`):
-- Test 9 (parent-dashboard): `signup failed (intended role: parent): 404`
-- Test 12 (session-flow): `signup body: ` (empty, `signupRes.ok()` false)
+**Resolution.** `E2E_BASE_URL` was pointing at the Vercel web URL instead of the Supabase Edge Functions URL. Updated 2026-06-06. Confirmed in run 27014754835: test 9 signup no longer returns 404 (progresses to page navigation); test 12 signup/login succeed and now surfaces `CONTENT_SELECT_FAILED` (ISSUE-0077) instead of the empty-body guard.
 
-Both call `POST ${baseUrl}/auth-svc/auth/signup` where `baseUrl = process.env.E2E_BASE_URL`. The 404 on test 9 and empty response on test 12 indicate `E2E_BASE_URL` is either set to the Vercel web URL (which has no `auth-svc` route) rather than the Supabase project URL, or the test-12 `signupRes.ok()` result is falsy because the Vercel SSO redirect is consumed by the fetch and returns an HTML 200 with login page body (which the check `signupRes.ok()` passes but the empty body guard fails).
-
-**Investigation needed.** Verify `E2E_BASE_URL` secret value. If set to the Vercel web URL it should be the Supabase functions endpoint (`https://<project>.supabase.co`). If it is already the Supabase URL, check whether `auth-svc` has `verify_jwt = false` or is correctly accessible at `/functions/v1/auth-svc/auth/signup`.
-
-Related: ISSUE-0081 (Vercel SSO — may mask test-12 error), `playwright/e2e/helpers/auth.ts`, `supabase/functions/auth-svc`
+Related: ISSUE-0081 (Vercel SSO — still blocking page nav), ISSUE-0077 (now confirmed in CI), `playwright/e2e/helpers/auth.ts`, `supabase/functions/auth-svc`
 
 ---
 
@@ -50,24 +44,20 @@ Related: `apps/web/src/` footer component (locate with `grep -r "privacy-policy"
 
 ### ISSUE-0081 — Vercel preview deployment protection blocks all authenticated E2E navigation (13/20 tests)
 
-- Status: open
+- Status: open (bypass wired in Round K — `2f86737` — but NOT effective; see investigation notes)
 - Severity: critical (blocks 13 of 20 E2E specs; CI gate cannot pass until resolved)
 - Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
 - Area: infra (Vercel project settings + CI workflow)
 - Tags: ci · e2e · vercel · deployment-protection · ISSUE-0079
 
-**Summary.** Every test that navigates to a URL under the Vercel preview domain is redirected to `vercel.com/login?next=<encoded-url>` before the test asserts anything. Playwright is not authenticated with Vercel's SSO and receives the Vercel login page instead of the app. Confirmed by verbatim URL mismatch in 13 tests, e.g.:
+**Summary.** Every test that navigates to a URL under the Vercel preview domain is redirected to `vercel.com/login?next=%2Fsso-api%3Furl%3D...`. The `/sso-api` path in the redirect identifies this as **Vercel Team Authentication** (requires a Vercel account login), not basic Password Protection. Round K wired `x-vercel-protection-bypass` header in `playwright.config.ts` + `VERCEL_AUTOMATION_BYPASS_SECRET` CI secret, but the redirect persists in run 27014754835 — the bypass is not taking effect.
 
-```
-Expected: ".../teacher/assignments"
-Received: "https://vercel.com/login?next=%2Fsso-api%3Furl%3D..."
-```
+**Why the bypass isn't working (investigation notes).** Three candidates:
+1. **(Most likely) "Protection Bypass for Automation" was not actually enabled.** The Vercel project may have "Vercel Authentication" (Team SSO) toggled on but "Protection Bypass for Automation" is a separate sub-toggle that must be explicitly enabled. If it was not enabled, the bypass secret sent in headers is simply ignored.
+2. **Secret mismatch.** The secret generated in Vercel and the value entered in GitHub may not match. Verify: Vercel project → Settings → Deployment Protection → the exact token value matches `VERCEL_AUTOMATION_BYPASS_SECRET` in GitHub Actions.
+3. **New deployment required.** Some Vercel configurations require a new deployment after enabling bypass for the feature to activate on existing preview URLs. Push a new commit to create a fresh preview deployment after confirming items 1 and 2.
 
-Tests affected: 1, 2, 3, 4, 5, 8, 10, 11, 13, 14, 15, 18, 19 (all require authenticated navigation). Tests 6, 7, 16, 17 (axe pages that load without auth) are NOT affected by this issue.
-
-**Fix options:**
-1. **(Recommended) Vercel Automation Bypass.** Vercel provides `VERCEL_AUTOMATION_BYPASS_SECRET` — a project-level secret that allows CI to bypass deployment protection by sending `x-vercel-protection-bypass: <secret>` in request headers. Steps: (a) In Vercel project settings → Deployment Protection → enable "Protection Bypass for Automation" and copy the generated secret. (b) Add `VERCEL_BYPASS_SECRET` GitHub Actions secret. (c) In `playwright.config.ts`, add `extraHTTPHeaders: { 'x-vercel-protection-bypass': process.env.VERCEL_BYPASS_SECRET ?? '' }`.
-2. **(Alternative) Disable protection on preview.** In Vercel project → Deployment Protection → disable for Preview deployments. Simpler but exposes the preview publicly.
+**Fastest alternative.** If the above investigation doesn't resolve it quickly: Vercel project → Settings → Deployment Protection → disable "Vercel Authentication" for Preview deployments entirely. This makes the preview URL publicly accessible — acceptable for a non-production preview of a non-yet-launched product.
 
 Related: ISSUE-0079, `.github/workflows/ci.yml`, `apps/web/playwright.config.ts`
 
@@ -169,17 +159,23 @@ Related: ISSUE-0076 (vendor implementation), ISSUE-0067 (host Node.js TLS — sa
 
 ### ISSUE-0077 — selectItems 500 on POST /content/select after BOOT_ERROR unblock: status TBD pending H1 run
 
-- Status: open (TBD — cannot confirm until ISSUE-0075 resolved)
-- Severity: tbd — high if reproduces; n/a if BOOT_ERROR was masking a now-fixed path
+- Status: open — **CONFIRMED IN CI** (Round K run 27014754835 — not a BOOT_ERROR symptom)
+- Severity: high (blocks all session-create flows: session-flow test 12, exam-flow, practice-flow, results-flow)
 - Reported: 2026-06-05 (Round H E2E analysis — observed in pre-ISSUE-0075 trace)
-- Area: backend (supabase/functions/content-svc/handlers.ts — selectItems path)
-- Tags: content-svc · select-items · e2e-gate · tbd
+- Area: backend (supabase/functions/content-svc — selectItems path)
+- Tags: content-svc · select-items · e2e-gate
 
-**Summary.** During the Round H E2E investigation, `POST /content/select` was observed returning 500 on at least one spec run. It is unclear whether: (a) the 500 was a secondary symptom of ISSUE-0075 (BOOT_ERROR on cold cache), (b) the 500 predated BOOT_ERROR and still exists post-unblock, or (c) ISSUE-0074 (missing Authorization header — now fixed in 7629b5c) was the root cause of the 500 and the fix already resolves it.
+**Confirmed.** Round K test 12 (session-flow) now gets past signup/login (ISSUE-0083 resolved) and reaches `POST /sessions/create`. The response is:
 
-**Gate.** Run H1 full Playwright suite after ISSUE-0075 unblock. If `POST /content/select` returns 500 during H1, triage the response body + edge function logs to identify root cause and re-file as a concrete bug. If H1 passes cleanly on all selectItems paths, close this issue as resolved-by-0074/0075.
+```json
+{"error":{"code":"CONTENT_SELECT_FAILED","message":"content-svc /content/select returned 500","trace_id":"e0576ba5-ba44-49b5-9dd9-80d3a4cfef28"}}
+```
 
-Related: ISSUE-0075 (BOOT_ERROR), ISSUE-0074 (Authorization header fix, 7629b5c), content-svc/handlers.ts `selectItems` handler
+`content-svc /content/select` returns 500 in the deployed Supabase project. This is not caused by ISSUE-0075 (BOOT_ERROR, local Norton TLS) — CI has no Norton and the Edge Functions boot correctly. The 500 is a real application error in `content-svc selectItems`.
+
+**Investigation needed.** Use trace_id `e0576ba5-ba44-49b5-9dd9-80d3a4cfef28` to pull Supabase Edge Function logs for the `content-svc` function. Likely causes: (a) the `framework_config` table has no row matching the pathway/engine combination the session uses, (b) the `item` table has no `active` items for the seeded pathway, (c) a schema mismatch between what `selectItems` queries and what `seed-e2e.ts` inserts. The seed inserts `pathway_id = 00000000-e2e0-0000-0000-000000000002` and items with `lifecycle = 'active'` — verify `selectItems` uses matching filter values.
+
+Related: ISSUE-0083 (resolved — signup now reaches this point), ISSUE-0075 (not related), content-svc/handlers.ts `selectItems`, `scripts/seed-e2e.ts`
 
 ---
 
