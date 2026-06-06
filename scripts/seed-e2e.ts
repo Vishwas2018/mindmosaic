@@ -92,9 +92,16 @@ async function seedFrameworkConfig(): Promise<void> {
         time_limit_minutes: 50,
       },
       adaptive_rules: {
-        min_items: 5,
-        max_items: 10,
-        target_ability_precision: 0.3,
+        stages: ['s1'],
+        start_testlet_id: 't1',
+        routing_table: [],
+        testlets: {
+          t1: {
+            stage_id: 's1',
+            time_limit_ms: 600_000,
+            item_ids: [itemId(9), itemId(10)],
+          },
+        },
       },
       scoring_rules: {
         method: 'percent_correct',
