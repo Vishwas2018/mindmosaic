@@ -2,11 +2,13 @@
  * seed-e2e.ts — Seed the database with deterministic E2E test data.
  *
  * Creates (idempotent — safe to re-run):
- *   1. framework_config  au_numeracy_y5_format / version 'e2e-v1'
- *   2. pathway           'e2e-numeracy-y5'  (engine_type adaptive)
- *   3. items 1–10        lifecycle: 1-2 draft, 3-4 review, 5 retired,
- *                                   6-7 monitored, 8 retired, 9-10 active
- *   4. item_version 1    for each item (is_current true, authoring_method human)
+ *   1. framework_config       au_numeracy_y5_format / version 'e2e-v1'
+ *   2. pathway               'e2e-numeracy-y5'  (engine_type adaptive)
+ *   3. skill_graph_version   'aaaaaaaa-e2e0-...-000000000000' (draft)
+ *      skill_node            'aaaaaaaa-e2e0-...-000000000001' (satisfies learning_event FK)
+ *   4. items 1–10            lifecycle: 1-2 draft, 3-4 review, 5 retired,
+ *                                       6-7 monitored, 8 retired, 9-10 active
+ *   5. item_version 1        for each item (is_current true, authoring_method human)
  *
  * After seeding, performs a read-back that resolves the engine's delivery
  * chain: active item → item_version(is_current) → pathway → framework_config.
@@ -44,11 +46,12 @@ const db = createClient(SUPABASE_URL, SERVICE_KEY)
 
 // ── Fixed UUIDs — deterministic across re-runs ────────────────────────────────
 
-const FC_ID = '00000000-e2e0-0000-0000-000000000001'
-const PW_ID = '00000000-e2e0-0000-0000-000000000002'
-// item.skill_ids is uuid[] with no FK constraint — any non-null UUID satisfies the
-// CHECK (array_length(skill_ids, 1) >= 1) guard without needing a real skill_node row.
-const DUMMY_SKILL = 'aaaaaaaa-e2e0-0000-0000-000000000001'
+const FC_ID                 = '00000000-e2e0-0000-0000-000000000001'
+const PW_ID                 = '00000000-e2e0-0000-0000-000000000002'
+const SKILL_GRAPH_VERSION_ID = 'aaaaaaaa-e2e0-0000-0000-000000000000'
+// learning_event.skill_id FK → skill_node(id): this row must exist before any
+// create_session_response_atomic call, even though item.skill_ids has no FK constraint.
+const DUMMY_SKILL            = 'aaaaaaaa-e2e0-0000-0000-000000000001'
 const EXAM_FAMILY = 'au_numeracy_y5_format'
 
 function itemId(n: number): string {
@@ -185,6 +188,36 @@ async function seedPathway(): Promise<void> {
   )
   if (error) throw new Error(`pathway: ${error.message}`)
   console.log('  ✓ pathway (e2e-numeracy-y5)')
+}
+
+async function seedSkillGraph(): Promise<void> {
+  // status='draft' avoids conflict with the unique partial index idx_sgv_published
+  // (only one 'published' row allowed; production seed holds that slot).
+  // The learning_event FK is a raw DB check — it is satisfied by row existence
+  // regardless of graph version status or RLS visibility.
+  const { error: sgvError } = await db.from('skill_graph_version').upsert(
+    {
+      id: SKILL_GRAPH_VERSION_ID,
+      version: 1,
+      description: 'E2E dummy graph — satisfies learning_event.skill_id FK',
+      status: 'draft',
+    },
+    { onConflict: 'id', ignoreDuplicates: false },
+  )
+  if (sgvError) throw new Error(`skill_graph_version: ${sgvError.message}`)
+
+  const { error: snError } = await db.from('skill_node').upsert(
+    {
+      id:               DUMMY_SKILL,
+      graph_version_id: SKILL_GRAPH_VERSION_ID,
+      level:            'skill',
+      name:             'E2E Dummy Skill',
+      slug:             'e2e-dummy-skill',
+    },
+    { onConflict: 'id', ignoreDuplicates: false },
+  )
+  if (snError) throw new Error(`skill_node: ${snError.message}`)
+  console.log('  ✓ skill_graph_version + skill_node (E2E dummy; satisfies learning_event FK)')
 }
 
 async function seedItems(): Promise<void> {
@@ -342,6 +375,7 @@ async function main(): Promise<void> {
   console.log('seed-e2e: seeding E2E fixture data...\n')
   await seedFrameworkConfig()
   await seedPathway()
+  await seedSkillGraph()
   await seedItems()
   await seedItemVersions()
   await seedFeatureFlag()
