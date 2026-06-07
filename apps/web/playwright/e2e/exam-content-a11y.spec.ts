@@ -40,6 +40,11 @@ test.describe('axe-core a11y — /teacher/content', () => {
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      // ISSUE-0082: Vercel injects a bypass-banner overlay ([data-zone]) when
+      // VERCEL_AUTOMATION_BYPASS_SECRET is sent; absent from app DOM entirely.
+      // No-op on local runs without bypass header. Zero app code uses data-zone
+      // (verified: grep -rn 'data-zone' apps/web/src/ packages/ → 0 hits).
+      .exclude('[data-zone]')
       .analyze()
 
     const blocking = results.violations.filter(
@@ -66,6 +71,11 @@ test.describe('axe-core a11y — /teacher/content/new', () => {
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      // ISSUE-0082: Vercel injects a bypass-banner overlay ([data-zone]) when
+      // VERCEL_AUTOMATION_BYPASS_SECRET is sent; absent from app DOM entirely.
+      // No-op on local runs without bypass header. Zero app code uses data-zone
+      // (verified: grep -rn 'data-zone' apps/web/src/ packages/ → 0 hits).
+      .exclude('[data-zone]')
       .analyze()
 
     const blocking = results.violations.filter(
