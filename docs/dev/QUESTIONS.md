@@ -5,6 +5,22 @@
 
 ## Open
 
+### Q-50 — entitled=false: pathway buttons absent for admin-created student users (tests 8, 10, 11)
+
+- Date raised: 2026-06-08 (v1.1/exam-content E2E repair R2)
+- Asked of: self / architect
+- Source: apps/web/playwright/e2e/exam-flow.spec.ts:60, practice-flow.spec.ts:61
+- Question: Why do tests 8 (exam-flow), 10 (practice-flow), and 11 (results-flow) fail at the pathway action button visibility check on /session-selection? The pathway card is either rendering in locked state (entitled=false) or the pathways query is erroring.
+- Why ambiguous: R2 hypothesis 1 (ignoreDuplicates:true silently skipping required_feature_key) is empirically eliminated — seed ran correctly in the latest CI run (✓ Seed E2E data) yet buttons are absent. Candidate causes that could not be ruled out without empirical data:
+  1. **H2 — content-svc 403**: callerTenantId returns null → tenantId === undefined → early 403. Triggered if handle_new_user DB trigger did NOT create user_profile/tenant rows for the admin-created test user. React Query retries 3× then shows ErrorState → no buttons. diagnostic probe (diag-pathways-probe.ts) will confirm or deny.
+  2. **H3 — cold start >10s**: content-svc complex bundle may take >10s on first invocation. Mitigated by session-flow (test 12) now GREEN — test 12 calls auth-dependent endpoints and passes; however test 12 does NOT call /pathways (uses pathway ID directly), so a cold-start affect on content-svc specifically remains possible. Probe will reveal if the call times out.
+  3. **H4 — project-ref mismatch** (formerly H1): E2E_BASE_URL and E2E_SUPABASE_URL may reference different Supabase projects. Cookie name sb-{ref}-auth-token installed by the helper may not match what the Vercel deployment expects. Probe prints both refs for comparison.
+- Blocking? yes — tests 8, 10, 11 remain red until resolved
+- Assumed answer (if proceeding): H2 (403) is the most likely candidate given test 9 (parent dashboard) is GREEN with the same auth path but does not call content-svc /pathways.
+- Code affected: scripts/diag-pathways-probe.ts (new), .github/workflows/ci.yml (diagnostic step)
+- Status: open
+- Resolution: —
+
 ### Q-1.1-AUDIT-1 — RLS access pattern for intelligence_audit_log_default + learning_event_default
 
 - Date raised: 2026-05-22 (v1.1 pre-polish audit P6 — ISSUE-0060 T3 flag)
