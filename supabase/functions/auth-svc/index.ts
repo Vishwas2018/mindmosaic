@@ -5,6 +5,9 @@ import { CORS_HEADERS } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { verifyBearer } from "../_shared/auth.ts";
 import { log } from "../_shared/logger.ts";
+// config.toml: verify_jwt = false — gateway JWT check disabled because signup/login
+// are the primitives that create sessions; they cannot require a prior valid JWT.
+// verifyBearer() is used only on sub-routes that do require an existing session.
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
