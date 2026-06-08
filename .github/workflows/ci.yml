@@ -81,6 +81,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build local packages required by Edge Functions
+        run: pnpm turbo run build --filter=@mm/types --filter=@mm/engines
       - uses: supabase/setup-cli@v1
         with:
           version: latest
