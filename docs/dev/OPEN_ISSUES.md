@@ -5,6 +5,26 @@
 
 ## Open
 
+### ISSUE-0084 — content-svc contract tests: no `id` assertion on PathwayDTO output (listPathways + getPathwayBySlug)
+
+- Status: open
+- Severity: low (fix commit 5ddb904 ships the runtime data; gap is test coverage only — no user impact)
+- Reported: 2026-06-08 (Round P-FIX — commit 5ddb904)
+- Area: tests (content-svc contract suite)
+- Tags: contract-test · pathway · dto · id
+
+**Summary.** `supabase/functions/content-svc/__tests__/contract.test.ts` has no assertion that `id` is present and a valid UUID in the `PathwayDTO` returned by `listPathways` (line 78-131) or `getPathwayBySlug` (line 136-160). The runtime mapping was missing `id` and was fixed in commit 5ddb904; the tests were passing because they only asserted on `entitled` and `locked_reason`. Any future regression that drops `id` from the mapping would not be caught by the contract suite.
+
+**Required fix.** In both test blocks, add after the existing entitlement assertions:
+```ts
+expect(dto.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+```
+where `dto` is the first element of `listPathways` response and the single object of `getPathwayBySlug` response.
+
+**Related.** commit 5ddb904, `PathwayDTOSchema` (`packages/types/src/content.ts:12`), local `PathwayDTO` interface (`handlers.ts:62-70`).
+
+---
+
 ### ISSUE-0083 — E2E auth-svc signup returns 404/empty via E2E_BASE_URL (tests 9, 12)
 
 - Status: resolved — 2026-06-06 (Round K — `E2E_BASE_URL` secret corrected to Supabase Edge Functions URL)
@@ -104,7 +124,7 @@ Related: ADR-0044 §Follow-ups, `supabase/tests/rls/003_assessment_config.sql`, 
 
 ### ISSUE-0075 — Local Edge Function BOOT_ERROR: Deno TLS cert failure on esm.sh (all functions, cold cache)
 
-- Status: open
+- Status: resolved — 2026-06-08 (Round Q — CI deploy-functions job; local TLS still applies but E2E gate is CI-only)
 - Severity: critical (blocks 17/19 local E2E specs; all Edge Functions return 503 in local dev)
 - Reported: 2026-06-05 (Round H E2E investigation)
 - Area: infra (local dev — Docker edge runtime)

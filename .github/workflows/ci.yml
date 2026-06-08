@@ -76,9 +76,26 @@ jobs:
         if: steps.supabase-check.outputs.available == 'true'
         run: supabase db push --dry-run --local
 
+  deploy-functions:
+    name: Deploy Edge Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy all Edge Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          PROJECT_REF=$(echo "$SUPABASE_URL" | sed 's|https://||' | cut -d'.' -f1)
+          supabase functions deploy --project-ref "$PROJECT_REF"
+
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
+    needs: deploy-functions
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v5
