@@ -100,6 +100,17 @@ jobs:
         run: |
           PROJECT_REF=$(echo "$SUPABASE_URL" | sed 's|https://||' | cut -d'.' -f1)
           supabase functions deploy --project-ref "$PROJECT_REF"
+          # Per-function config.toml verify_jwt=false is not applied when the CLI
+          # detects no code change — the entire API call (including metadata) is
+          # skipped. Unconditionally PATCH the flag via Management API after the
+          # bulk deploy so it is set regardless of code bundle delta.
+          for fn in auth-svc content-svc intelligence-svc; do
+            curl -sf -X PATCH \
+              "https://api.supabase.com/v1/projects/${PROJECT_REF}/functions/${fn}" \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"verify_jwt": false}'
+          done
 
   e2e:
     name: E2E Tests
