@@ -67,6 +67,7 @@ export interface PathwayDTO {
   year_levels: number[];
   entitled: boolean;
   locked_reason: string | null;
+  id: string;
 }
 
 export interface AssessmentProfileDTO {
@@ -150,6 +151,7 @@ export async function listPathways(
     year_levels: p.year_levels,
     entitled: entitledKeys.data.has(p.required_feature_key),
     locked_reason: entitledKeys.data.has(p.required_feature_key) ? null : 'tier_required',
+    id: p.id,
   }));
   return ok(dtos);
 }
@@ -185,6 +187,7 @@ export async function getPathwayBySlug(
     year_levels: result.data.year_levels,
     entitled,
     locked_reason: entitled ? null : 'tier_required',
+    id: result.data.id,
   });
 }
 
