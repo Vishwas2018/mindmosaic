@@ -184,7 +184,7 @@ async function seedPathway(): Promise<void> {
       required_feature_key: 'pathway_naplan_y5',
       is_active: true,
     },
-    { onConflict: 'slug', ignoreDuplicates: true },
+    { onConflict: 'slug', ignoreDuplicates: false },
   )
   if (error) throw new Error(`pathway: ${error.message}`)
   console.log('  ✓ pathway (e2e-numeracy-y5)')
@@ -235,7 +235,7 @@ async function seedItems(): Promise<void> {
 
   const { error } = await db
     .from('item')
-    .upsert(items, { onConflict: 'id', ignoreDuplicates: true })
+    .upsert(items, { onConflict: 'id', ignoreDuplicates: false })
   if (error) throw new Error(`items: ${error.message}`)
 
   const activeCount = items.filter((x) => x.lifecycle === 'active').length
@@ -304,7 +304,7 @@ async function seedItemVersions(): Promise<void> {
 
   const { error } = await db
     .from('item_version')
-    .upsert(versions, { onConflict: 'item_id,version', ignoreDuplicates: true })
+    .upsert(versions, { onConflict: 'item_id,version', ignoreDuplicates: false })
   if (error) throw new Error(`item_versions: ${error.message}`)
   console.log(`  ✓ ${versions.length} item_versions (all is_current=true)`)
 }
