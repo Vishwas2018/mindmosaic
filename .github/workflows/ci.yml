@@ -140,14 +140,15 @@ jobs:
           E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
           E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           E2E_SUPABASE_ANON: ${{ secrets.E2E_SUPABASE_ANON }}
+          E2E_TEST_SERVICE_ROLE: ${{ secrets.E2E_TEST_SERVICE_ROLE }}
         run: |
           set +e
-          echo "=== E2E pre-flight probe (Q-50) ==="
+          echo "=== E2E pre-flight probe (Q-50 R-DIAG-2) ==="
           # 1. Project-ref consistency check
           echo "SUPABASE_URL ref: $(echo $E2E_SUPABASE_URL | grep -oE '[a-z0-9]{20}')"
           echo "BASE_URL ref:     $(echo $E2E_BASE_URL     | grep -oE '[a-z0-9]{20}')"
           # If these differ, session cookie domain mismatch is the root cause.
-          # 2. Sign up fresh parent → call /pathways → print verbatim
+          # 2. PARENT + STUDENT probes → print verbatim (R-DIAG-2)
           pnpm tsx scripts/diag-pathways-probe.ts
           echo "=== probe done ==="
       - name: Install Playwright browsers
