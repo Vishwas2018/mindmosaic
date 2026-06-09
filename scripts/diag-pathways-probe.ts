@@ -129,14 +129,14 @@ async function probeParent(): Promise<void> {
 // Mirrors signUpAndInstallSessionAs(role='student') exactly.
 // Source: apps/web/playwright/e2e/helpers/auth.ts:144-286
 
-async function probeStudent(): Promise<void> {
+async function probeStudent(): Promise<string | null> {
   console.log('\n══════════════════════════════════════════')
   console.log('STUDENT PROBE')
   console.log('══════════════════════════════════════════')
 
   if (!SERVICE_KEY) {
     console.log('[STUDENT] E2E_TEST_SERVICE_ROLE not set — skipping student probe')
-    return
+    return null
   }
 
   const email    = `diag-student-${randomUUID()}@example.com`
@@ -165,12 +165,12 @@ async function probeStudent(): Promise<void> {
     console.log(`[STUDENT] admin createUser → ${res.status}: id=${body.id ?? '(none)'} message=${body.message ?? '(none)'}`)
     if (!res.ok || !body.id) {
       console.log('[STUDENT] admin createUser failed — cannot continue')
-      return
+      return null
     }
     userId = body.id
   } catch (e) {
     console.log(`[STUDENT] admin createUser error: ${e instanceof Error ? e.message : String(e)}`)
-    return
+    return null
   }
 
   // Step 2 — PATCH user_profile.role → 'student' via service-role REST
@@ -225,11 +225,11 @@ async function probeStudent(): Promise<void> {
     console.log(`[STUDENT] admin PUT app_metadata → ${res.status}: ${body.slice(0, 300)}`)
     if (!res.ok) {
       console.log('[STUDENT] admin PUT app_metadata failed')
-      return
+      return null
     }
   } catch (e) {
     console.log(`[STUDENT] admin PUT app_metadata error: ${e instanceof Error ? e.message : String(e)}`)
-    return
+    return null
   }
 
   // Step 4 — sign in via password to get JWT
@@ -245,12 +245,12 @@ async function probeStudent(): Promise<void> {
     console.log(`[STUDENT] password sign-in → ${res.status}, token_length=${body.access_token?.length ?? 0}`)
     if (!res.ok || !body.access_token) {
       console.log('[STUDENT] sign-in failed — cannot probe /pathways')
-      return
+      return null
     }
     token = body.access_token
   } catch (e) {
     console.log(`[STUDENT] sign-in error: ${e instanceof Error ? e.message : String(e)}`)
-    return
+    return null
   }
 
   // Step 5 — decode and print JWT claims
@@ -267,6 +267,33 @@ async function probeStudent(): Promise<void> {
   } catch (e) {
     console.log(`[STUDENT] /pathways error: ${e instanceof Error ? e.message : String(e)}`)
   }
+
+  return token
+}
+
+// ─── STUDENT no-apikey probe ───────────────────────────────────────────────────
+// Mirrors the exact request shape MmClient sends from the browser:
+//   Authorization: Bearer <jwt>   — NO apikey header.
+// Decision:
+//   200 → apikey not required with verify_jwt=false (H1 eliminated).
+//   401 → apikey IS required   (H1 confirmed: add apikey to MmClient).
+
+async function probeStudentNoApikey(token: string): Promise<void> {
+  console.log('\n══════════════════════════════════════════')
+  console.log('STUDENT no-apikey PROBE (R-DIAG-4)')
+  console.log('══════════════════════════════════════════')
+  console.log('[STUDENT no-apikey] Authorization: Bearer <token> — no apikey header')
+
+  try {
+    const res  = await fetch(`${BASE_URL}/content-svc/pathways`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const body = await res.text()
+    console.log(`\n[STUDENT no-apikey] GET /content-svc/pathways → ${res.status}`)
+    console.log(body)
+  } catch (e) {
+    console.log(`[STUDENT no-apikey] /pathways error: ${e instanceof Error ? e.message : String(e)}`)
+  }
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────
@@ -278,7 +305,10 @@ async function main(): Promise<void> {
   }
 
   await probeParent()
-  await probeStudent()
+  const studentJwt = await probeStudent()
+  if (studentJwt) {
+    await probeStudentNoApikey(studentJwt)
+  }
 }
 
 main().catch((err: unknown) => {
