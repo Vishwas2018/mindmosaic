@@ -39,7 +39,7 @@ export default defineConfig({
           'x-vercel-set-bypass-cookie': 'true',
         }
       : undefined,
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [
