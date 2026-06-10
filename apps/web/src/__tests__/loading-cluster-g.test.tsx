@@ -8,28 +8,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React from 'react'
-import type * as ReactTypes from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { act } from '@testing-library/react'
 import type * as MmUi from '@mm/ui'
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
-
-// React 18.3 does not export `use()` for Promises in jsdom.
-// Patch so pages using `use(params)` (Next.js async-params pattern) render synchronously.
-vi.mock('react', async (importActual) => {
-  const actual = await importActual<typeof ReactTypes>()
-  return {
-    ...actual,
-    use: <T,>(val: Promise<T> | T): T => {
-      if (val !== null && typeof (val as any).then === 'function') {
-        return { id: 'test-id' } as unknown as T
-      }
-      return val as T
-    },
-  }
-})
 
 vi.mock('@mm/sdk', () => ({
   usePathways: vi.fn(),
@@ -429,7 +413,7 @@ describe('Cluster G error-consistency', () => {
 
   it('GR-1 — results/[id]: isError renders ErrorState not inline Card/h1', async () => {
     vi.mocked(useSessionSummary).mockReturnValue(err())
-    const params = Promise.resolve({ id: 'sess-1' })
+    const params = { id: 'sess-1' }
     await act(async () => { render(<ResultsPage params={params} />) })
     getAlert('Could not load results')
   })
@@ -439,7 +423,7 @@ describe('Cluster G error-consistency', () => {
     vi.mocked(useRecordResponse).mockReturnValue({ ...mutok(), updateLockToken: vi.fn() } as any)
     vi.mocked(useSubmitSession).mockReturnValue(mutok())
     vi.mocked(useCheckpoint).mockReturnValue({ ...mutok(), updateLockToken: vi.fn() } as any)
-    const params = Promise.resolve({ id: 'sess-1' })
+    const params = { id: 'sess-1' }
     await act(async () => { render(<ExamPage params={params} />) })
     getAlert('Could not load session')
   })
@@ -448,7 +432,7 @@ describe('Cluster G error-consistency', () => {
     vi.mocked(useSessionState).mockReturnValue(err())
     vi.mocked(useRecordResponse).mockReturnValue(mutok())
     vi.mocked(useSubmitSession).mockReturnValue(mutok())
-    const params = Promise.resolve({ id: 'sess-1' })
+    const params = { id: 'sess-1' }
     await act(async () => { render(<PracticeSessionPage params={params} />) })
     getAlert('Could not load session')
   })

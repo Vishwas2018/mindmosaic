@@ -18,9 +18,9 @@ export default async function SessionLayout({
   params,
 }: {
   children: ReactNode
-  params: Promise<{ id: string }>
+  params: { id: string }
 }) {
-  const { id } = await params
+  const { id } = params
   const supabase = await createClient()
   const { data: session } = await supabase
     .from('session_record')

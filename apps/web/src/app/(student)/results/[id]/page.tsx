@@ -1,6 +1,5 @@
 'use client';
 
-import { use } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, Brand, Button, Card, ErrorState, IconButton, LoadingState, TopBar } from '@mm/ui';
 import { useSessionSummary } from '@mm/sdk';
@@ -47,9 +46,9 @@ function StatRow({ label, value }: { label: string; value: string }) {
 export default function ResultsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id: sessionId } = use(params);
+  const { id: sessionId } = params;
   const router = useRouter();
   const sessionQuery = useSessionSummary(sessionId);
   const { data, isPending, isError } = sessionQuery;

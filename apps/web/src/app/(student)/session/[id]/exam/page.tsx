@@ -1,5 +1,5 @@
 'use client'
-import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AppShell,
@@ -164,8 +164,8 @@ function QuestionDisplay({
   )
 }
 
-export default function ExamPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: sessionId } = use(params)
+export default function ExamPage({ params }: { params: { id: string } }) {
+  const { id: sessionId } = params
   const router = useRouter()
   const toast = useToast()
 

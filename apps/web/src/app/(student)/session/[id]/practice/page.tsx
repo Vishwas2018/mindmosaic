@@ -1,5 +1,5 @@
 'use client'
-import { use, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AppShell,
@@ -203,9 +203,9 @@ function Modal({ title, description, primaryLabel, onPrimary }: ModalProps) {
 export default function PracticePage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }) {
-  const { id: sessionId } = use(params)
+  const { id: sessionId } = params
   const router = useRouter()
   const toast = useToast()
 
