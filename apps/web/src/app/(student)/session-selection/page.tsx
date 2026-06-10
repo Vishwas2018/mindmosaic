@@ -153,7 +153,7 @@ export default function SessionSelectionPage() {
         assignment_id: null,
         mode,
         target_skills: null,
-        pathway_id: pathway.slug,
+        pathway_id: pathway.id,
       },
       {
         onSuccess: (response) => {

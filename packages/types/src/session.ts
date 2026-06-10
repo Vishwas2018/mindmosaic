@@ -76,7 +76,7 @@ export const CreateSessionRequestSchema = z.object({
   assignment_id: AssignmentIdSchema.nullable(),
   mode: SessionModeSchema,
   target_skills: z.array(z.string()).nullable(),
-  pathway_id: z.string().nullable(),
+  pathway_id: z.string().uuid().nullable(),
   composer_params: PracticeExamComposerParamsSchema.optional(),
   simulation_params: SimulationParamsSchema.optional(),
 });
