@@ -47,3 +47,6 @@ supabase/snippets/
 
 # Vercel
 .vercel
+
+# Playwright — generated Vercel bypass cookie state (contains auth material)
+**/playwright/.bypass-state.json

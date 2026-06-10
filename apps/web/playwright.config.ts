@@ -17,6 +17,8 @@ import { resolve } from 'path';
 // exporting them manually before every run.
 loadDotenv({ path: resolve(__dirname, '.env.e2e') });
 
+const bypassSecret = process.env['VERCEL_AUTOMATION_BYPASS_SECRET'];
+
 export default defineConfig({
   testDir: './playwright/e2e',
   timeout: 60_000,
@@ -28,17 +30,12 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: 'list',
+  // globalSetup acquires the Vercel bypass cookie once; storageState loads it
+  // into every context. Cookie domain-scoping prevents it reaching Supabase.
+  globalSetup: bypassSecret ? './playwright/global-setup' : undefined,
   use: {
     baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:3000',
-    // Bypass Vercel deployment protection in CI and local preview runs.
-    // Header is a no-op against localhost or non-Vercel URLs.
-    extraHTTPHeaders: process.env['VERCEL_AUTOMATION_BYPASS_SECRET']
-      ? {
-          'x-vercel-protection-bypass':
-            process.env['VERCEL_AUTOMATION_BYPASS_SECRET'],
-          'x-vercel-set-bypass-cookie': 'true',
-        }
-      : undefined,
+    storageState: bypassSecret ? './playwright/.bypass-state.json' : undefined,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
