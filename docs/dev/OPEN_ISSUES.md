@@ -5,6 +5,27 @@
 
 ## Open
 
+### ISSUE-0089 — feature-flag key divergence: base seed enables `naplan_y5`, pathway requires `pathway_naplan_y5`
+
+- Status: open
+- Severity: medium (beta-launch blocker — NOT a merge blocker; current state is correctly gated)
+- Reported: 2026-06-11 (post-merge main verification — PR #1 / merge commit b6e58f5)
+- Area: infra (supabase/seeds + content pathway feature gating)
+- Tags: launch · feature-flag · content
+
+**Summary.** The `au_numeracy_y5` pathway's `required_feature_key` is `pathway_naplan_y5` (`scripts/seed-e2e.ts:184`), but the production base seed enables a different key — `naplan_y5`, tenant-scoped to one seed tenant (`supabase/seeds/05_feature_flags.sql:12`). The two keys do not match, so the base seed's flag is **dead for this pathway**. The only thing that unlocks the pathway today is the E2E-only platform-wide `admin_override` row (`scripts/seed-e2e.ts:270-280`), which inserts `feature_key: 'pathway_naplan_y5'` / `tenant_id: null` / `enabled: true` and never runs in production.
+
+**Net effect.** The pathway is **correctly gated right now** — `checkFeatureFlag` denies by default when no matching flag row exists (`supabase/functions/_shared/feature-gate.ts:74-78`: tenant row → platform-NULL row → else `enabled = false`). But at beta launch, enabling "the seed flag" (`naplan_y5`) will NOT unlock the pathway. This is a latent launch trap: the obvious action fails silently with a 402 `FEATURE_GATED`.
+
+**Required at launch (both, in the launch runbook).**
+1. Insert a correctly-keyed `pathway_naplan_y5` feature_flag — either platform-NULL (all tenants) or per-beta-tenant — with `enabled: true`.
+2. Activate content (the Option-A deferred "content activation" item — the 16/4/0 E2E gate ran on the 2-item E2E seed, not prod content).
+3. Verify the gate flips by hitting `POST /sessions/create` and expecting a non-402 response.
+
+**Cross-ref.** `supabase/functions/_shared/feature-gate.ts:74-78` (deny-by-default resolution); `scripts/seed-e2e.ts:184` (pathway required key), `scripts/seed-e2e.ts:270-280` (E2E platform-wide override); `supabase/seeds/05_feature_flags.sql:12` (base seed `naplan_y5`); Option-A deferred "content activation" item (PR #1 body).
+
+---
+
 ### ISSUE-0088 — billing-svc GET /billing/subscription returns 500 (×4 background failures in results-flow E2E run)
 
 - Status: open
