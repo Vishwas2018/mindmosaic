@@ -5,6 +5,74 @@
 
 ## Open
 
+### ISSUE-0088 — billing-svc GET /billing/subscription returns 500 (×4 background failures in results-flow E2E run)
+
+- Status: open
+- Severity: low (deferred billing surface; not in family-beta scope — background network failures only, no in-scope assertion depends on it)
+- Reported: 2026-06-11 (E2E gate close — observed in results-flow run)
+- Area: backend (supabase/functions/billing-svc — subscription read path)
+- Tags: billing · subscription · e2e · deferred · scope-deferred
+
+**Symptom.** `GET /billing/subscription` returns HTTP 500 — observed as 4 background request failures during the results-flow E2E run. No in-scope test assertion depends on the billing surface; the failures are background fetches from pages that probe subscription state.
+
+**Scope.** deferred — billing surface (Stripe Stages 42–47) is not yet wired; out of family-beta scope. No fix required to close the current E2E gate.
+
+**Investigation (un-defer time).** Pull billing-svc Edge Function logs for the 500; likely the subscription read queries a table/row not yet provisioned in the E2E project. Confirm against `supabase/functions/billing-svc` subscription handler.
+
+Related: billing Stages 42–47 (DEV_PLAN.md), `supabase/functions/billing-svc`
+
+---
+
+### ISSUE-0087 — E2E teacher-student-detail.spec.ts test 19 (not-found branch) skipped — deferred surface + strict-mode locator bug
+
+- Status: open (test.skip — `apps/web/playwright/e2e/teacher-student-detail.spec.ts:42`)
+- Severity: low (deferred out-of-scope surface, family beta; test-side skip, no product impact)
+- Reported: 2026-06-11 (E2E gate close)
+- Area: tests (apps/web/playwright/e2e/teacher-student-detail.spec.ts)
+- Tags: e2e · teacher · deferred · scope-deferred · strict-mode-locator
+
+**Symptom.** `teacher-student-detail.spec.ts:42` (test 19, "not-found branch: accessing an unknown student ID shows empty state") — teacher student-detail surface deferred; the not-found empty state is not reached. Additionally a strict-mode locator bug: `page.getByText(/student not found|ask your admin|not have access/i)` (line 50) matches 2 elements, so the assertion would fail strict-mode even once the surface lands.
+
+**Scope.** deferred — teacher student-detail surface out of family-beta scope. Skipped test-side with ISSUE-0087 ref, matching the existing in-body `test.skip` convention at `teacher-student-detail.spec.ts:54`.
+
+**One-line fix for un-skip time.** Scope the locator to the heading or use `.first()` — e.g. `page.getByRole('heading', { name: /student not found|ask your admin|not have access/i })` or `page.getByText(/.../i).first()` — to resolve the strict-mode 2-element match, then remove the `test.skip(true, …)`.
+
+Related: `apps/web/playwright/e2e/teacher-student-detail.spec.ts:42,50`, teacher-student-detail.spec.ts:54 (already-skipped sibling)
+
+---
+
+### ISSUE-0086 — E2E student-assignments.spec.ts test 14 (empty Assigned tab) skipped — deferred assignments surface
+
+- Status: open (test.skip — `apps/web/playwright/e2e/student-assignments.spec.ts:50`)
+- Severity: low (deferred out-of-scope surface, family beta; test-side skip, no product impact)
+- Reported: 2026-06-11 (E2E gate close)
+- Area: tests (apps/web/playwright/e2e/student-assignments.spec.ts)
+- Tags: e2e · student · assignments · deferred · scope-deferred
+
+**Symptom.** `student-assignments.spec.ts:50` (test 14, "assignments page — empty Assigned tab shows empty state copy") — assignments surface deferred; the "No assignments yet" empty-state copy is not rendered on the Assigned tab.
+
+**Scope.** deferred — student assignments surface out of family-beta scope. Skipped test-side with ISSUE-0086 ref, matching the in-body `test.skip` convention at `teacher-student-detail.spec.ts:54`.
+
+Related: `apps/web/playwright/e2e/student-assignments.spec.ts:50`
+
+---
+
+### ISSUE-0085 — E2E assignment-engine.spec.ts test 2 (publish flow) skipped — deferred teacher assignment publishing surface
+
+- Status: open (test.skip — `apps/web/playwright/e2e/assignment-engine.spec.ts:54`)
+- Severity: low (deferred out-of-scope surface, family beta; test-side skip, no product impact)
+- Reported: 2026-06-11 (E2E gate close)
+- Area: tests (apps/web/playwright/e2e/assignment-engine.spec.ts)
+- Tags: e2e · teacher · assignments · deferred · scope-deferred
+
+**Symptom.** `assignment-engine.spec.ts:54` (test 2, "wizard — practice assignment publish flow") — teacher assignment publishing deferred; the "Assignment Published" success view is not reached.
+
+**Scope.** deferred — teacher assignment publishing surface out of family-beta scope. Skipped test-side with ISSUE-0085 ref, matching the in-body `test.skip` convention at `teacher-student-detail.spec.ts:54`.
+
+Related: `apps/web/playwright/e2e/assignment-engine.spec.ts:54`
+
+---
+
 ### ISSUE-0084 — content-svc contract tests: no `id` assertion on PathwayDTO output (listPathways + getPathwayBySlug)
 
 - Status: open
