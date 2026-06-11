@@ -36,6 +36,19 @@
 
 ## Resolved
 
+### Q-1.1-AUDIT-2 — dark mode / global theme scope for v1.1 family-beta
+
+- Date raised: 2026-06-11 (v1.1 in-scope E2E gate close — audit observation)
+- Asked of: product owner / self
+- Source: audit observation — an ephemeral "dark spec" surfaced during the gate audit
+- Question: Is a global light/dark theme in scope for v1.1 / family-beta, and should a dark-mode VRT (visual-regression) spec be added now?
+- Why ambiguous: a "dark spec" was seen during the audit, implying dark-mode coverage might be expected. In reality no runtime theme mechanism exists in the app — no root `data-theme` setter, no `[data-theme=dark]` design-token block, no toggle, no persistence.
+- Blocking? no
+- Assumed answer (if proceeding): out of scope
+- Code affected: none
+- Status: resolved
+- Resolution: **OUT of v1.1/family-beta scope (2026-06-11).** No runtime theme mechanism exists; global light/dark theme is deferred post-beta. A real implementation — root `data-theme` setter + `[data-theme=dark]` design-token block + UI toggle + persistence — is required BEFORE any dark-mode VRT spec is meaningful (a VRT spec without the mechanism would assert against a non-existent state). The "dark spec" observed during the audit was ephemeral MCP scaffolding, not a tracked file in the repo — no cleanup needed.
+
 ### Q-1.1-POLISH-B1 — jsdom + @testing-library/react in @mm/web for render tests
 
 - Date raised: 2026-05-23 (Cluster B consumer wiring)

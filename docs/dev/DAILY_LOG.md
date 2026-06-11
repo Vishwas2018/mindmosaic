@@ -2,6 +2,48 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1 in-scope E2E gate — CLOSED (Option-A thin merge) — 2026-06-11
+
+**Planned:** Close the v1.1 in-scope family-beta E2E gate; resolve the ISSUE-0043 concurrent-submit residual; strip diagnostic instrumentation; docs ritual.
+
+**Actually delivered:**
+
+- In-scope family-beta E2E green: **16 passed / 4 skipped / 0 failed**. Closing six-commit cascade: cc47394 (CORS scoping) → 8226574 (slug→UUID + `CreateSessionRequest` contract) → be49c91 (Next 14 sync params + dead-mock removal) → 66ad67b (ISO 8601 datetime offsets across DTO/engine contracts) → a66df58 (practice/results spec alignment) → 350ab43 (skip out-of-scope deferred specs, ISSUE-0085/0086/0087 + ISSUE-0088 filed).
+- ISSUE-0043 hardened: submit terminal UPDATE made a DB-level compare-and-swap (`.eq('status','active')`) closing the concurrent-submit TOCTOU residual. Commit ad21e03.
+- R-DIAG-5 diagnostic instrumentation removed (MmClient fetch/parse logging + exam/practice spec page-state dumps); zero refs repo-wide. Commit b782754.
+- Docs ritual (this entry): OPEN_ISSUES ISSUE-0043 CAS + coverage note; QUESTIONS Q-1.1-AUDIT-2 (dark-mode OUT of scope); PROJECT_STATE gate-close + Option-A decision + carry-forward.
+
+**Time spent:** ~3h
+
+**Surprises / departures:**
+
+- ISSUE-0043 was already marked resolved (3a2fca6 added idempotency-key enforcement), but a code-read found a residual TOCTOU on `/submit` when two requests race past the key (or arrive without one). Hardened defensively with the CAS predicate; no migration/schema change.
+- The "dark spec" seen during the audit was ephemeral MCP scaffolding, not a tracked file — recorded in QUESTIONS, no cleanup needed.
+
+**Decisions made (not in stage):**
+
+- Option-A thin-merge gate: in-scope E2E green + canary removal + ISSUE-0043 disposition + ritual; Cluster B / mocked-supabase sweep / legal / Stripe / content activation are post-merge.
+- Q-1.1-AUDIT-2: global light/dark theme OUT of v1.1/family-beta scope; deferred post-beta.
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0085 / 0086 / 0087 (out-of-scope E2E skips) + ISSUE-0088 (billing-svc 500) — filed/confirmed deferred.
+- ISSUE-0043 — CAS hardening appended (ad21e03); coverage note recorded.
+- Q-1.1-AUDIT-2 — raised + resolved (dark-mode scope).
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (in-scope E2E 16/4/0; @mm/sdk 81/81; @mm/assessment-svc 50/50) · Build ❌ (ISSUE-0067 local TLS, unchanged) · RLS ✅
+
+**Tomorrow — first thing:**
+Begin post-merge backlog: mocked-supabase/contract sweep (start with the datetime-offset class) or Cluster B per operator priority.
+
+---
+
 ## v1.1 E2E gate — pgTAP unlock + ISSUE-0074 fix + E2E batch G2+G3 — 2026-06-04
 
 **Planned (from 2026-06-03 note):** pgTAP fixtures for migrations 0021+; ISSUE-0074 (401 on session create); E2E colour-contrast + timeout hardening.

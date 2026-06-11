@@ -914,6 +914,10 @@ Decision between (A) and (B) deferred to implementation. Value increases with co
 
 **Fix.** Add `Idempotency-Key` header extraction and idempotency-window check (matching the content-svc pattern) to both endpoints. Address before launch — high replay risk in mobile/flaky-network scenarios.
 
+**Concurrent-submit CAS hardening (2026-06-11, commit ad21e03).** The idempotency-key enforcement (3a2fca6) dedupes replays that carry a key, but the `/submit` terminal UPDATE keyed on `id` alone (read-then-update), leaving a TOCTOU window: two submits racing past the key could both pass the `status==='active'` read guard and both write a terminal row + `outbox_event`, double-triggering the pipeline. Hardened by making the terminal transition a DB-level compare-and-swap — added `.eq('status','active')` to the `session_record` terminal UPDATE in `assessment-svc/handlers.ts` so the race loser matches zero rows and returns the same 409 `SESSION_CONFLICT` as the sequential-duplicate guard, *before* the outbox insert. No duplicate `session.submitted` regardless of idempotency-key presence; double-close now impossible. A null driver result is treated as success (no regression).
+
+**Coverage.** Concurrent-submit CAS branch (handlers.ts terminal UPDATE `.eq('status','active')`) covered by reasoning + the E2E submit→results path; no dedicated unit test (mock harness cannot simulate concurrent submits).
+
 ---
 
 ### ISSUE-0041 — N+1 query patterns in assignments-svc

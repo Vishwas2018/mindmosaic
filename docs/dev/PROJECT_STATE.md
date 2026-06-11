@@ -5,8 +5,8 @@
 
 ## Position
 
-- Last completed stage: v1.1 Polish — Clusters A–G (2026-05-24)
-- Next stage: v1.1 preview/E2E gate (H1-UNBLOCK first — see ISSUE-0075)
+- Last completed stage: v1.1 in-scope E2E gate — **CLOSED 2026-06-11** (16 passed / 4 skipped / 0 failed; Option-A thin merge gate met — see Notes)
+- Next stage: post-merge backlog — Cluster B / Q-1.1-POLISH-B1, mocked-supabase/contract sweep, legal re-review (DEV-20260520-1), content activation, Stripe live keys (see Notes)
 - v1 build window: **CLOSED** — 49/49 stages (Days 1–65 of 75; 10 days banked unused)
 - Active branch: `v1.1/exam-content` — 72 commits ahead of origin/main (9376d98 v1.0.0) — recount 2026-06-05 (`git rev-list --count HEAD ^origin/main`):
   a7a43d0 v1.1-S1 prep · e76dbfc v1.1-S1 impl · c4c868e v1.1-S1 chore · 3c1afe0 v1.1-S2 prep · 0bdd43b v1.1-S2 impl · f72a7a8 v1.1-S2 chore · ac36e80 ISSUE-0037 remediation · 560e2d2 v1.1-S3 prep · 96b19b5 v1.1-S3 impl · ca9c670 v1.1-S3 chore · 2faeb65 v1.1-S4 prep · b8b8290 v1.1-S4 impl · 5c9692f v1.1-S4 chore · 7b63e2a v1.1-S5 prep · 18aac21 v1.1-S5 impl · efb27e7 v1.1-S5 chore · dc851cf audit+ADR-0040 · b3eb668 ISSUE-0042 fix · 27ded4d ISSUE-0042 docs close · 3340c93 v1.1-S6 prep · 28e85e2 v1.1-S6 impl · 8c86690 v1.1-S6 chore · 4453ddc S7-prep step 1a · bd3a310 S7-prep step 1b feat · 5dd8f4e S7-prep step 1b chore · a5140e0 S7-prep step 1c feat · (S7-prep step 1c chore) · 5144b9a Cluster A · 9705579 Cluster B · 3a2fca6 Cluster C · 4353d78 Cluster D · 5e158f8 Cluster E · e525d2a Cluster F · 57c3b95 Cluster G · 8e83552 polish chore · 62d16b1 framework_config.config · 6a4dc83 pgTAP unlock · dd33739 ISSUE-0074 fix-1 · 7629b5c ISSUE-0074 fix-2 · d3d76cd G2+G3 E2E · (this chore)
@@ -34,7 +34,7 @@
 | pgTAP            | ✅ green      | 468/468 (migrations 0001–0027; 0021–0027 unlocked 2026-06-04, +17 from 0021 fixture unlock)                                      | 2026-06-04 |
 | Contract         | ✅ green      | included in 946 Vitest total                                                                                                       | 2026-06-05 |
 | E2E (Vitest)     | ✅ green      | 1/1 (assignments-svc lifecycle)                                                                                                    | 2026-05-23 |
-| E2E (Playwright) | ⚠ opt-in     | 13 specs / 20 tests (gated; ISSUE-0035, ISSUE-0038); 17/19 blocked by ISSUE-0075 (BOOT_ERROR)                                    | n/a        |
+| E2E (Playwright) | ✅ green      | in-scope family-beta: 16 passed / 4 skipped / 0 failed; out-of-scope specs `test.skip`'d w/ ISSUE-0085–0088 refs                  | 2026-06-11 |
 | RLS              | ✅ green      | 468/468 (53 tables + _default partitions; pgTAP 0001–0027 covers all incl. 0025 deny-all)                                        | 2026-06-04 |
 | Replay           | ✅ green      | 58/58 assertions + 100 billing-svc replay assertions (2-pass 50-event)                                                            | 2026-06-01 |
 | axe-core         | ✅ green      | 31 Vitest files / 75 assertions (Stage 48 sweep); S4+S5 added 2 Playwright axe-core specs / 4 guarded tests pending ISSUE-0038   | 2026-06-07 |
@@ -90,6 +90,18 @@ Full table: `docs/dev/perf/measurements.md`.
 - Deviations logged: **24 total (9 resolved, 15 open)** — unchanged
 
 ## Notes for next session
+
+**v1.1 in-scope E2E gate — CLOSED 2026-06-11.** Family-beta in-scope Playwright set green: **16 passed / 4 skipped / 0 failed**. The 4 skips are out-of-scope deferred surfaces, each `test.skip`'d with an ISSUE ref: assignment publish (ISSUE-0085), student-assignments empty Assigned-tab copy (ISSUE-0086), teacher-student-detail not-found (ISSUE-0087, incl. a strict-mode locator one-liner for un-skip), plus the pre-existing teacher-student-detail page-structure skip; billing-svc `/billing/subscription` 500 filed as ISSUE-0088 (deferred billing surface, background failures only). ISSUE-0075 remains a **local-only** DX blocker (Norton SSL) — not the merge gate, which ran via the CI/deployed path.
+
+**Closed E2E cascade — six-commit arc** (in order): `cc47394` (CORS scoping) → `8226574` (slug→UUID + `CreateSessionRequest` contract) → `be49c91` (Next 14 sync params + dead-mock removal) → `66ad67b` (ISO 8601 datetime offsets across DTO/engine contracts) → `a66df58` (practice/results spec alignment) → `350ab43` (skip out-of-scope deferred specs). Plus `ad21e03` (submit terminal CAS, ISSUE-0043 concurrent-submit residual) and `b782754` (R-DIAG-5 instrumentation removal — zero refs repo-wide).
+
+**Option-A thin-merge decision (2026-06-11).** Merge gate = in-scope E2E green + R-DIAG-5 canary removal + ISSUE-0043 disposition (resolved + CAS-hardened) + this docs ritual. Explicitly **post-merge**, not gating: Cluster B / Q-1.1-POLISH-B1, the mocked-supabase/contract sweep, legal re-review, Stripe live-key wiring, content activation.
+
+**Carry-forward (still open post-merge):**
+- **Mocked-supabase / contract sweep** — handler contract tests use hand-crafted mock rows that bypass DB column + wire-shape validation; the ISO-8601 datetime-offset class fixed in `66ad67b` is a concrete instance of the same masking pattern (cf. ADR-0044 `framework_config.config` and the pgTAP-side ISSUE-0078). Sweep `.from('<table>').select(...)` / DTO datetime fields against real shapes.
+- **Legal re-review (DEV-20260520-1)** — `review→active` content promotion blocked until sign-off.
+- **Content activation** — 8 draft items (`au_numeracy_y5_format`, batch-01) gated behind the legal sign-off above.
+- **Stripe live keys** — billing surface (Stages 42–47) not wired in family-beta; see ISSUE-0088.
 
 **ISSUE-0075 (critical) — H1 E2E gate local-blocked by Norton SSL.** Confirmed local-only blocker on this dev machine. Norton Web/Mail Shield SSL/TLS inspection issues a non-Mozilla CA cert for `esm.sh`; edge-runtime v1.73.13 uses compiled-in `webpki-roots` and rejects it. All vendor bypass attempts failed (ROUND H2). Vendor partial (deno.json + vendor/ + deno.lock) discarded in ROUND I-CLEANUP 2026-06-05.
 - **Local unblock:** Norton Docker Desktop exclusion (Norton GUI → Firewall → Application exception for Docker Desktop). After exclusion: `docker restart supabase_edge_runtime_mindmosaic` and re-run H1.
