@@ -645,9 +645,15 @@ export async function submitSession(
   const final = terminateForConfig(state, 'user_submitted', fc.config, eff.ms);
   const submittedAt = eff.now();
 
-  // Update session_record terminal columns. version not bumped here per
-  // ADR-C3 — terminal transitions don't conflict with concurrent responses
-  // (the RPC requires status='active', which this UPDATE invalidates).
+  // Update session_record terminal columns via compare-and-swap. The
+  // `.eq('status','active')` predicate makes the active→submitted transition
+  // atomic at the DB level. version is not bumped here per ADR-C3 — terminal
+  // transitions don't conflict with concurrent responses (the response RPC
+  // also requires status='active', which this UPDATE invalidates). The status
+  // guard additionally closes the concurrent-*submit* race (ISSUE-0043
+  // residual): only one submit can flip the row, so only that winner reaches
+  // the outbox_event insert below — a duplicate/racing submit matches 0 rows
+  // and returns 409 SESSION_CONFLICT without emitting a second event.
   const upd = await client
     .from('session_record')
     .update({
@@ -662,8 +668,20 @@ export async function submitSession(
       skills_touched: final.score.skills_touched,
       pipeline_status: 'pending',
     })
-    .eq('id', sessionId);
+    .eq('id', sessionId)
+    .eq('status', 'active')
+    .select('id');
   if (upd.error !== null) return err(500, 'INTERNAL_ERROR', upd.error.message);
+  // Zero rows affected → the session was already terminal when the CAS ran
+  // (another submit won the race). Return the same clean 409 the sequential
+  // duplicate-submit guard returns above; do NOT fall through to the outbox
+  // insert. (A null `data` — e.g. a driver that doesn't echo rows — is treated
+  // as success, preserving the prior unconditional behaviour.)
+  if (Array.isArray(upd.data) && upd.data.length === 0) {
+    return err(409, 'SESSION_CONFLICT', 'Session is not active (current: submitted)', {
+      current_state: 'submitted',
+    });
+  }
 
   // Q-19.2: write outbox_event regardless of whether the inline sync call
   // below succeeds — outbox is the audit trail + the Stage 28 worker retry
