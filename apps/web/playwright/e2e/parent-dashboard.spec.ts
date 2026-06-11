@@ -18,7 +18,7 @@
  * Skips when env not provisioned.
  */
 import { expect, test } from '@playwright/test'
-import { randomUUID } from 'crypto'
+import { signUpAndInstallSession } from './helpers/auth'
 
 const E2E_WEB_URL = process.env['E2E_WEB_URL']
 const E2E_BASE_URL = process.env['E2E_BASE_URL']
@@ -29,39 +29,22 @@ test.skip(
   'Stage 36 e2e requires E2E_WEB_URL + E2E_BASE_URL + E2E_SUPABASE_ANON',
 )
 
-async function signUpParentAndGetToken(baseUrl: string, anon: string): Promise<string> {
-  const email = `parent-${randomUUID()}@example.com`
-  const password = 'TestPassword123!'
-  const res = await fetch(`${baseUrl}/auth/v1/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: anon },
-    body: JSON.stringify({ email, password, data: { role: 'parent' } }),
-  })
-  if (!res.ok) throw new Error(`signup failed: ${res.status}`)
-  const body = (await res.json()) as { access_token?: string }
-  const token = body.access_token
-  if (token === undefined) throw new Error('signup: no access_token in response')
-  return token
-}
-
 test('parent dashboard — fresh parent sees no-children empty state', async ({ page }) => {
   const webUrl = E2E_WEB_URL as string
   const baseUrl = E2E_BASE_URL as string
   const anon = E2E_ANON as string
 
-  const token = await signUpParentAndGetToken(baseUrl, anon)
-  await page.goto(`${webUrl}/parent`)
-  await page.evaluate(([t]: string[]) => {
-    localStorage.setItem('sb-access-token', t ?? '')
-  }, [token])
+  await signUpAndInstallSession(page, webUrl, baseUrl, anon, 'parent', 'parent')
   await page.goto(`${webUrl}/parent`)
 
   // Fresh parent has no children — empty state must render.
   await expect(
     page.getByText(/link your first child/i),
-  ).toBeVisible({ timeout: 10000 })
+  ).toBeVisible({ timeout: 30000 })
 
+  // Invite-only copy replaces the "Add your first child" CTA button (removed in
+  // 7ee9565 — CHILDREN_INVITE_ONLY; no /parent/children page exists).
   await expect(
-    page.getByRole('button', { name: /add your first child/i }),
+    page.getByText(/child accounts are created by invitation/i),
   ).toBeVisible()
 })

@@ -44,6 +44,7 @@ import {
 } from '@mm/types';
 import { ItemDTOSchema, type ItemDTO } from '@mm/types';
 import { MasteryBandSchema, type MasteryBand } from '@mm/types';
+import { PracticeExamComposerParamsSchema, SimulationParamsSchema } from '@mm/types';
 
 // ─── Engine type discriminator ───────────────────────────────────────────────
 // Mirrors DB enum `engine_type` from supabase/migrations/0001_enums_tenancy_auth.sql:62.
@@ -106,7 +107,7 @@ export const SessionContextSchema = z.object({
   engine_type: EngineTypeSchema,
   total_items: z.number().int().nullable(),
   time_limit_ms: z.number().int().positive().nullable(),
-  started_at: z.string().datetime(),
+  started_at: z.string().datetime({ offset: true }),
   planned_items: z.array(EngineItemSchema),
   // Stage 16 — required for SkillEngine + DiagnosticEngine; null/empty for Linear.
   target_skills: z.array(SkillIdSchema).default([]),
@@ -205,7 +206,7 @@ export const EngineResponseSchema = z.object({
   // score per Q-17.5.
   is_correct: z.boolean().nullable(),
   response_data: z.record(z.string(), z.unknown()),
-  answered_at: z.string().datetime(),
+  answered_at: z.string().datetime({ offset: true }),
   telemetry: EngineResponseTelemetrySchema.optional(),
 });
 export type EngineResponse = z.infer<typeof EngineResponseSchema>;
@@ -220,9 +221,20 @@ export const LinearEngineStateSchema = z.object({
   current_index: z.number().int().nonnegative(),
   responses: z.array(EngineResponseSchema),
   flagged_item_ids: z.array(ItemIdSchema),
-  started_at: z.string().datetime(),
+  started_at: z.string().datetime({ offset: true }),
   time_limit_ms: z.number().int().positive().nullable(),
   total_items: z.number().int().nonnegative(),
+  // v1.1-S2 (ADR-0036 §Decision 3, Q-1.1-2.5): analytics marker for student-
+  // composed practice exams. Optional so existing sessions remain valid; field
+  // is preserved across respondToSession's parse → RPC re-write round-trip
+  // because it is declared here rather than relying on Zod strip behaviour.
+  composer_params: PracticeExamComposerParamsSchema.optional(),
+  // v1.1-S3 (ADR-0037 §Decision 6, Q-1.1-3.1): analytics + enforcement marker
+  // for simulation-exam administration. Optional; same round-trip-safety
+  // pattern as composer_params. LinearEngine.canNavigateBack consults
+  // simulation_params.no_back_nav; assessment-svc respondToSession consults
+  // simulation_params.hide_feedback_until_submit to gate is_correct exposure.
+  simulation_params: SimulationParamsSchema.optional(),
 });
 export type LinearEngineState = z.infer<typeof LinearEngineStateSchema>;
 
@@ -241,7 +253,7 @@ export const SkillEngineStateSchema = z.object({
   engine_type: z.literal('skill'),
   session_id: SessionIdSchema,
   mode: SessionModeSchema,
-  started_at: z.string().datetime(),
+  started_at: z.string().datetime({ offset: true }),
   time_limit_ms: z.number().int().positive().nullable(),
   target_skills: z.array(SkillIdSchema),
   per_skill_state: z.array(SkillStateEntrySchema),
@@ -275,7 +287,7 @@ export const DiagnosticEngineStateSchema = z.object({
   engine_type: z.literal('diagnostic'),
   session_id: SessionIdSchema,
   mode: SessionModeSchema,
-  started_at: z.string().datetime(),
+  started_at: z.string().datetime({ offset: true }),
   time_limit_ms: z.number().int().positive().nullable(),
   target_skills: z.array(SkillIdSchema),
   per_skill_probe: z.array(DiagnosticProbeSchema),
@@ -300,8 +312,8 @@ export const AdaptiveStageStateSchema = z.object({
   time_limit_ms: z.number().int().positive(),
   // Server-authoritative timer markers. started_at is set when the engine
   // first delivers an item from this stage; ended_at is set on stage close.
-  started_at: z.string().datetime().nullable(),
-  ended_at: z.string().datetime().nullable(),
+  started_at: z.string().datetime({ offset: true }).nullable(),
+  ended_at: z.string().datetime({ offset: true }).nullable(),
 });
 export type AdaptiveStageState = z.infer<typeof AdaptiveStageStateSchema>;
 
@@ -316,7 +328,7 @@ export const AdaptiveEngineStateSchema = z.object({
   engine_type: z.literal('adaptive'),
   session_id: SessionIdSchema,
   mode: SessionModeSchema,
-  started_at: z.string().datetime(),
+  started_at: z.string().datetime({ offset: true }),
   // Top-level session timer (rare for adaptive; per-stage is authoritative).
   time_limit_ms: z.number().int().positive().nullable(),
   // Item pool: every EngineItem the session might deliver (across all testlets).
@@ -364,7 +376,7 @@ export const FinalResultSchema = z.object({
   state: EngineStateSchema,
   score: ScoreResultSchema,
   reason: TerminationReasonSchema,
-  terminated_at: z.string().datetime(),
+  terminated_at: z.string().datetime({ offset: true }),
 });
 export type FinalResult = z.infer<typeof FinalResultSchema>;
 

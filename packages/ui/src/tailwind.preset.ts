@@ -9,14 +9,14 @@ const preset: Partial<Config> = {
       },
       colors: {
         brand:     { 50:'#F5F3FF',100:'#EDE9FE',200:'#DDD6FE',300:'#C4B5FD',400:'#9580E5',500:'#5D3FD3',600:'#4A2BBA',700:'#3A1FA0',800:'#2A1583',900:'#1a1a60' },
-        'brand-orange': { 50:'#FFF4ED',500:'#D35400',700:'#B34700' },
+        'brand-orange': { 50:'#FFF4ED',500:'#C14A00',700:'#B34700' },
         slate:     { 25:'#FDFCFE',50:'#FAF8FF',75:'#F0EDF8',100:'#E9E5F5',150:'#D6D0E8',200:'#D6D0E8',300:'#A8A0C0',400:'#A8A0C0',500:'#7C7399',600:'#3B3566',700:'#3B3566',800:'#1E1B4B',900:'#1E1B4B',950:'#0e1118' },
         correct:   { 50:'#f0fdf4',100:'#dcfce7',200:'#bbf7d0',500:'#22c55e',600:'#16a34a',700:'#15803d' },
         incorrect: { 50:'#fef2f2',100:'#fee2e2',200:'#fecaca',500:'#ef4444',600:'#dc2626',700:'#b91c1c' },
         warn:      { 50:'#fffbeb',100:'#fef3c7',200:'#fde68a',500:'#f59e0b',600:'#d97706',700:'#b45309' },
         accent:    { 300:'#f9a825',400:'#ef8c56',500:'#ef6843' },
         'brand-primary':   '#5D3FD3',
-        'brand-secondary': '#D35400',
+        'brand-secondary': '#C14A00',
         'brand-text-deep': '#1a1a60',
       },
       boxShadow: {

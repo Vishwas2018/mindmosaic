@@ -10,6 +10,14 @@
  * three Edge Functions (auth-svc, content-svc, assessment-svc) running.
  */
 import { defineConfig, devices } from '@playwright/test';
+import { config as loadDotenv } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env.e2e so operators can store live env vars once rather than
+// exporting them manually before every run.
+loadDotenv({ path: resolve(__dirname, '.env.e2e') });
+
+const bypassSecret = process.env['VERCEL_AUTOMATION_BYPASS_SECRET'];
 
 export default defineConfig({
   testDir: './playwright/e2e',
@@ -22,9 +30,13 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: 'list',
+  // globalSetup acquires the Vercel bypass cookie once; storageState loads it
+  // into every context. Cookie domain-scoping prevents it reaching Supabase.
+  globalSetup: bypassSecret ? './playwright/global-setup' : undefined,
   use: {
     baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:3000',
-    trace: 'on-first-retry',
+    storageState: bypassSecret ? './playwright/.bypass-state.json' : undefined,
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [

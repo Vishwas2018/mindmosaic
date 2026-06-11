@@ -25,10 +25,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getTraceId } from '../_shared/trace-id.ts';
 import { jsonOk, jsonError } from '../_shared/error-envelope.ts';
+import { CORS_HEADERS } from '../_shared/cors.ts';
 import { verifyBearer } from '../_shared/auth.ts';
 import { log } from '../_shared/logger.ts';
 import { checkRateLimit } from '../_shared/rate-limit.ts';
 import { withIdempotency } from '../_shared/idempotency.ts';
+import { buildInternalHeaders } from '../_shared/internal-headers.ts';
 import {
   createSession,
   respondToSession,
@@ -86,8 +88,7 @@ const fetchProcessIntelligence: ProcessIntelligenceFetcher = async ({ sessionId,
     const res = await fetch(`${INTELLIGENCE_SVC_URL}/intelligence/process-session/${sessionId}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-mm-service-role': SERVICE_ROLE_KEY,
+        ...buildInternalHeaders(SERVICE_ROLE_KEY),
         'x-mm-trace-id': traceId,
       },
       body: JSON.stringify({}),
@@ -113,10 +114,7 @@ const fetchProcessIntelligence: ProcessIntelligenceFetcher = async ({ sessionId,
 const fetchContentSelect: ContentSelectFetcher = async (input) => {
   const res = await fetch(`${CONTENT_SVC_URL}/content/select`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-mm-service-role': SERVICE_ROLE_KEY,
-    },
+    headers: buildInternalHeaders(SERVICE_ROLE_KEY),
     body: JSON.stringify(input),
   });
   if (!res.ok) {
@@ -174,7 +172,7 @@ Deno.serve(async (req: Request) => {
   const traceId = getTraceId(req);
 
   const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/functions\/v1\/assessment-svc/, '');
+  const path = url.pathname.replace(/^\/(functions\/v1\/)?assessment-svc/, '').replace(/\/$/, '');
   const method = req.method;
 
   let status = 200;
@@ -185,12 +183,7 @@ Deno.serve(async (req: Request) => {
     if (method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: {
-          'X-Trace-Id': traceId,
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers':
-            'Authorization, Content-Type, X-Trace-Id, X-Session-Lock, Idempotency-Key',
-        },
+        headers: { 'X-Trace-Id': traceId, ...CORS_HEADERS },
       });
     }
 
@@ -264,15 +257,40 @@ Deno.serve(async (req: Request) => {
       if (rl !== null) { status = 429; return rl; }
       const bodyText = await req.text();
       const body = JSON.parse(bodyText) as RecordResponseRequest;
-      const result = await respondToSession({
-        client: handlerClient,
-        sessionId,
-        studentId: userId,
-        lockHeader,
-        body,
+      if (idemKey === null) {
+        const result = await respondToSession({
+          client: handlerClient,
+          sessionId,
+          studentId: userId,
+          lockHeader,
+          body,
+        });
+        status = result.status;
+        return settle(traceId, result);
+      }
+      const idem = await withIdempotency({
+        client: db as never,
+        idempotencyKey: idemKey,
+        tenantId,
+        endpoint: `POST /sessions/${sessionId}/respond`,
+        bodyText,
+        handler: async () => {
+          const result = await respondToSession({
+            client: handlerClient,
+            sessionId,
+            studentId: userId!,
+            lockHeader,
+            body,
+          });
+          return { status: result.status, data: result };
+        },
       });
-      status = result.status;
-      return settle(traceId, result);
+      if (!idem.ok) {
+        status = idem.status;
+        return jsonError(idem.code, idem.message, traceId, idem.status);
+      }
+      status = idem.status;
+      return settle(traceId, idem.data as HandlerResult<unknown>);
     }
 
     // POST /sessions/{id}/submit
@@ -281,15 +299,41 @@ Deno.serve(async (req: Request) => {
       const sessionId = submitMatch[1]!;
       const rl = await enforceRateLimit(db, 'sessions.default', userId, traceId);
       if (rl !== null) { status = 429; return rl; }
-      const result = await submitSession({
-        client: handlerClient,
-        sessionId,
-        studentId: userId,
-        traceId,
-        fetchProcessIntelligence,
+      const bodyText = await req.text();
+      if (idemKey === null) {
+        const result = await submitSession({
+          client: handlerClient,
+          sessionId,
+          studentId: userId,
+          traceId,
+          fetchProcessIntelligence,
+        });
+        status = result.status;
+        return settle(traceId, result);
+      }
+      const idem = await withIdempotency({
+        client: db as never,
+        idempotencyKey: idemKey,
+        tenantId,
+        endpoint: `POST /sessions/${sessionId}/submit`,
+        bodyText,
+        handler: async () => {
+          const result = await submitSession({
+            client: handlerClient,
+            sessionId,
+            studentId: userId!,
+            traceId,
+            fetchProcessIntelligence,
+          });
+          return { status: result.status, data: result };
+        },
       });
-      status = result.status;
-      return settle(traceId, result);
+      if (!idem.ok) {
+        status = idem.status;
+        return jsonError(idem.code, idem.message, traceId, idem.status);
+      }
+      status = idem.status;
+      return settle(traceId, idem.data as HandlerResult<unknown>);
     }
 
     // POST /sessions/{id}/checkpoint

@@ -17,6 +17,8 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
+  LoadingState,
   Table,
   TableHead,
   TableBody,
@@ -244,15 +246,14 @@ export default function BillingPage() {
       {/* Plan cards */}
       {catalogQuery.isPending ? (
         <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              role="status"
-              aria-label="Loading plan"
-              className="rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse h-80"
-            />
-          ))}
+          {[1, 2, 3].map((i) => <LoadingState key={i} variant="card" />)}
         </div>
+      ) : catalogQuery.isError ? (
+        <ErrorState
+          title="Failed to load plans"
+          onRetry={() => void catalogQuery.refetch()}
+          className="max-w-md mx-auto"
+        />
       ) : (
         <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {displayPlans.map((plan) => {
@@ -470,11 +471,7 @@ export default function BillingPage() {
           Current Plan
         </p>
         {subscriptionQuery.isPending ? (
-          <div
-            role="status"
-            aria-label="Loading subscription"
-            className="animate-pulse h-20 rounded bg-[var(--slate-75)]"
-          />
+          <LoadingState variant="card" />
         ) : subscription ? (
           <>
             <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -559,11 +556,7 @@ export default function BillingPage() {
           </Button>
         </div>
         {invoicesQuery.isPending ? (
-          <div role="status" aria-label="Loading invoices" className="animate-pulse space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 rounded bg-[var(--slate-75)]" />
-            ))}
-          </div>
+          <LoadingState variant="row" rows={3} />
         ) : invoicesData && invoicesData.invoices.length > 0 ? (
           <>
             <Table caption="Invoice history">

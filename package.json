@@ -14,6 +14,8 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:rls": "npx supabase db reset --local && npx supabase test db supabase/tests/rls",
+    "test:migrations-schema": "supabase test db supabase/tests/migrations",
+    "test:db": "npx supabase db reset --local && npx supabase test db supabase/tests/rls && npx supabase test db supabase/tests/migrations",
     "test:migration": "bash scripts/migration-roundtrip.sh",
     "test:replay": "tsx scripts/test-scoring.ts",
     "validate:content": "tsx scripts/validate-content.ts",

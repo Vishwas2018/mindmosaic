@@ -10,8 +10,8 @@ export const BehaviourProfileDTOSchema = z.object({
   time_pressure_sensitivity: z.number(),
   session_length_sweet_spot: z.number(),
   data_points: z.number().int(),
-  computed_at: z.string().datetime(),
-  stale_since: z.string().datetime().nullable(),
+  computed_at: z.string().datetime({ offset: true }),
+  stale_since: z.string().datetime({ offset: true }).nullable(),
 });
 export type BehaviourProfileDTO = z.infer<typeof BehaviourProfileDTOSchema>;
 
@@ -32,7 +32,7 @@ export const SkillProgressDTOSchema = z.object({
       severity: z.string(),
     }),
   ),
-  last_practiced_at: z.string().datetime().nullable(),
+  last_practiced_at: z.string().datetime({ offset: true }).nullable(),
   data_points: z.number().int(),
 });
 export type SkillProgressDTO = z.infer<typeof SkillProgressDTOSchema>;
@@ -89,7 +89,7 @@ export const ExplanationDTOSchema = z.object({
   ),
   source_layer: z.string(),
   evidence_ids: z.array(z.string()),
-  generated_at: z.string().datetime(),
+  generated_at: z.string().datetime({ offset: true }),
 });
 export type ExplanationDTO = z.infer<typeof ExplanationDTOSchema>;
 
@@ -117,7 +117,7 @@ export const LearningDNADTOSchema = z.object({
   active_repair_ids: z.array(z.string()),
   pathway_readiness: z.record(z.string(), PathwayReadinessDTOSchema),
   stretch_readiness: z.record(z.string(), z.unknown()),
-  computed_at: z.string().datetime(),
-  stale_since: z.string().datetime().nullable(),
+  computed_at: z.string().datetime({ offset: true }),
+  stale_since: z.string().datetime({ offset: true }).nullable(),
 });
 export type LearningDNADTO = z.infer<typeof LearningDNADTOSchema>;

@@ -1,0 +1,342 @@
+{
+  "manifest_version": "1.0",
+  "items": [
+    {
+      "external_key": "s7.1-batch-01-001",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000004"],
+        "difficulty": 0.10,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "remember",
+        "expected_time_secs": 60
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "What is the value of the digit 4 in the number 3,427?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "options": ["4", "40", "400", "4,000"],
+          "correct_option_id": "400",
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.10,
+        "distractor_rationale": {
+          "A": { "misconception": "digit face value", "description": "Student reports the face value of the digit (4) rather than its positional value (400)" },
+          "B": { "misconception": "one place too low", "description": "Student assigns the digit 4 to the tens position, giving 40 instead of 400" },
+          "D": { "misconception": "one place too high", "description": "Student assigns the digit 4 to the thousands position, giving 4,000 instead of 400" }
+        },
+        "explanation": {
+          "steps": [
+            "Identify the place of each digit: 3 is in the thousands, 4 is in the hundreds, 2 is in the tens, 7 is in the ones",
+            "The digit 4 is in the hundreds position",
+            "Value = 4 × 100 = 400"
+          ],
+          "answer": "400",
+          "tip": "The value of a digit depends on its position in the number, not just the digit itself."
+        }
+      }
+    },
+    {
+      "external_key": "s7.1-batch-01-002",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000007"],
+        "difficulty": 0.30,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "apply",
+        "expected_time_secs": 75
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "A school orders 24 boxes of coloured pencils. Each box contains 12 pencils. How many pencils are there in total?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "options": ["36", "240", "288", "300"],
+          "correct_option_id": "288",
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.30,
+        "distractor_rationale": {
+          "A": { "misconception": "addition instead of multiplication", "description": "Student adds 24 + 12 = 36 rather than multiplying" },
+          "B": { "misconception": "rounding multiplier", "description": "Student computes 24 × 10 = 240, treating 12 as 10 and dropping the ×2 portion" },
+          "D": { "misconception": "estimation substituted for exact calculation", "description": "Student rounds 24 to 25 and computes 25 × 12 = 300 without completing the exact calculation" }
+        },
+        "explanation": {
+          "steps": [
+            "Total pencils = number of boxes × pencils per box",
+            "Total = 24 × 12",
+            "24 × 12 = 24 × 10 + 24 × 2 = 240 + 48 = 288"
+          ],
+          "answer": "288",
+          "tip": "Use the distributive property to split multiplication into smaller, easier steps."
+        }
+      }
+    },
+    {
+      "external_key": "s7.1-batch-01-003",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000004"],
+        "difficulty": 0.30,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "understand",
+        "expected_time_secs": 75
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "Which of these numbers is the greatest?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "options": ["4.29", "4.3", "4.09", "4.193"],
+          "correct_option_id": "4.3",
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.30,
+        "distractor_rationale": {
+          "A": { "misconception": "more decimal digits means larger value", "description": "Student selects 4.29 because it has digits in both tenths and hundredths, assuming more non-zero decimal places means a greater value" },
+          "C": { "misconception": "ignores tenths digit", "description": "Student overlooks the tenths digit and focuses on later digits, treating 4.09 as comparable to 4.3" },
+          "D": { "misconception": "most digits equals largest number", "description": "Student selects 4.193 because it has the greatest count of decimal digits, assuming length implies magnitude" }
+        },
+        "explanation": {
+          "steps": [
+            "Write each number with equal decimal places: 4.290, 4.300, 4.090, 4.193",
+            "Compare the tenths digits: 2, 3, 0, 1",
+            "The tenths digit 3 is the largest, so 4.300 = 4.3 is the greatest"
+          ],
+          "answer": "4.3",
+          "tip": "When comparing decimals, align the decimal points and compare digit by digit from left to right."
+        }
+      }
+    },
+    {
+      "external_key": "s7.1-batch-01-004",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000006"],
+        "difficulty": 0.50,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "apply",
+        "expected_time_secs": 90
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "What is the value of 6 × (15 − 8) + 9?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "options": ["42", "51", "91", "96"],
+          "correct_option_id": "51",
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.50,
+        "distractor_rationale": {
+          "A": { "misconception": "incomplete evaluation", "description": "Student correctly evaluates 6 × (15 − 8) = 6 × 7 = 42 but omits adding the final +9" },
+          "C": { "misconception": "brackets ignored — left to right", "description": "Student ignores brackets and works left to right: 6 × 15 = 90, 90 − 8 = 82, 82 + 9 = 91" },
+          "D": { "misconception": "brackets extended incorrectly", "description": "Student extends the brackets to include +9, computing 6 × (15 − 8 + 9) = 6 × 16 = 96" }
+        },
+        "explanation": {
+          "steps": [
+            "Evaluate inside the brackets first: 15 − 8 = 7",
+            "Multiply: 6 × 7 = 42",
+            "Add the remaining term: 42 + 9 = 51"
+          ],
+          "answer": "51",
+          "tip": "BODMAS: evaluate Brackets before Multiplication, then Addition."
+        }
+      }
+    },
+    {
+      "external_key": "s7.1-batch-01-005",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "short_answer",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000006"],
+        "difficulty": 0.50,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "apply",
+        "expected_time_secs": 75
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "A bag of marbles is shared equally among 7 children. Each child receives 9 marbles. How many marbles were in the bag?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "answer": "63",
+          "answer_type": "integer",
+          "units": null,
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.50,
+        "distractor_rationale": null,
+        "explanation": {
+          "steps": [
+            "Total marbles = number of children × marbles each child receives",
+            "Total = 7 × 9 = 63"
+          ],
+          "answer": "63",
+          "tip": "When equal groups are formed, multiply the number of groups by the group size to find the total."
+        }
+      }
+    },
+    {
+      "external_key": "s7.1-batch-01-006",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000005"],
+        "difficulty": 0.70,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "apply",
+        "expected_time_secs": 120
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "A recipe needs 3/4 cup of sugar. Maya wants to make 2 and a half times the recipe. How much sugar does she need?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "options": ["1 and 1/2 cups", "1 and 7/8 cups", "2 and 1/4 cups", "3 and 3/4 cups"],
+          "correct_option_id": "1 and 7/8 cups",
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.70,
+        "distractor_rationale": {
+          "A": { "misconception": "truncated multiplier", "description": "Student treats 'two and a half times' as 'twice': 3/4 × 2 = 3/2 = 1 1/2, ignoring the extra half" },
+          "C": { "misconception": "multiplier rounded up to 3", "description": "Student uses 3 instead of 2 1/2: 3/4 × 3 = 9/4 = 2 1/4" },
+          "D": { "misconception": "multiplies numerator only", "description": "Student multiplies only the numerator by 5 (from 5/2), keeping the denominator: (3 × 5)/4 = 15/4 = 3 3/4" }
+        },
+        "explanation": {
+          "steps": [
+            "Convert 2 and a half to an improper fraction: 2 1/2 = 5/2",
+            "Multiply: 3/4 × 5/2 = (3 × 5) ÷ (4 × 2) = 15/8",
+            "Convert to a mixed number: 15 ÷ 8 = 1 remainder 7, so 15/8 = 1 and 7/8 cups"
+          ],
+          "answer": "1 and 7/8 cups",
+          "tip": "Convert mixed numbers to improper fractions before multiplying."
+        }
+      }
+    },
+    {
+      "external_key": "s7.1-batch-01-007",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000007"],
+        "difficulty": 0.70,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "apply",
+        "expected_time_secs": 90
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "A market stall charges $6 for small bags of cherries and $9 for large bags. Sandra buys 4 small bags and 3 large bags. How much does Sandra pay in total?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "options": ["$39", "$47", "$51", "$54"],
+          "correct_option_id": "$51",
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.70,
+        "distractor_rationale": {
+          "A": { "misconception": "wrong price for large bags", "description": "Student uses $5 for large bags instead of $9: 4 × 6 + 3 × 5 = 24 + 15 = 39" },
+          "B": { "misconception": "multiplication error on large bags", "description": "Student computes 3 × 9 as 23 (digit transposition): 24 + 23 = 47" },
+          "D": { "misconception": "bag prices swapped", "description": "Student applies the large-bag price to small bags and vice versa: 4 × 9 + 3 × 6 = 36 + 18 = 54" }
+        },
+        "explanation": {
+          "steps": [
+            "Cost of small bags: 4 × $6 = $24",
+            "Cost of large bags: 3 × $9 = $27",
+            "Total: $24 + $27 = $51"
+          ],
+          "answer": "$51",
+          "tip": "Calculate the cost of each item type separately, then add the totals together."
+        }
+      }
+    },
+    {
+      "external_key": "s7.1-batch-01-008",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "short_answer",
+        "skill_ids": ["a0000001-0000-0000-0000-000000000007"],
+        "difficulty": 0.90,
+        "year_levels": [5],
+        "exam_families": ["au_numeracy_y5_format"],
+        "curricula": ["ac_v9"],
+        "countries": ["AU"],
+        "bloom_level": "analyse",
+        "expected_time_secs": 120
+      },
+      "version": {
+        "stem": {
+          "type": "text",
+          "content": "A school library has 1,260 books. Three-sevenths of the books are fiction. One-quarter of the fiction books are picture books. How many picture books are in the library?",
+          "format": "plaintext"
+        },
+        "response_config": {
+          "answer": "135",
+          "answer_type": "integer",
+          "units": null,
+          "scoring": { "correct": 1, "incorrect": 0 }
+        },
+        "difficulty": 0.90,
+        "distractor_rationale": null,
+        "explanation": {
+          "steps": [
+            "Find the number of fiction books: 3/7 × 1,260 = 3 × 180 = 540",
+            "Find one-quarter of the fiction books: 1/4 × 540 = 135",
+            "There are 135 picture books in the library"
+          ],
+          "answer": "135",
+          "tip": "Work through multi-step problems one calculation at a time."
+        }
+      }
+    }
+  ]
+}

@@ -6,10 +6,10 @@ export default meta;
 type Story = StoryObj<typeof Select>;
 
 const options = [
-  { value: 'naplan', label: 'NAPLAN Y5 Numeracy' },
-  { value: 'icas', label: 'ICAS Math Paper C' },
+  { value: 'au_numeracy_y5_format', label: 'Numeracy Y5' },
+  { value: 'au_math_paper_c_format', label: 'Math Paper C' },
 ];
 
 export const Default: Story = { args: { label: 'Assessment', options, placeholder: 'Select assessment…' } };
-export const WithValue: Story = { args: { label: 'Assessment', options, value: 'naplan' } };
+export const WithValue: Story = { args: { label: 'Assessment', options, value: 'au_numeracy_y5_format' } };
 export const WithError: Story = { args: { label: 'Assessment', options, error: 'Please select an assessment.' } };

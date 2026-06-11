@@ -52,6 +52,7 @@ export function useStudentAssignments(studentId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.assignments.forStudent(studentId),
+    staleTime: 30_000,
     queryFn: () =>
       client
         .get(
@@ -69,6 +70,7 @@ export function useAssignmentsForClass(classId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.assignments.forClass(classId),
+    staleTime: 30_000,
     queryFn: () =>
       client
         .get(
@@ -87,6 +89,7 @@ export function useAssignment(id: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.assignments.byId(id),
+    staleTime: 120_000,
     queryFn: () =>
       client
         .get(`/assignments-svc/assignments/${encodeURIComponent(id)}`, AssignmentDTOSchema)
@@ -100,6 +103,7 @@ export function useAssignmentTracking(id: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.assignments.tracking(id),
+    staleTime: 30_000,
     queryFn: () =>
       client
         .get(

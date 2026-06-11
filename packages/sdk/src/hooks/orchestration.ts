@@ -20,6 +20,7 @@ export function useLearningPlan(studentId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.orchestration.learningPlan(studentId),
+    staleTime: 120_000,
     queryFn: () =>
       client
         .get(

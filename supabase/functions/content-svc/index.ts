@@ -11,14 +11,18 @@
  *   GET  /assessment-profiles?exam_family=&year_level=
  *   GET  /content/items/{id}
  *   POST /content/select                     [service-role only]
+ *   POST /content/import                     [platform_admin OR service-role; dual-gate]
  *   GET  /content/search?q=&...              [admin only]
  *   GET  /skill-graphs/active
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { ImportManifestSchema } from '@mm/types';
 import { getTraceId } from '../_shared/trace-id.ts';
 import { jsonOk, jsonError } from '../_shared/error-envelope.ts';
+import { CORS_HEADERS } from '../_shared/cors.ts';
 import { verifyBearer } from '../_shared/auth.ts';
 import { log } from '../_shared/logger.ts';
+import { withIdempotency, type IdempotencyDbClient } from '../_shared/idempotency.ts';
 import {
   createDbLoader,
   type DbClient as CacheDbClient,
@@ -31,8 +35,26 @@ import {
   selectItems,
   searchContent,
   getActiveSkillGraph,
+  createItem,
+  updateItem,
+  createItemVersion,
+  transitionItemLifecycle,
+  listItemVersions,
+  createStimulus,
+  updateStimulus,
+  importItems,
+  type ImportResult,
   type DbClient as HandlerDbClient,
   type ContentSelectRequest,
+  type ItemAdminDTO,
+  type ItemVersionDTO,
+  type StimulusAdminDTO,
+  type ItemCreateBody,
+  type ItemUpdateBody,
+  type ItemVersionCreateBody,
+  type ItemLifecycleBody,
+  type StimulusCreateBody,
+  type StimulusUpdateBody,
 } from './handlers.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
@@ -72,7 +94,7 @@ Deno.serve(async (req: Request) => {
   const traceId = getTraceId(req);
 
   const url = new URL(req.url);
-  const path = url.pathname.replace(/^\/functions\/v1\/content-svc/, '');
+  const path = url.pathname.replace(/^\/(functions\/v1\/)?content-svc/, '');
   const method = req.method;
 
   let status = 200;
@@ -83,11 +105,7 @@ Deno.serve(async (req: Request) => {
     if (method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: {
-          'X-Trace-Id': traceId,
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Authorization, Content-Type, X-Trace-Id, Idempotency-Key',
-        },
+        headers: { 'X-Trace-Id': traceId, ...CORS_HEADERS },
       });
     }
 
@@ -111,6 +129,75 @@ Deno.serve(async (req: Request) => {
       return jsonOk(result.data, traceId);
     }
 
+    // ── Dual-auth gate for /content/import (platform_admin Bearer OR service-role) ─
+    if (method === 'POST' && path === '/content/import') {
+      let importCallerId = 'service-role';
+      let importIdempScope = '_service_';
+      const serviceToken = req.headers.get(SERVICE_HEADER);
+      const isServiceRole = serviceToken !== null && serviceToken === SERVICE_ROLE_KEY;
+      if (!isServiceRole) {
+        const importAuth = await verifyBearer(req, db);
+        if (!importAuth) {
+          status = 401;
+          return jsonError('UNAUTHENTICATED', 'Valid Bearer token required', traceId, 401);
+        }
+        const importRole = await callerRole(db, importAuth.user.id);
+        if (importRole !== 'platform_admin') {
+          status = 403;
+          return jsonError('FORBIDDEN', 'platform_admin or service-role required', traceId, 403);
+        }
+        userId = importAuth.user.id;
+        tenantId = (await callerTenantId(db, userId)) ?? undefined;
+        importCallerId = userId;
+        importIdempScope = tenantId ?? userId;
+      }
+
+      const rawBody = await req.text();
+      const bodyJson = JSON.parse(rawBody) as unknown;
+      const parsed = ImportManifestSchema.safeParse(bodyJson);
+      if (!parsed.success) {
+        const first = parsed.error.issues[0]!;
+        status = 422;
+        return jsonError('VALIDATION_ERROR', `${first.path.join('.')}: ${first.message}`, traceId, 422);
+      }
+
+      const dryRun = url.searchParams.get('dry_run') === 'true';
+
+      if (dryRun) {
+        const result = await importItems(handlerClient, parsed.data, true, importCallerId);
+        if (!result.ok) { status = result.status; return jsonError(result.code, result.message, traceId, result.status); }
+        const s = result.data.rejected === 0 ? 200 : result.data.rejected < result.data.total ? 207 : 422;
+        status = s;
+        return jsonOk(result.data, traceId, s);
+      }
+
+      const idempKey = req.headers.get('Idempotency-Key') ?? '';
+      if (idempKey.length === 0) {
+        status = 422;
+        return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422);
+      }
+
+      type OutImport = { ok: true; data: ImportResult } | { ok: false; httpStatus: number; code: string; message: string };
+      const iResult = await withIdempotency<OutImport>({
+        client: db as unknown as IdempotencyDbClient,
+        idempotencyKey: idempKey,
+        tenantId: importIdempScope,
+        endpoint: 'POST /content/import',
+        bodyText: rawBody,
+        handler: async () => {
+          const result = await importItems(handlerClient, parsed.data, false, importCallerId);
+          if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+          const s = result.data.rejected === 0 ? 200 : result.data.rejected < result.data.total ? 207 : 422;
+          return { status: s, data: { ok: true as const, data: result.data } };
+        },
+      });
+      if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+      const outcome = iResult.data;
+      if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+      status = iResult.status;
+      return jsonOk(outcome.data, traceId, status);
+    }
+
     // ── Bearer auth for everything else ──────────────────────────────────────
     const auth = await verifyBearer(req, db);
     if (!auth) {
@@ -119,6 +206,204 @@ Deno.serve(async (req: Request) => {
     }
     userId = auth.user.id;
     tenantId = (await callerTenantId(db, userId)) ?? undefined;
+    // Q-1.1-1.8: platform_admin may have no tenant; fall back to userId for idempotency scope
+    const idempTenantId = tenantId ?? userId;
+
+    // ── Content authoring (platform_admin only) ────────────────────────────────
+    // Routes: POST /content/items; PATCH /content/items/{id}; GET|POST /content/items/{id}/versions;
+    //         PATCH /content/items/{id}/lifecycle; POST /content/stimuli; PATCH /content/stimuli/{id}
+    const itemsWriteMatch = path.match(/^\/content\/items\/([^/]+)$/);
+    const versionsMatch   = path.match(/^\/content\/items\/([^/]+)\/versions$/);
+    const lifecycleMatch  = path.match(/^\/content\/items\/([^/]+)\/lifecycle$/);
+    const stimuliMatch    = path.match(/^\/content\/stimuli\/([^/]+)$/);
+
+    const isAdminWriteRoute =
+      (method === 'POST'  && path === '/content/items') ||
+      (method === 'PATCH' && itemsWriteMatch !== null)  ||
+      (method === 'POST'  && versionsMatch   !== null)  ||
+      (method === 'GET'   && versionsMatch   !== null)  ||
+      (method === 'PATCH' && lifecycleMatch  !== null)  ||
+      (method === 'POST'  && path === '/content/stimuli') ||
+      (method === 'PATCH' && stimuliMatch    !== null);
+
+    if (isAdminWriteRoute) {
+      const role = await callerRole(db, userId);
+      if (role !== 'platform_admin') {
+        status = 403;
+        return jsonError('FORBIDDEN', 'platform_admin role required', traceId, 403);
+      }
+
+      // POST /content/items
+      if (method === 'POST' && path === '/content/items') {
+        const idempKey = req.headers.get('Idempotency-Key') ?? '';
+        if (idempKey.length === 0) {
+          status = 422;
+          return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422);
+        }
+        const rawBody = await req.text();
+        const body = JSON.parse(rawBody) as ItemCreateBody;
+        type OutCreateItem = { ok: true; data: ItemAdminDTO } | { ok: false; httpStatus: number; code: string; message: string };
+        const iResult = await withIdempotency<OutCreateItem>({
+          client: db as unknown as IdempotencyDbClient,
+          idempotencyKey: idempKey,
+          tenantId: idempTenantId,
+          endpoint: 'POST /content/items',
+          bodyText: rawBody,
+          handler: async () => {
+            const result = await createItem(handlerClient, body);
+            if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+            return { status: 201, data: { ok: true as const, data: result.data } };
+          },
+        });
+        if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+        const outcome = iResult.data;
+        if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+        status = iResult.fromCache ? 200 : 201;
+        return jsonOk(outcome.data, traceId, status);
+      }
+
+      // PATCH /content/items/{id}
+      if (method === 'PATCH' && itemsWriteMatch !== null) {
+        const itemId = itemsWriteMatch[1]!;
+        const idempKey = req.headers.get('Idempotency-Key') ?? '';
+        if (idempKey.length === 0) { status = 422; return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422); }
+        const rawBody = await req.text();
+        const body = JSON.parse(rawBody) as ItemUpdateBody;
+        type OutUpdateItem = { ok: true; data: ItemAdminDTO } | { ok: false; httpStatus: number; code: string; message: string };
+        const iResult = await withIdempotency<OutUpdateItem>({
+          client: db as unknown as IdempotencyDbClient,
+          idempotencyKey: idempKey,
+          tenantId: idempTenantId,
+          endpoint: `PATCH /content/items/${itemId}`,
+          bodyText: rawBody,
+          handler: async () => {
+            const result = await updateItem(handlerClient, itemId, body);
+            if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+            return { status: 200, data: { ok: true as const, data: result.data } };
+          },
+        });
+        if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+        const outcome = iResult.data;
+        if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+        status = iResult.status;
+        return jsonOk(outcome.data, traceId, status);
+      }
+
+      // GET /content/items/{id}/versions
+      if (method === 'GET' && versionsMatch !== null) {
+        const itemId = versionsMatch[1]!;
+        const result = await listItemVersions(handlerClient, itemId);
+        if (!result.ok) { status = result.status; return jsonError(result.code, result.message, traceId, result.status); }
+        return jsonOk(result.data, traceId);
+      }
+
+      // POST /content/items/{id}/versions
+      if (method === 'POST' && versionsMatch !== null) {
+        const itemId = versionsMatch[1]!;
+        const idempKey = req.headers.get('Idempotency-Key') ?? '';
+        if (idempKey.length === 0) { status = 422; return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422); }
+        const rawBody = await req.text();
+        const body = JSON.parse(rawBody) as ItemVersionCreateBody;
+        type OutCreateVersion = { ok: true; data: ItemVersionDTO } | { ok: false; httpStatus: number; code: string; message: string };
+        const iResult = await withIdempotency<OutCreateVersion>({
+          client: db as unknown as IdempotencyDbClient,
+          idempotencyKey: idempKey,
+          tenantId: idempTenantId,
+          endpoint: `POST /content/items/${itemId}/versions`,
+          bodyText: rawBody,
+          handler: async () => {
+            const result = await createItemVersion(handlerClient, itemId, body, userId!);
+            if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+            return { status: 201, data: { ok: true as const, data: result.data } };
+          },
+        });
+        if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+        const outcome = iResult.data;
+        if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+        status = iResult.fromCache ? 200 : 201;
+        return jsonOk(outcome.data, traceId, status);
+      }
+
+      // PATCH /content/items/{id}/lifecycle
+      if (method === 'PATCH' && lifecycleMatch !== null) {
+        const itemId = lifecycleMatch[1]!;
+        const idempKey = req.headers.get('Idempotency-Key') ?? '';
+        if (idempKey.length === 0) { status = 422; return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422); }
+        const rawBody = await req.text();
+        const body = JSON.parse(rawBody) as ItemLifecycleBody;
+        type OutLifecycle = { ok: true; data: { id: string; lifecycle: string } } | { ok: false; httpStatus: number; code: string; message: string };
+        const iResult = await withIdempotency<OutLifecycle>({
+          client: db as unknown as IdempotencyDbClient,
+          idempotencyKey: idempKey,
+          tenantId: idempTenantId,
+          endpoint: `PATCH /content/items/${itemId}/lifecycle`,
+          bodyText: rawBody,
+          handler: async () => {
+            const result = await transitionItemLifecycle(handlerClient, itemId, body);
+            if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+            return { status: 200, data: { ok: true as const, data: result.data } };
+          },
+        });
+        if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+        const outcome = iResult.data;
+        if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+        status = iResult.status;
+        return jsonOk(outcome.data, traceId, status);
+      }
+
+      // POST /content/stimuli
+      if (method === 'POST' && path === '/content/stimuli') {
+        const idempKey = req.headers.get('Idempotency-Key') ?? '';
+        if (idempKey.length === 0) { status = 422; return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422); }
+        const rawBody = await req.text();
+        const body = JSON.parse(rawBody) as StimulusCreateBody;
+        type OutCreateStimulus = { ok: true; data: StimulusAdminDTO } | { ok: false; httpStatus: number; code: string; message: string };
+        const iResult = await withIdempotency<OutCreateStimulus>({
+          client: db as unknown as IdempotencyDbClient,
+          idempotencyKey: idempKey,
+          tenantId: idempTenantId,
+          endpoint: 'POST /content/stimuli',
+          bodyText: rawBody,
+          handler: async () => {
+            const result = await createStimulus(handlerClient, body);
+            if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+            return { status: 201, data: { ok: true as const, data: result.data } };
+          },
+        });
+        if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+        const outcome = iResult.data;
+        if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+        status = iResult.fromCache ? 200 : 201;
+        return jsonOk(outcome.data, traceId, status);
+      }
+
+      // PATCH /content/stimuli/{id}
+      if (method === 'PATCH' && stimuliMatch !== null) {
+        const stimulusId = stimuliMatch[1]!;
+        const idempKey = req.headers.get('Idempotency-Key') ?? '';
+        if (idempKey.length === 0) { status = 422; return jsonError('MISSING_IDEMPOTENCY_KEY', 'Idempotency-Key header required', traceId, 422); }
+        const rawBody = await req.text();
+        const body = JSON.parse(rawBody) as StimulusUpdateBody;
+        type OutUpdateStimulus = { ok: true; data: StimulusAdminDTO } | { ok: false; httpStatus: number; code: string; message: string };
+        const iResult = await withIdempotency<OutUpdateStimulus>({
+          client: db as unknown as IdempotencyDbClient,
+          idempotencyKey: idempKey,
+          tenantId: idempTenantId,
+          endpoint: `PATCH /content/stimuli/${stimulusId}`,
+          bodyText: rawBody,
+          handler: async () => {
+            const result = await updateStimulus(handlerClient, stimulusId, body);
+            if (!result.ok) return { status: result.status, data: { ok: false as const, httpStatus: result.status, code: result.code, message: result.message } };
+            return { status: 200, data: { ok: true as const, data: result.data } };
+          },
+        });
+        if (!iResult.ok) { status = iResult.status; return jsonError(iResult.code, iResult.message, traceId, iResult.status); }
+        const outcome = iResult.data;
+        if (!outcome.ok) { status = outcome.httpStatus; return jsonError(outcome.code, outcome.message, traceId, outcome.httpStatus); }
+        status = iResult.status;
+        return jsonOk(outcome.data, traceId, status);
+      }
+    }
 
     // GET /pathways
     if (method === 'GET' && path === '/pathways') {

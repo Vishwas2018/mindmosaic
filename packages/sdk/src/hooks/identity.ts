@@ -35,6 +35,7 @@ export function useMyChildren() {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.users.children(),
+    staleTime: 300_000,
     queryFn: () =>
       client.get('/users-svc/users/me/children', ChildrenResponseSchema).then((r) => r.data),
   });
@@ -56,6 +57,7 @@ export function useMyClasses() {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.users.classes(),
+    staleTime: 300_000,
     queryFn: () =>
       client.get('/users-svc/users/me/classes', MyClassesResponseSchema).then((r) => r.data),
   });
@@ -83,6 +85,7 @@ export function useClassStudents(classId: string, page = 1) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.users.classStudents(classId),
+    staleTime: 300_000,
     queryFn: () =>
       client
         .get(
@@ -110,6 +113,7 @@ export function useStudentProfile(studentId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.users.student(studentId),
+    staleTime: 300_000,
     queryFn: async () => {
       const res = await client.get(
         `/users-svc/users/students/${encodeURIComponent(studentId)}`,

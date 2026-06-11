@@ -709,9 +709,9 @@ const RECENT_ATTEMPT = '2026-05-18T10:00:00.000Z';
 
 const L5_SKILLS_STUB: QueryStub = {
   data: [
-    { id: SKILL_A, slug: 'place-value',   parent_id: STRAND_NUMBER,  pathway_tags: ['naplan', 'icas'] },
-    { id: SKILL_B, slug: 'fractions',     parent_id: STRAND_NUMBER,  pathway_tags: ['naplan', 'icas'] },
-    { id: SKILL_C, slug: 'geometry',      parent_id: STRAND_MEASURE, pathway_tags: ['naplan', 'icas'] },
+    { id: SKILL_A, slug: 'place-value',   parent_id: STRAND_NUMBER,  pathway_tags: ['au_numeracy_y5_format', 'au_math_paper_c_format'] },
+    { id: SKILL_B, slug: 'fractions',     parent_id: STRAND_NUMBER,  pathway_tags: ['au_numeracy_y5_format', 'au_math_paper_c_format'] },
+    { id: SKILL_C, slug: 'geometry',      parent_id: STRAND_MEASURE, pathway_tags: ['au_numeracy_y5_format', 'au_math_paper_c_format'] },
   ],
   error: null,
 };
@@ -750,7 +750,7 @@ function buildL5Stubs(opts: {
   return {
     intelligence_audit_log: [dedupStub, EMPTY_OK], // dedup check + audit insert
     user_profile: { data: { id: STUDENT_ID, tenant_id: TENANT_ID, year_level: 'Y5' }, error: null },
-    pathway: { data: { id: PATHWAY_ID, slug: PATHWAY_SLUG, framework_config_id: FRAMEWORK_CONFIG_ID }, error: null },
+    pathway: { data: { id: PATHWAY_ID, slug: PATHWAY_SLUG, framework_config_id: FRAMEWORK_CONFIG_ID, exam_family: 'au_numeracy_y5_format' }, error: null },
     framework_config: {
       data: {
         id: FRAMEWORK_CONFIG_ID,

@@ -1,8 +1,7 @@
 'use client';
 
-import { use } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, Brand, Button, Card, IconButton, TopBar } from '@mm/ui';
+import { AppShell, Brand, Button, Card, ErrorState, IconButton, LoadingState, TopBar } from '@mm/ui';
 import { useSessionSummary } from '@mm/sdk';
 import { HeroRing } from '@/components/results/HeroRing';
 
@@ -47,11 +46,13 @@ function StatRow({ label, value }: { label: string; value: string }) {
 export default function ResultsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id: sessionId } = use(params);
+  const { id: sessionId } = params;
   const router = useRouter();
-  const { data, isPending, isError, refetch } = useSessionSummary(sessionId);
+  const sessionQuery = useSessionSummary(sessionId);
+  const { data, isPending, isError } = sessionQuery;
+  const refetch = sessionQuery.refetch;
 
   function handleExit() {
     router.push('/session-selection');
@@ -64,17 +65,29 @@ export default function ResultsPage({
           <Brand logoSrc="/logo.svg" size="sm" />
         </TopBar>
         <main id="results-main" className="max-w-2xl mx-auto px-6 py-12">
-          <div
-            role="status"
-            aria-label="Loading results"
-            className="h-64 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-          />
+          <LoadingState />
         </main>
       </AppShell>
     );
   }
 
-  if (isError || !data) {
+  if (isError) {
+    return (
+      <AppShell variant="focus">
+        <TopBar>
+          <Brand logoSrc="/logo.svg" size="sm" />
+        </TopBar>
+        <main id="results-main" className="max-w-2xl mx-auto px-6 py-12">
+          <ErrorState
+            title="Could not load results"
+            description="Something went wrong fetching this session."
+            onRetry={() => void refetch()}
+          />
+        </main>
+      </AppShell>
+    );
+  }
+  if (!data) {
     return (
       <AppShell variant="focus">
         <TopBar>

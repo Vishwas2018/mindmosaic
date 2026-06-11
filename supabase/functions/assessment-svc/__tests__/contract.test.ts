@@ -15,7 +15,7 @@
  *   - resumeSession (2)
  *   - abandonSession (1)
  *   - listRecentSessions (2)
- *   - idempotency middleware (3 incl. replay-returns-cached)
+ *   - idempotency middleware (5 incl. replay-returns-cached; +2 ISSUE-0043 /respond + /submit)
  *
  * Three DEV_PLAN exit criteria appear as **named tests**:
  *   - 'version conflict surfaces 409 (DEV_PLAN exit criterion)'
@@ -44,7 +44,8 @@ import {
   createMockSupabase,
   type MockResponses,
 } from '../../_test-helpers/mock-supabase.ts';
-import type { EngineItem, LinearEngineState } from '@mm/engines';
+import { FrameworkConfigSchema } from '@mm/engines';
+import type { EngineItem, LinearEngineState, SkillEngineState } from '@mm/engines';
 
 // ─── Test data builders ─────────────────────────────────────────────────────
 
@@ -104,28 +105,29 @@ function buildPathwayRow() {
 }
 
 function buildFrameworkConfigRow() {
-  return {
-    id: FC_ID,
-    config: {
-      engine_type: 'linear',
-      scoring_rules: {
-        scaled_score_formula: 'identity',
-        bands: [{ min: 0, max: 100, label: 'unbanded' }],
-      },
-      time_limit_ms: null,
-      back_navigation_enabled: true,
-      flag_for_review_enabled: true,
-      mastery_threshold: 0.85,
-      difficulty_step_up: 0.1,
-      difficulty_step_down: 0.15,
-      cognitive_load_threshold: 0.8,
-      cognitive_load_step_down: 0.1,
-      expected_time_per_item_ms: 30000,
-      max_items: 20,
-      confidence_threshold: 0.7,
-      diagnostic_start_difficulty: 0.5,
+  const configInput = {
+    engine_type: 'linear',
+    scoring_rules: {
+      scaled_score_formula: 'identity',
+      bands: [{ min: 0, max: 100, label: 'unbanded' }],
     },
+    time_limit_ms: null,
+    back_navigation_enabled: true,
+    flag_for_review_enabled: true,
+    mastery_threshold: 0.85,
+    difficulty_step_up: 0.1,
+    difficulty_step_down: 0.15,
+    cognitive_load_threshold: 0.8,
+    cognitive_load_step_down: 0.1,
+    expected_time_per_item_ms: 30000,
+    max_items: 20,
+    confidence_threshold: 0.7,
+    diagnostic_start_difficulty: 0.5,
   };
+  // Parse against the live schema so any future shape divergence fails the
+  // test build rather than silently returning undefined fields (ADR-0044).
+  const config = FrameworkConfigSchema.parse(configInput);
+  return { id: FC_ID, config };
 }
 
 function buildSessionRow(over: Partial<Record<string, unknown>> = {}) {
@@ -471,6 +473,69 @@ describe('assessment-svc — respondToSession', () => {
       expect(result.data.lock_token).not.toBe('lock-abc');
       expect(result.data.is_correct).toBe(true);
     }
+  });
+
+  // ISSUE-0054: option_id key fix — s7.1-style string correct_option_id
+  it('MCQ scoring: correct option_id matches correct_option_id → is_correct true (ISSUE-0054)', async () => {
+    const s71Item = buildItem(1, { correctOption: '400' });
+    const db = client({
+      session_record: {
+        data: buildSessionRow({
+          engine_state_snapshot: {
+            ...buildInitialLinearState(),
+            planned_items: [s71Item, buildItem(2), buildItem(3)],
+          },
+        }),
+        error: null,
+      },
+      _rpc: {
+        create_session_response_atomic: {
+          data: [{ response_id: 'r-2', event_id: 'e-2', new_sequence: 1, new_version: 4 }],
+          error: null,
+        },
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: { ...respondBody, response_data: { option_id: '400' } },
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.is_correct).toBe(true);
+  });
+
+  it('MCQ scoring: wrong option_id does not match correct_option_id → is_correct false (ISSUE-0054)', async () => {
+    const s71Item = buildItem(1, { correctOption: '400' });
+    const db = client({
+      session_record: {
+        data: buildSessionRow({
+          engine_state_snapshot: {
+            ...buildInitialLinearState(),
+            planned_items: [s71Item, buildItem(2), buildItem(3)],
+          },
+        }),
+        error: null,
+      },
+      _rpc: {
+        create_session_response_atomic: {
+          data: [{ response_id: 'r-3', event_id: 'e-3', new_sequence: 1, new_version: 5 }],
+          error: null,
+        },
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: { ...respondBody, response_data: { option_id: '40' } },
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.is_correct).toBe(false);
   });
 });
 
@@ -983,5 +1048,659 @@ describe('_shared/idempotency — withIdempotency', () => {
       expect(result.code).toBe('IDEMPOTENCY_MISMATCH');
     }
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  // ISSUE-0043: /respond and /submit now wrapped with the same conditional
+  // withIdempotency pattern as /create. These tests confirm the middleware
+  // replays the stored response body (fromCache: true) and does not re-invoke
+  // the handler on a duplicate request — ruling out double-scoring and
+  // double-close respectively.
+
+  it('ISSUE-0043 — /respond: withIdempotency replays cached response; handler not re-invoked', async () => {
+    const bodyText = '{"item_id":"i1","response":{"choice":"A"}}';
+    const cachedHash = await hashRequestBody(bodyText);
+    const handler = vi.fn();
+    const result = await withIdempotency({
+      client: idemClient({
+        select: {
+          data: {
+            idempotency_key: 'idem-respond-1',
+            tenant_id: TENANT_ID,
+            endpoint: `POST /sessions/${SESSION_ID}/respond`,
+            request_hash: cachedHash,
+            status: 'completed',
+            response_status: 200,
+            response_body: { lock_token: 'tok-cached' },
+            created_at: FROZEN_NOW,
+            completed_at: FROZEN_NOW,
+          },
+          error: null,
+        },
+      }),
+      idempotencyKey: 'idem-respond-1',
+      tenantId: TENANT_ID,
+      endpoint: `POST /sessions/${SESSION_ID}/respond`,
+      bodyText,
+      handler,
+    });
+    expect(result.ok).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
+    if (result.ok) {
+      expect(result.fromCache).toBe(true);
+      expect((result.data as { lock_token: string }).lock_token).toBe('tok-cached');
+    }
+  });
+
+  it('ISSUE-0043 — /submit: withIdempotency replays cached response; handler not re-invoked', async () => {
+    const bodyText = '{}';
+    const cachedHash = await hashRequestBody(bodyText);
+    const handler = vi.fn();
+    const result = await withIdempotency({
+      client: idemClient({
+        select: {
+          data: {
+            idempotency_key: 'idem-submit-1',
+            tenant_id: TENANT_ID,
+            endpoint: `POST /sessions/${SESSION_ID}/submit`,
+            request_hash: cachedHash,
+            status: 'completed',
+            response_status: 200,
+            response_body: { session_id: SESSION_ID, final_score: 0.8 },
+            created_at: FROZEN_NOW,
+            completed_at: FROZEN_NOW,
+          },
+          error: null,
+        },
+      }),
+      idempotencyKey: 'idem-submit-1',
+      tenantId: TENANT_ID,
+      endpoint: `POST /sessions/${SESSION_ID}/submit`,
+      bodyText,
+      handler,
+    });
+    expect(result.ok).toBe(true);
+    expect(handler).not.toHaveBeenCalled();
+    if (result.ok) {
+      expect(result.fromCache).toBe(true);
+      expect((result.data as { session_id: string }).session_id).toBe(SESSION_ID);
+    }
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// createSession — composer_params wiring (v1.1-S2 / ADR-0036)
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('assessment-svc — createSession composer_params wiring (v1.1-S2)', () => {
+  const COMPOSER_PARAMS = {
+    item_count: 3,
+    difficulty_distribution: { easy: 3, mid: 0, hard: 0 },
+    time_limit_ms: 1_800_000,
+  };
+
+  function spyFetcher(): {
+    fetcher: ContentSelectFetcher;
+    lastInput: () => Parameters<ContentSelectFetcher>[0] | null;
+  } {
+    let captured: Parameters<ContentSelectFetcher>[0] | null = null;
+    const fetcher: ContentSelectFetcher = async (input) => {
+      captured = input;
+      return { ok: true, data: [buildItem(1), buildItem(2), buildItem(3)] };
+    };
+    return { fetcher, lastInput: () => captured };
+  }
+
+  it('forwards composer_params to fetchContentSelect with seed = session_id', async () => {
+    const db = client({
+      pathway: { data: buildPathwayRow(), error: null },
+      feature_flag: {
+        data: [{ feature_key: 'icas_math_y5', tenant_id: TENANT_ID, enabled: true }],
+        error: null,
+      },
+      framework_config: { data: buildFrameworkConfigRow(), error: null },
+      session_record: { data: null, error: null },
+    });
+    const { fetcher, lastInput } = spyFetcher();
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'exam' as never,
+        target_skills: null,
+        composer_params: COMPOSER_PARAMS,
+      },
+      fetchContentSelect: fetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    const inp = lastInput();
+    expect(inp).not.toBeNull();
+    expect(inp!.composer).toBeDefined();
+    expect(inp!.composer!.item_count).toBe(3);
+    expect(inp!.composer!.difficulty_distribution).toEqual({ easy: 3, mid: 0, hard: 0 });
+    // Seed is the freshly-generated session_id (first eff.uuid() call → 'uuid-...001').
+    expect(inp!.composer!.seed).toMatch(/^uuid-/);
+  });
+
+  it('persists composer_params into engine_state_snapshot (analytics marker per ADR-0036)', async () => {
+    // Capture the update payload that flips status='created' → 'active'; that
+    // update carries the full initialState as engine_state_snapshot. We hand-
+    // roll the DbClient here because createMockSupabase's proxy intercepts
+    // property reads at the Proxy.get level (overrides on the returned object
+    // are bypassed), so the standard spy pattern can't capture chained
+    // .update(patch).eq(...) payloads.
+    let capturedSnapshot: Record<string, unknown> | null = null;
+
+    function chainable(stub: { data: unknown; error: { message: string; code?: string } | null }): unknown {
+      const b: Record<string, unknown> = {};
+      b['select'] = () => b;
+      b['eq'] = () => b;
+      b['in'] = () => b;
+      b['or'] = () => b;
+      b['order'] = () => b;
+      b['limit'] = () => b;
+      b['range'] = () => b;
+      b['maybeSingle'] = () => Promise.resolve(stub);
+      b['single'] = () => Promise.resolve(stub);
+      b['then'] = (resolve: (v: typeof stub) => unknown) => resolve(stub);
+      return b;
+    }
+
+    const pathwayRow = buildPathwayRow();
+    const fcRow = buildFrameworkConfigRow();
+    const featureFlagRow = [{ feature_key: 'icas_math_y5', tenant_id: TENANT_ID, enabled: true }];
+
+    const db: DbClient = {
+      from(table: string) {
+        if (table === 'pathway')          return chainable({ data: pathwayRow,     error: null }) as never;
+        if (table === 'feature_flag')     return chainable({ data: featureFlagRow, error: null }) as never;
+        if (table === 'framework_config') return chainable({ data: fcRow,          error: null }) as never;
+        if (table === 'session_record') {
+          const tail = {
+            eq: () => Promise.resolve({ error: null, data: null }),
+          };
+          const sessionBuilder: Record<string, unknown> = {
+            insert: () => Promise.resolve({ error: null, data: null }),
+            update: (patch: Record<string, unknown>) => {
+              if (patch['engine_state_snapshot'] !== undefined) {
+                capturedSnapshot = patch['engine_state_snapshot'] as Record<string, unknown>;
+              }
+              return tail;
+            },
+            delete: () => ({ eq: () => Promise.resolve({ error: null, data: null }) }),
+          };
+          return sessionBuilder as never;
+        }
+        throw new Error(`unexpected table '${table}'`);
+      },
+      rpc: async () => ({ data: null, error: null }),
+    };
+
+    const { fetcher } = spyFetcher();
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'exam' as never,
+        target_skills: null,
+        composer_params: COMPOSER_PARAMS,
+      },
+      fetchContentSelect: fetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    expect(capturedSnapshot).not.toBeNull();
+    expect(capturedSnapshot!['engine_type']).toBe('linear');
+    // Analytics contract: mode='exam' + engine_state_snapshot.composer_params present.
+    expect(capturedSnapshot!['composer_params']).toEqual(COMPOSER_PARAMS);
+  });
+
+  it('uses composer.time_limit_ms in the response (overrides framework_config.time_limit_ms when composer present)', async () => {
+    const db = client({
+      pathway: { data: buildPathwayRow(), error: null },
+      feature_flag: {
+        data: [{ feature_key: 'icas_math_y5', tenant_id: TENANT_ID, enabled: true }],
+        error: null,
+      },
+      framework_config: { data: buildFrameworkConfigRow(), error: null }, // time_limit_ms: null
+      session_record: { data: null, error: null },
+    });
+    const { fetcher } = spyFetcher();
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'exam' as never,
+        target_skills: null,
+        composer_params: COMPOSER_PARAMS,
+      },
+      fetchContentSelect: fetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.time_limit_ms).toBe(COMPOSER_PARAMS.time_limit_ms);
+    }
+  });
+
+  it('regression: createSession WITHOUT composer_params does not include composer in fetcher input', async () => {
+    const db = client({
+      pathway: { data: buildPathwayRow(), error: null },
+      feature_flag: {
+        data: [{ feature_key: 'icas_math_y5', tenant_id: TENANT_ID, enabled: true }],
+        error: null,
+      },
+      framework_config: { data: buildFrameworkConfigRow(), error: null },
+      session_record: { data: null, error: null },
+    });
+    const { fetcher, lastInput } = spyFetcher();
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'practice' as never,
+        target_skills: null,
+      },
+      fetchContentSelect: fetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    const inp = lastInput();
+    expect(inp).not.toBeNull();
+    expect(inp!.composer).toBeUndefined();
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// createSession + respondToSession — simulation_params wiring (v1.1-S3 / ADR-0037)
+// ───────────────────────────────────────────────────────────────────────────
+
+describe('assessment-svc — simulation_params wiring (v1.1-S3)', () => {
+  const SIM_PARAMS = { no_back_nav: true, hide_feedback_until_submit: true };
+
+  // Hand-rolled DbClient (same shape as the composer-marker test in S2 — Proxy
+  // mock can't capture chained .update().eq() payloads).
+  function buildCapturingClient(): {
+    db: DbClient;
+    capturedSnapshot: () => Record<string, unknown> | null;
+  } {
+    let capturedSnapshot: Record<string, unknown> | null = null;
+
+    function chainable(stub: { data: unknown; error: { message: string; code?: string } | null }): unknown {
+      const b: Record<string, unknown> = {};
+      b['select'] = () => b;
+      b['eq'] = () => b;
+      b['in'] = () => b;
+      b['or'] = () => b;
+      b['order'] = () => b;
+      b['limit'] = () => b;
+      b['range'] = () => b;
+      b['maybeSingle'] = () => Promise.resolve(stub);
+      b['single'] = () => Promise.resolve(stub);
+      b['then'] = (resolve: (v: typeof stub) => unknown) => resolve(stub);
+      return b;
+    }
+
+    const pathwayRow = buildPathwayRow();
+    const fcRow = buildFrameworkConfigRow();
+    const featureFlagRow = [{ feature_key: 'icas_math_y5', tenant_id: TENANT_ID, enabled: true }];
+
+    const db: DbClient = {
+      from(table: string) {
+        if (table === 'pathway')          return chainable({ data: pathwayRow,     error: null }) as never;
+        if (table === 'feature_flag')     return chainable({ data: featureFlagRow, error: null }) as never;
+        if (table === 'framework_config') return chainable({ data: fcRow,          error: null }) as never;
+        if (table === 'session_record') {
+          const tail = { eq: () => Promise.resolve({ error: null, data: null }) };
+          const builder: Record<string, unknown> = {
+            insert: () => Promise.resolve({ error: null, data: null }),
+            update: (patch: Record<string, unknown>) => {
+              if (patch['engine_state_snapshot'] !== undefined) {
+                capturedSnapshot = patch['engine_state_snapshot'] as Record<string, unknown>;
+              }
+              return tail;
+            },
+            delete: () => ({ eq: () => Promise.resolve({ error: null, data: null }) }),
+          };
+          return builder as never;
+        }
+        throw new Error(`unexpected table '${table}'`);
+      },
+      rpc: async () => ({ data: null, error: null }),
+    };
+    return { db, capturedSnapshot: () => capturedSnapshot };
+  }
+
+  const allowingFetcher: ContentSelectFetcher = async () => ({
+    ok: true,
+    data: [buildItem(1), buildItem(2), buildItem(3)],
+  });
+
+  it('createSession persists simulation_params on engine_state_snapshot (analytics marker)', async () => {
+    const { db, capturedSnapshot } = buildCapturingClient();
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'exam' as never,
+        target_skills: null,
+        simulation_params: SIM_PARAMS,
+      },
+      fetchContentSelect: allowingFetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    const snap = capturedSnapshot();
+    expect(snap).not.toBeNull();
+    expect(snap!['engine_type']).toBe('linear');
+    expect(snap!['simulation_params']).toEqual(SIM_PARAMS);
+  });
+
+  it('createSession co-applies composer_params + simulation_params on the same session', async () => {
+    const { db, capturedSnapshot } = buildCapturingClient();
+    const composer = {
+      item_count: 3,
+      difficulty_distribution: { easy: 3, mid: 0, hard: 0 },
+      time_limit_ms: 1_800_000,
+    };
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'exam' as never,
+        target_skills: null,
+        composer_params: composer,
+        simulation_params: SIM_PARAMS,
+      },
+      fetchContentSelect: allowingFetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    const snap = capturedSnapshot();
+    expect(snap).not.toBeNull();
+    expect(snap!['composer_params']).toEqual(composer);
+    expect(snap!['simulation_params']).toEqual(SIM_PARAMS);
+  });
+
+  it('createSession regression: no simulation_params → no marker on engine_state_snapshot', async () => {
+    const { db, capturedSnapshot } = buildCapturingClient();
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'exam' as never,
+        target_skills: null,
+      },
+      fetchContentSelect: allowingFetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    const snap = capturedSnapshot();
+    expect(snap).not.toBeNull();
+    expect(snap!['simulation_params']).toBeUndefined();
+  });
+
+  it('createSession response.navigation.can_go_back is false when simulation_params.no_back_nav', async () => {
+    const { db } = buildCapturingClient();
+    const result = await createSession({
+      client: db,
+      studentId: STUDENT_ID,
+      tenantId: TENANT_ID,
+      body: {
+        pathway_id: PATHWAY_ID,
+        assessment_profile_id: null,
+        repair_sequence_id: null,
+        assignment_id: null,
+        mode: 'exam' as never,
+        target_skills: null,
+        simulation_params: SIM_PARAMS,
+      },
+      fetchContentSelect: allowingFetcher,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // initialise sets current_index=0; canNavigateBack would normally be false at
+      // index 0 regardless. To prove the simulation gate IS the reason: see the
+      // engine-level tests in packages/engines/src/__tests__/linear.test.ts which
+      // exercise the locked branch past index 0. Here we confirm the createSession
+      // response surface reads from engine.canNavigateBack (it does — handlers.ts:385).
+      expect(result.data.navigation.can_go_back).toBe(false);
+    }
+  });
+
+  it('respondToSession mutes is_correct in response when hide_feedback_until_submit === true', async () => {
+    // Build a session_record whose engine_state_snapshot already carries the
+    // simulation flag set — i.e. a session that was created in simulation mode.
+    const state = buildInitialLinearState();
+    const simState = { ...state, simulation_params: SIM_PARAMS };
+    const row = buildSessionRow({ engine_state_snapshot: simState });
+    const db = client({
+      session_record: { data: row, error: null },
+      _rpc: {
+        create_session_response_atomic: {
+          data: [{ response_id: 'r-1', event_id: 'e-1', new_sequence: 1, new_version: 3 }],
+          error: null,
+        },
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: respondBody,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Client-facing return MUST be null per ADR-0037 §Decision 2.
+      expect(result.data.is_correct).toBeNull();
+      // Real correctness still recorded internally (RPC ran with p_is_correct=true).
+      // The stored value is verified via the RPC call inspection in the existing
+      // "rotates lock_token on success" test; this test asserts only the surfaced shape.
+    }
+  });
+
+  it('respondToSession returns real is_correct when simulation_params absent (regression)', async () => {
+    const row = buildSessionRow();
+    const db = client({
+      session_record: { data: row, error: null },
+      _rpc: {
+        create_session_response_atomic: {
+          data: [{ response_id: 'r-1', event_id: 'e-1', new_sequence: 1, new_version: 3 }],
+          error: null,
+        },
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: respondBody,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.is_correct).toBe(true);
+    }
+  });
+
+  it('respondToSession returns real is_correct when simulation hide_feedback_until_submit === false explicit', async () => {
+    const state = buildInitialLinearState();
+    const simState = { ...state, simulation_params: { no_back_nav: true, hide_feedback_until_submit: false } };
+    const row = buildSessionRow({ engine_state_snapshot: simState });
+    const db = client({
+      session_record: { data: row, error: null },
+      _rpc: {
+        create_session_response_atomic: {
+          data: [{ response_id: 'r-1', event_id: 'e-1', new_sequence: 1, new_version: 3 }],
+          error: null,
+        },
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: respondBody,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.is_correct).toBe(true);
+    }
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// resumeSession — is_simulation derivation (v1.1-S5 ADR-0039 Q-1.1-5.4)
+// ───────────────────────────────────────────────────────────────────────────
+
+const SKILL_ID = 'cccccccc-cccc-4ccc-8ccc-000000000001';
+
+function buildSkillItem(): EngineItem {
+  const id = 'dddddddd-dddd-4ddd-8ddd-000000000001';
+  return {
+    item_id: id as never,
+    version: 1,
+    stem: { text: 'Skill item' },
+    stimulus: null,
+    response_type: 'multiple_choice',
+    response_config: {
+      options: [{ id: 'a' }, { id: 'b' }],
+      correct_option_id: 'a',
+    } as never,
+    tools_available: [],
+    sequence_number: 0,
+    skill_ids: [SKILL_ID as never],
+    difficulty: 0.5,
+  } as EngineItem;
+}
+
+function buildInitialSkillState(): SkillEngineState {
+  return {
+    engine_type: 'skill',
+    session_id: SESSION_ID as never,
+    mode: 'practice' as never,
+    started_at: FROZEN_NOW,
+    time_limit_ms: null,
+    target_skills: [SKILL_ID as never],
+    per_skill_state: [{
+      skill_id: SKILL_ID as never,
+      items_attempted: 0,
+      items_correct: 0,
+      last_difficulty: 0.5,
+      consecutive_correct: 0,
+      consecutive_incorrect: 0,
+      estimated_mastery: 0.0,
+    }],
+    current_difficulty: 0.5,
+    current_skill_id: SKILL_ID as never,
+    responses: [],
+    answered_item_ids: [],
+    item_pool: [buildSkillItem()],
+    mastery_threshold: 0.85,
+    difficulty_step_up: 0.1,
+    difficulty_step_down: 0.15,
+    cognitive_load_threshold: 0.8,
+    cognitive_load_step_down: 0.1,
+    expected_time_per_item_ms: 30000,
+  };
+}
+
+describe('assessment-svc — resumeSession is_simulation derivation (v1.1-S5)', () => {
+  it('linear engine + simulation_params present → is_simulation: true', async () => {
+    const state = buildInitialLinearState();
+    const simState = { ...state, simulation_params: { no_back_nav: true, hide_feedback_until_submit: true } };
+    const db = client({
+      session_record: { data: buildSessionRow({ status: 'interrupted', engine_state_snapshot: simState }), error: null },
+    });
+    const result = await resumeSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.is_simulation).toBe(true);
+    }
+  });
+
+  it('linear engine + no simulation_params → is_simulation: false', async () => {
+    const db = client({
+      session_record: { data: buildSessionRow({ status: 'interrupted' }), error: null },
+    });
+    const result = await resumeSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.is_simulation).toBe(false);
+    }
+  });
+
+  it('skill engine (non-linear) → is_simulation: false', async () => {
+    const db = client({
+      session_record: {
+        data: buildSessionRow({
+          status: 'interrupted',
+          engine_type: 'skill',
+          engine_state_snapshot: buildInitialSkillState(),
+        }),
+        error: null,
+      },
+    });
+    const result = await resumeSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.is_simulation).toBe(false);
+    }
   });
 });

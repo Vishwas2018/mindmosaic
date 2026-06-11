@@ -45,6 +45,8 @@ import type {
   SessionStateDTO,
   SessionSummaryDTO,
   CheckpointRequest,
+  PracticeExamComposerParams,
+  SimulationParams,
   SessionId,
   SkillId,
   ItemId,
@@ -103,12 +105,22 @@ export type DbBuilder = {
 /**
  * HTTP fetch surface for the content-svc /content/select call. Injected so
  * tests can stub without going through Deno's fetch.
+ *
+ * v1.1-S2 (ADR-0036): `composer` carries the practice-exam composition
+ * parameters + seed end-to-end. Seed is derived from `session_id` at
+ * createSession call time (ADR-0036 §Decision 4) so the assembled item list
+ * is replay-deterministic. Absent → existing blueprint / adaptive routing.
  */
 export type ContentSelectFetcher = (input: {
   pathway_id: string;
   blueprint_id?: string;
   exclude_recently_seen?: string[];
   target_difficulty_band?: 'easy' | 'mid' | 'hard';
+  composer?: {
+    item_count: number;
+    difficulty_distribution: { easy: number; mid: number; hard: number };
+    seed: string;
+  };
 }) => Promise<{ ok: true; data: EngineItem[] } | { ok: false; status: number; code: string; message: string }>;
 
 /**
@@ -287,9 +299,21 @@ export async function createSession(
     return err(500, 'INTERNAL_ERROR', insertRes.error.message);
   }
 
-  // 5. content-svc /content/select (HTTP, service-role; Q-19.7)
+  // 5. content-svc /content/select (HTTP, service-role; Q-19.7).
+  //    v1.1-S2: pass composer_params + session_id-derived seed when present
+  //    (ADR-0036 §Decision 4/5). Absent → existing blueprint/adaptive routing.
+  const composerParams: PracticeExamComposerParams | undefined = body.composer_params;
   const contentRes = await input.fetchContentSelect({
     pathway_id: pathway.id,
+    ...(composerParams !== undefined
+      ? {
+          composer: {
+            item_count: composerParams.item_count,
+            difficulty_distribution: composerParams.difficulty_distribution,
+            seed: sessionId,
+          },
+        }
+      : {}),
   });
   if (!contentRes.ok) {
     // Roll back the session row so the student isn't blocked by a half-create.
@@ -303,19 +327,40 @@ export async function createSession(
     return err(404, 'NOT_FOUND', 'No items selected for pathway');
   }
 
-  // 6. Build SessionContext + initialise engine state
+  // 6. Build SessionContext + initialise engine state.
+  //    v1.1-S2: when composer_params drove selection, prefer the caller's
+  //    time_limit_ms over framework_config (ADR-0036). The composer marker
+  //    is folded into initialState below for the linear-engine branch.
+  const effectiveTimeLimitMs =
+    composerParams !== undefined ? composerParams.time_limit_ms : fc.config.time_limit_ms;
   const ctx: SessionContext = {
     session_id: sessionId as SessionId,
     mode: body.mode,
     engine_type: pathway.engine_type,
     total_items: items.length,
-    time_limit_ms: fc.config.time_limit_ms,
+    time_limit_ms: effectiveTimeLimitMs,
     started_at: startedAt,
     planned_items: items,
     target_skills: (body.target_skills ?? []) as SkillId[],
   };
   const engine = pickEngine(pathway.engine_type);
-  const initialState = engine.initialise(ctx, fc.config);
+  const baseState = engine.initialise(ctx, fc.config);
+  // ADR-0036 §Decision 3 / Q-1.1-2.5: persist composer_params on the linear-
+  // engine state so the analytics marker survives respondToSession's
+  // EngineStateSchema parse → RPC re-write round-trip. Linear is the only
+  // engine that participates in composed practice exams (mode='exam').
+  // v1.1-S3 (ADR-0037 §Decision 6, Q-1.1-3.1): simulation_params co-applied
+  // identically. Both are optional and orthogonal — a session can have
+  // neither, one, or both. mode='exam' covers both per spec §18.
+  const simulationParams: SimulationParams | undefined = body.simulation_params;
+  const initialState =
+    baseState.engine_type === 'linear'
+      ? {
+          ...baseState,
+          ...(composerParams !== undefined ? { composer_params: composerParams } : {}),
+          ...(simulationParams !== undefined ? { simulation_params: simulationParams } : {}),
+        }
+      : baseState;
 
   const next = engine.getNextItem(initialState);
   if (isTerminationSignal(next)) {
@@ -343,7 +388,7 @@ export async function createSession(
       mode: body.mode,
       engine_type: pathway.engine_type,
       total_items: items.length,
-      time_limit_ms: fc.config.time_limit_ms,
+      time_limit_ms: effectiveTimeLimitMs,
       first_item: firstItem,
       navigation: {
         can_go_back: engine.canNavigateBack(initialState),
@@ -495,8 +540,18 @@ export async function respondToSession(
     time_remaining_ms: engine.getTimeRemaining(newState, eff.ms),
   };
 
+  // v1.1-S3 (ADR-0037 §Decision 2, Q-1.1-3.4 Gate 2): when a simulation exam
+  // has hide_feedback_until_submit set, the server suppresses per-item
+  // feedback in the response. The real is_correct value is still recorded in
+  // session_response via the atomic RPC above (line 484) and consulted at
+  // submitSession score time — only the client-facing return is muted.
+  const isLinearSim =
+    state.engine_type === 'linear' &&
+    state.simulation_params?.hide_feedback_until_submit === true;
+  const exposedIsCorrect = isLinearSim ? null : engineResp.is_correct;
+
   return ok<RecordResponseResponse>({
-    is_correct: engineResp.is_correct,
+    is_correct: exposedIsCorrect,
     explanation: null, // exam mode hides explanations; practice/repair will populate (v1.1)
     next_item: nextItem,
     termination,
@@ -590,9 +645,15 @@ export async function submitSession(
   const final = terminateForConfig(state, 'user_submitted', fc.config, eff.ms);
   const submittedAt = eff.now();
 
-  // Update session_record terminal columns. version not bumped here per
-  // ADR-C3 — terminal transitions don't conflict with concurrent responses
-  // (the RPC requires status='active', which this UPDATE invalidates).
+  // Update session_record terminal columns via compare-and-swap. The
+  // `.eq('status','active')` predicate makes the active→submitted transition
+  // atomic at the DB level. version is not bumped here per ADR-C3 — terminal
+  // transitions don't conflict with concurrent responses (the response RPC
+  // also requires status='active', which this UPDATE invalidates). The status
+  // guard additionally closes the concurrent-*submit* race (ISSUE-0043
+  // residual): only one submit can flip the row, so only that winner reaches
+  // the outbox_event insert below — a duplicate/racing submit matches 0 rows
+  // and returns 409 SESSION_CONFLICT without emitting a second event.
   const upd = await client
     .from('session_record')
     .update({
@@ -607,8 +668,20 @@ export async function submitSession(
       skills_touched: final.score.skills_touched,
       pipeline_status: 'pending',
     })
-    .eq('id', sessionId);
+    .eq('id', sessionId)
+    .eq('status', 'active')
+    .select('id');
   if (upd.error !== null) return err(500, 'INTERNAL_ERROR', upd.error.message);
+  // Zero rows affected → the session was already terminal when the CAS ran
+  // (another submit won the race). Return the same clean 409 the sequential
+  // duplicate-submit guard returns above; do NOT fall through to the outbox
+  // insert. (A null `data` — e.g. a driver that doesn't echo rows — is treated
+  // as success, preserving the prior unconditional behaviour.)
+  if (Array.isArray(upd.data) && upd.data.length === 0) {
+    return err(409, 'SESSION_CONFLICT', 'Session is not active (current: submitted)', {
+      current_state: 'submitted',
+    });
+  }
 
   // Q-19.2: write outbox_event regardless of whether the inline sync call
   // below succeeds — outbox is the audit trail + the Stage 28 worker retry
@@ -808,6 +881,9 @@ export async function resumeSession(
     answered_item_ids: answeredItemIds(state),
     lock_token: newLockToken,
     version: row.version,
+    // v1.1-S5 (ADR-0039 Q-1.1-5.4): simulation_params lives on LinearEngineState only.
+    // Narrow via engine_type discriminant; false for all other engine branches.
+    is_simulation: state.engine_type === 'linear' ? state.simulation_params != null : false,
   });
 }
 

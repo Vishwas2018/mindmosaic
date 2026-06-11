@@ -55,8 +55,8 @@ interface Check {
 
 const checks: Check[] = [
   { label: 'Total items',               actual: () => countAll('item'),                          expected: 50 },
-  { label: 'NAPLAN items',              actual: () => countContains('item', 'exam_families', 'naplan'), expected: 25 },
-  { label: 'ICAS items',               actual: () => countContains('item', 'exam_families', 'icas'),   expected: 25 },
+  { label: 'Numeracy Y5 items',         actual: () => countContains('item', 'exam_families', 'au_numeracy_y5_format'), expected: 25 },
+  { label: 'Math Paper C items',        actual: () => countContains('item', 'exam_families', 'au_math_paper_c_format'), expected: 25 },
   { label: 'Easy items  (d <= 0.35)',   actual: () => countWhere('item', 'difficulty', 'lte', 0.35),   expected: 15 },
   { label: 'Hard items  (d >  0.70)',   actual: () => countWhere('item', 'difficulty', 'gt',  0.70),   expected: 15 },
   { label: 'Total misconceptions',      actual: () => countAll('misconception'),                  expected: 10 },

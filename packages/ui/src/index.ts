@@ -14,6 +14,10 @@ export type { PageHeaderProps } from './PageHeader/PageHeader.js';
 export { EmptyState } from './EmptyState/EmptyState.js';
 export type { EmptyStateProps } from './EmptyState/EmptyState.js';
 export { ErrorBoundary } from './ErrorBoundary/ErrorBoundary.js';
+export { ErrorState } from './ErrorState/ErrorState.js';
+export type { ErrorStateProps } from './ErrorState/ErrorState.js';
+export { UpgradeState } from './UpgradeState/UpgradeState.js';
+export type { UpgradeStateProps } from './UpgradeState/UpgradeState.js';
 export { LoadingState } from './LoadingState/LoadingState.js';
 export type { LoadingStateProps, LoadingStateVariant } from './LoadingState/LoadingState.js';
 

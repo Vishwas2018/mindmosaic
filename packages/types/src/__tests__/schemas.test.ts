@@ -248,3 +248,292 @@ describe('assignments — StudentAssignmentDTOSchema extends AssignmentDTOSchema
     ).toBe(true);
   });
 });
+
+// ─── PracticeExamComposerParamsSchema — v1.1-S2 (ADR-0036) ──────────────────
+// Bounds per ADR-0036 §Bounds; integer-distribution model per §Decision 6
+// (sum of band counts === item_count). Refinements report a structured
+// VALIDATION_ERROR at the API boundary (per BUILD_CONTRACT Zod-at-boundaries).
+
+describe('PracticeExamComposerParamsSchema (v1.1-S2 / ADR-0036)', () => {
+  const valid = {
+    item_count: 30,
+    difficulty_distribution: { easy: 10, mid: 15, hard: 5 },
+    time_limit_ms: 1_800_000,
+  };
+
+  it('accepts a valid composer-params payload', () => {
+    expect(types.PracticeExamComposerParamsSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('rejects distribution that does not sum to item_count', () => {
+    const r = types.PracticeExamComposerParamsSchema.safeParse({
+      ...valid,
+      difficulty_distribution: { easy: 10, mid: 15, hard: 4 }, // 29 ≠ 30
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it('rejects all-zero distribution', () => {
+    const r = types.PracticeExamComposerParamsSchema.safeParse({
+      item_count: 0,
+      difficulty_distribution: { easy: 0, mid: 0, hard: 0 },
+      time_limit_ms: 600_000,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it('rejects item_count below ADR-0036 §Bounds minimum (5)', () => {
+    expect(
+      types.PracticeExamComposerParamsSchema.safeParse({
+        ...valid,
+        item_count: 4,
+        difficulty_distribution: { easy: 4, mid: 0, hard: 0 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects item_count above ADR-0036 §Bounds maximum (80)', () => {
+    expect(
+      types.PracticeExamComposerParamsSchema.safeParse({
+        ...valid,
+        item_count: 81,
+        difficulty_distribution: { easy: 81, mid: 0, hard: 0 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects time_limit_ms outside [300_000, 10_800_000]', () => {
+    const tooShort = types.PracticeExamComposerParamsSchema.safeParse({
+      ...valid,
+      time_limit_ms: 299_999,
+    });
+    const tooLong = types.PracticeExamComposerParamsSchema.safeParse({
+      ...valid,
+      time_limit_ms: 10_800_001,
+    });
+    expect(tooShort.success).toBe(false);
+    expect(tooLong.success).toBe(false);
+  });
+
+  it('CreateSessionRequest accepts composer_params additively (no break to existing callers)', () => {
+    const minimal = {
+      assessment_profile_id: null,
+      repair_sequence_id: null,
+      assignment_id: null,
+      mode: 'exam' as const,
+      target_skills: null,
+      pathway_id: '00000000-0000-0000-0000-000000000010',
+    };
+    // Without composer_params (existing callers): valid.
+    expect(types.CreateSessionRequestSchema.safeParse(minimal).success).toBe(true);
+    // With composer_params: valid.
+    expect(
+      types.CreateSessionRequestSchema.safeParse({ ...minimal, composer_params: valid }).success,
+    ).toBe(true);
+  });
+});
+
+// ─── SimulationParamsSchema — v1.1-S3 (ADR-0037) ─────────────────────────────
+// Two-flag minimum set; both default-true when simulation_params is present.
+// Orthogonal to PracticeExamComposerParams — co-application is valid.
+// strict_timing intentionally OMITTED (redundant against mode='exam' server-
+// authoritative timing per spec §18 'Exam' row).
+
+describe('SimulationParamsSchema (v1.1-S3 / ADR-0037)', () => {
+  it('accepts explicit { no_back_nav: true, hide_feedback_until_submit: true }', () => {
+    const r = types.SimulationParamsSchema.safeParse({
+      no_back_nav: true,
+      hide_feedback_until_submit: true,
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.no_back_nav).toBe(true);
+      expect(r.data.hide_feedback_until_submit).toBe(true);
+    }
+  });
+
+  it('applies both defaults (true) when empty object provided', () => {
+    const r = types.SimulationParamsSchema.safeParse({});
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.no_back_nav).toBe(true);
+      expect(r.data.hide_feedback_until_submit).toBe(true);
+    }
+  });
+
+  it('accepts explicit non-strict flags (no_back_nav: false)', () => {
+    const r = types.SimulationParamsSchema.safeParse({
+      no_back_nav: false,
+      hide_feedback_until_submit: false,
+    });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.no_back_nav).toBe(false);
+      expect(r.data.hide_feedback_until_submit).toBe(false);
+    }
+  });
+
+  it('rejects non-boolean flag values', () => {
+    const r = types.SimulationParamsSchema.safeParse({
+      no_back_nav: 'true',
+      hide_feedback_until_submit: 1,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it('CreateSessionRequest accepts simulation_params additively (no break to existing callers)', () => {
+    const minimal = {
+      assessment_profile_id: null,
+      repair_sequence_id: null,
+      assignment_id: null,
+      mode: 'exam' as const,
+      target_skills: null,
+      pathway_id: '00000000-0000-0000-0000-000000000010',
+    };
+    // Without simulation_params (existing callers): valid.
+    expect(types.CreateSessionRequestSchema.safeParse(minimal).success).toBe(true);
+    // With simulation_params: valid.
+    expect(
+      types.CreateSessionRequestSchema.safeParse({
+        ...minimal,
+        simulation_params: { no_back_nav: true, hide_feedback_until_submit: true },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('CreateSessionRequest accepts composer_params + simulation_params co-applied (orthogonal)', () => {
+    const minimal = {
+      assessment_profile_id: null,
+      repair_sequence_id: null,
+      assignment_id: null,
+      mode: 'exam' as const,
+      target_skills: null,
+      pathway_id: '00000000-0000-0000-0000-000000000010',
+    };
+    const composer = {
+      item_count: 30,
+      difficulty_distribution: { easy: 10, mid: 15, hard: 5 },
+      time_limit_ms: 1_800_000,
+    };
+    const simulation = { no_back_nav: true, hide_feedback_until_submit: true };
+    expect(
+      types.CreateSessionRequestSchema.safeParse({
+        ...minimal,
+        composer_params: composer,
+        simulation_params: simulation,
+      }).success,
+    ).toBe(true);
+  });
+});
+
+// ─── ImportManifestSchema — enum tightening (ISSUE-0057) ─────────────────────
+// Proves dry-run now rejects enum violations that previously passed Zod and
+// failed only at DB INSERT (root cause of all 4 S7.1 batch-01 import rejections).
+// Enums mirror migration 0001 + 0024 exactly.
+
+const validManifestItem = {
+  external_key: 's7.1-batch-01-001',
+  copyright_declaration: 'original' as const,
+  authoring_method: 'ai_assisted_human_reviewed' as const,
+  item: {
+    response_type: 'mcq' as const,
+    skill_ids: ['a0000001-0000-0000-0000-000000000004'],
+    difficulty: 0.10,
+    year_levels: [5],
+    exam_families: ['au_numeracy_y5_format' as const],
+    bloom_level: 'remember' as const,
+  },
+  version: {
+    stem: { text: 'What is the value of the digit 7 in 47 382?' },
+    response_config: { options: ['7 000', '700', '70 000', '70'], correct_id: 'A' },
+    difficulty: 0.10,
+  },
+};
+
+describe('ImportManifestSchema — enum tightening (ISSUE-0057)', () => {
+  it('accepts valid s7.1-batch-01 manifest item (regression: tightened schema must not break existing batch)', () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [validManifestItem],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid exam_family — dry-run now catches what previously only DB caught', () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [
+        {
+          ...validManifestItem,
+          item: { ...validManifestItem.item, exam_families: ['naplan'] },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects American spelling 'analyze' — DB bloom_level enum uses British 'analyse'", () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [
+        {
+          ...validManifestItem,
+          item: { ...validManifestItem.item, bloom_level: 'analyze' },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid response_type — e.g. legacy value "multiple_choice" not in DB enum', () => {
+    const result = types.ImportManifestSchema.safeParse({
+      manifest_version: '1.0',
+      items: [
+        {
+          ...validManifestItem,
+          item: { ...validManifestItem.item, response_type: 'multiple_choice' },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── ISSUE-0061 — ItemCreateDTOSchema + ItemUpdateDTOSchema enum tightening ──
+// Admin API schemas now mirror the DB enums; previously z.string().min(1) / z.string()
+// allowed any value through Zod, deferring rejection to the DB constraint (500 not 422).
+
+describe('ISSUE-0061 — ItemCreateDTOSchema and ItemUpdateDTOSchema enum tightening', () => {
+  const validBase = {
+    response_type: 'mcq' as const,
+    skill_ids: ['s-001'],
+    difficulty: 0.5,
+    year_levels: [5],
+    exam_families: ['naplan'],
+  };
+
+  it('ItemCreateDTOSchema accepts valid response_type and rejects legacy "multiple_choice"', () => {
+    expect(types.ItemCreateDTOSchema.safeParse(validBase).success).toBe(true);
+    expect(
+      types.ItemCreateDTOSchema.safeParse({ ...validBase, response_type: 'multiple_choice' }).success,
+    ).toBe(false);
+  });
+
+  it('ItemCreateDTOSchema: British "analyse" accepted; American "analyze" rejected (0001_enums_tenancy_auth.sql:43)', () => {
+    expect(
+      types.ItemCreateDTOSchema.safeParse({ ...validBase, bloom_level: 'analyse' }).success,
+    ).toBe(true);
+    expect(
+      types.ItemCreateDTOSchema.safeParse({ ...validBase, bloom_level: 'analyze' }).success,
+    ).toBe(false);
+  });
+
+  it('ItemUpdateDTOSchema: British "analyse" accepted; American "analyze" rejected (0001_enums_tenancy_auth.sql:43)', () => {
+    expect(
+      types.ItemUpdateDTOSchema.safeParse({ bloom_level: 'analyse' }).success,
+    ).toBe(true);
+    expect(
+      types.ItemUpdateDTOSchema.safeParse({ bloom_level: 'analyze' }).success,
+    ).toBe(false);
+  });
+});

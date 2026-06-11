@@ -213,3 +213,66 @@ describe('useArchiveAssignment — D3', () => {
     expect(init.method).toBe('POST');
   });
 });
+
+// ── useCreateAssignment — composer_params + simulation_params (v1.1-S4) ──────
+
+describe('useCreateAssignment — composer_params + simulation_params (v1.1-S4)', () => {
+  it('sends composer_params in POST body when provided', async () => {
+    const fetchMock = mockFetchOk(ASSIGNMENT_DTO);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new MmClient({ baseUrl: 'https://api.test', getToken: async () => 'tok' });
+    const { result } = renderHook(() => useCreateAssignment(), { wrapper: makeWrapper(client) });
+
+    const composerParams = {
+      item_count: 20,
+      difficulty_distribution: { easy: 7, mid: 8, hard: 5 },
+      time_limit_ms: 3_600_000,
+    };
+
+    result.current.mutate({
+      title: 'Exam Assignment',
+      mode: 'exam',
+      pathway_id: '00000000-0000-0000-0000-000000000010',
+      target_skill_ids: [],
+      item_count: 20,
+      targets: [{ type: 'class', id: '00000000-0000-0000-0000-000000000020' }],
+      composer_params: composerParams,
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body['composer_params']).toEqual(composerParams);
+  });
+
+  it('sends simulation_params in POST body when provided', async () => {
+    const fetchMock = mockFetchOk(ASSIGNMENT_DTO);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new MmClient({ baseUrl: 'https://api.test', getToken: async () => 'tok' });
+    const { result } = renderHook(() => useCreateAssignment(), { wrapper: makeWrapper(client) });
+
+    result.current.mutate({
+      title: 'Sim Exam',
+      mode: 'exam',
+      pathway_id: '00000000-0000-0000-0000-000000000010',
+      target_skill_ids: [],
+      item_count: 20,
+      targets: [{ type: 'class', id: '00000000-0000-0000-0000-000000000020' }],
+      composer_params: {
+        item_count: 20,
+        difficulty_distribution: { easy: 7, mid: 8, hard: 5 },
+        time_limit_ms: 3_600_000,
+      },
+      simulation_params: { no_back_nav: true, hide_feedback_until_submit: true },
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body['simulation_params']).toEqual({ no_back_nav: true, hide_feedback_until_submit: true });
+  });
+});

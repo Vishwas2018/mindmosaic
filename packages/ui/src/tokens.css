@@ -21,7 +21,7 @@
   --slate-100: #E9E5F5;  /* border default */
   --slate-150: #D6D0E8;  /* border strong */
   --slate-300: #A8A0C0;  /* icon disabled, muted-2 */
-  --slate-500: #7C7399;  /* muted text */
+  --slate-500: #726A8E;  /* muted text — darkened from #7C7399 for WCAG AA ≥4.5:1 on #FAF8FF/white */
   --slate-600: #3B3566;  /* secondary text */
   --slate-800: #1E1B4B;  /* primary text */
   --slate-950: #0e1118;  /* admin dark sidebar only */
@@ -55,12 +55,12 @@
 
   /* ── Extended brand (Stage 14: Brand component + auth panel) ── */
   --brand-primary:    var(--brand-500);   /* canonical bright-purple #5D3FD3 */
-  --brand-secondary:  var(--brand-orange-500);  /* canonical burnt-sienna #D35400 */
+  --brand-secondary:  var(--brand-orange-500);  /* canonical burnt-sienna #C14A00 */
   --brand-text-deep:  var(--brand-900);   /* canonical dark brand text #1a1a60 */
 
-  /* ── Brand orange scale — anchored on #D35400 ── */
+  /* ── Brand orange scale — anchored on #C14A00 ── */
   --brand-orange-50:  #FFF4ED;  /* light tint for backgrounds */
-  --brand-orange-500: #D35400;  /* canonical anchor */
+  --brand-orange-500: #C14A00;  /* canonical anchor — darkened from #D35400 for WCAG AA contrast ≥4.5 (4.95:1 on #fff) */
   --brand-orange-700: #B34700;  /* hover / active */
 
   /* ── Gradients ── */

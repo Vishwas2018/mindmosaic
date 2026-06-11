@@ -36,6 +36,7 @@ export function useSessionState(sessionId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.sessions.state(sessionId),
+    staleTime: 0,
     queryFn: () =>
       client
         .get(`/assessment-svc/sessions/${sessionId}/state`, SessionStateDTOSchema)
@@ -48,6 +49,7 @@ export function useSessionSummary(sessionId: string) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.sessions.summary(sessionId),
+    staleTime: 120_000,
     queryFn: () =>
       // Q-22.2: dispatcher serves `GET /sessions/{id}` (no `/summary` suffix)
       // — see assessment-svc/index.ts:353.
@@ -66,6 +68,7 @@ export function useListRecentSessions() {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.sessions.recent(),
+    staleTime: 0,
     queryFn: () =>
       client.get('/assessment-svc/sessions/recent', SessionSummaryListSchema).then((r) => r.data),
   });
@@ -76,6 +79,7 @@ export function useChildRecentSessions(studentId: string, limit = 5) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.sessions.childRecent(studentId),
+    staleTime: 30_000,
     queryFn: () =>
       client
         .get(
@@ -93,6 +97,7 @@ export function useTeacherRecentSessions(studentId: string, limit = 5) {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.sessions.teacherRecent(studentId),
+    staleTime: 30_000,
     queryFn: () =>
       client
         .get(

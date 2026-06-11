@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'v1.1/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'v1.1/**']
 
 env:
   HUSKY: 0
@@ -76,38 +76,97 @@ jobs:
         if: steps.supabase-check.outputs.available == 'true'
         run: supabase db push --dry-run --local
 
-  e2e:
-    name: E2E Tests
+  deploy-functions:
+    name: Deploy Edge Functions
     runs-on: ubuntu-latest
     steps:
-      - name: Check required secrets
-        id: check
-        run: |
-          if [[ -z "${{ secrets.E2E_BASE_URL }}" ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "E2E secrets not configured — skipping (pre-deploy gate not yet open)."
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
       - uses: actions/checkout@v5
-        if: steps.check.outputs.skip == 'false'
       - uses: pnpm/action-setup@v5
-        if: steps.check.outputs.skip == 'false'
       - uses: actions/setup-node@v5
-        if: steps.check.outputs.skip == 'false'
         with:
           node-version: "22"
           cache: "pnpm"
       - name: Install dependencies
-        if: steps.check.outputs.skip == 'false'
         run: pnpm install --frozen-lockfile
+      - name: Build local packages required by Edge Functions
+        run: pnpm turbo run build --filter=@mm/types --filter=@mm/engines
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy all Edge Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          PROJECT_REF=$(echo "$SUPABASE_URL" | sed 's|https://||' | cut -d'.' -f1)
+          supabase functions deploy --project-ref "$PROJECT_REF"
+          # Per-function config.toml verify_jwt=false is not applied when the CLI
+          # detects no code change — the entire API call (including metadata) is
+          # skipped. Unconditionally PATCH the flag via Management API after the
+          # bulk deploy so it is set regardless of code bundle delta.
+          for fn in auth-svc content-svc intelligence-svc; do
+            curl -sf -X PATCH \
+              "https://api.supabase.com/v1/projects/${PROJECT_REF}/functions/${fn}" \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"verify_jwt": false}'
+          done
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: deploy-functions
+    env:
+      E2E_DIAG_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Seed E2E data
+        run: pnpm tsx scripts/seed-e2e.ts
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Remove after Q-50 closed. See docs/dev/OPEN_ISSUES.md.
+      - name: E2E pre-flight probe (Q-50; temporary)
+        if: env.E2E_DIAG_ENABLED == 'true'
+        env:
+          E2E_DIAG_ENABLED: 'true'
+          E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON: ${{ secrets.E2E_SUPABASE_ANON }}
+          E2E_TEST_SERVICE_ROLE: ${{ secrets.E2E_TEST_SERVICE_ROLE }}
+        run: |
+          set +e
+          echo "=== E2E pre-flight probe (Q-50 R-DIAG-2) ==="
+          # 1. Project-ref consistency check
+          echo "SUPABASE_URL ref: $(echo $E2E_SUPABASE_URL | grep -oE '[a-z0-9]{20}')"
+          echo "BASE_URL ref:     $(echo $E2E_BASE_URL     | grep -oE '[a-z0-9]{20}')"
+          # If these differ, session cookie domain mismatch is the root cause.
+          # 2. PARENT + STUDENT probes → print verbatim (R-DIAG-2)
+          pnpm tsx scripts/diag-pathways-probe.ts
+          echo "=== probe done ==="
       - name: Install Playwright browsers
-        if: steps.check.outputs.skip == 'false'
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter @mm/web exec playwright install --with-deps chromium
       - name: Run E2E tests
-        if: steps.check.outputs.skip == 'false'
         env:
           E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
-        run: pnpm turbo run test --filter=@mm/e2e
+          E2E_WEB_URL: https://mindmosaic-web-git-v11-exam-content-vishwas2018s-projects.vercel.app
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ANON: ${{ secrets.E2E_SUPABASE_ANON }}
+          E2E_TEST_SERVICE_ROLE: ${{ secrets.E2E_TEST_SERVICE_ROLE }}
+          E2E_TEST_PATHWAY_ID: 00000000-e2e0-0000-0000-000000000002
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: pnpm --filter @mm/web e2e
+      # Remove after Q-50 closed. See docs/dev/OPEN_ISSUES.md.
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results/

@@ -65,4 +65,14 @@ export const mmKeys = {
     subscription: () => ['billing', 'subscription'] as const,
     invoices: () => ['billing', 'invoices'] as const,
   },
+  items: {
+    all: () => ['items'] as const,
+    list: () => ['items', 'list'] as const,
+    byId: (id: string) => ['items', id] as const,
+    versions: (id: string) => ['items', id, 'versions'] as const,
+  },
+  stimuli: {
+    all: () => ['stimuli'] as const,
+    byId: (id: string) => ['stimuli', id] as const,
+  },
 } as const;

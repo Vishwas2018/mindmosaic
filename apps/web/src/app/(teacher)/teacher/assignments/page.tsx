@@ -18,6 +18,8 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
+  LoadingState,
   NavLink,
   Sidebar,
   TopBar,
@@ -48,18 +50,6 @@ function TeacherSidebarNav({ pathname }: { pathname: string }) {
         ))}
       </nav>
     </Sidebar>
-  )
-}
-
-// ── Skeleton ─────────────────────────────────────────────────────────────────
-
-function SkeletonCard() {
-  return (
-    <div
-      aria-busy="true"
-      aria-label="Loading"
-      className="rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse h-16"
-    />
   )
 }
 
@@ -200,7 +190,7 @@ export default function AssignmentsPage() {
   const { data: classesData } = useMyClasses()
   const classId = classesData?.classes[0]?.id ?? ''
 
-  const { data: assignments, isLoading, isError } = useAssignmentsForClass(classId)
+  const { data: assignments, isLoading, isError, refetch } = useAssignmentsForClass(classId)
 
   const list = assignments ?? []
   const counts: Record<DbStatus, number> = {
@@ -237,11 +227,9 @@ export default function AssignmentsPage() {
 
           <main className="flex-1 overflow-auto px-6 lg:px-8 py-6">
             {isLoading ? (
-              <div className="space-y-3">
-                {[0, 1, 2].map((i) => <SkeletonCard key={i} />)}
-              </div>
+              <LoadingState variant="row" rows={3} />
             ) : isError ? (
-              <EmptyState title="Failed to load" description={C.loadError} />
+              <ErrorState title="Failed to load" description={C.loadError} onRetry={() => void refetch()} />
             ) : (
               <>
                 <TabStrip

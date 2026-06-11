@@ -30,7 +30,7 @@ export const AchievementDTOSchema = z.object({
   tier: AchievementTierSchema,
   icon: z.string().nullable(),
   earned: z.boolean(),
-  earned_at: z.string().datetime().nullable(),
+  earned_at: z.string().datetime({ offset: true }).nullable(),
 });
 export type AchievementDTO = z.infer<typeof AchievementDTOSchema>;
 
@@ -41,7 +41,7 @@ export const NotificationDTOSchema = z.object({
   body: z.string(),
   link: z.string().nullable(),
   read: z.boolean(),
-  created_at: z.string().datetime(),
+  created_at: z.string().datetime({ offset: true }),
 });
 export type NotificationDTO = z.infer<typeof NotificationDTOSchema>;
 

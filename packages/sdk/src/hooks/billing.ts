@@ -19,6 +19,7 @@ export function usePlanCatalog() {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.billing.plans(),
+    staleTime: 300_000,
     queryFn: () =>
       client.get('/billing-svc/billing/plans', PlanCatalogDTOSchema).then((r) => r.data),
   });
@@ -29,6 +30,7 @@ export function useSubscription() {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.billing.subscription(),
+    staleTime: 120_000,
     queryFn: () =>
       client
         .get('/billing-svc/billing/subscription', SubscriptionDTOSchema)
@@ -42,6 +44,7 @@ export function useInvoices() {
   const client = useMmClient();
   return useQuery({
     queryKey: mmKeys.billing.invoices(),
+    staleTime: 300_000,
     queryFn: () =>
       client.get('/billing-svc/billing/invoices', InvoicesResponseSchema).then((r) => r.data),
   });

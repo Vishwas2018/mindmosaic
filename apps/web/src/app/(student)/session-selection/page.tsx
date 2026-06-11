@@ -7,13 +7,17 @@ import {
   Button,
   Card,
   EmptyState,
+  ErrorState,
+  LoadingState,
   PageHeader,
   TopBar,
+  UpgradeState,
   useToast,
 } from '@mm/ui'
 import { usePathways, useCreateSession } from '@mm/sdk'
 import type { PathwayDTO } from '@mm/types'
 import { useAuth } from '../../../providers/AuthProvider'
+import { getExamFamilyLabel } from '../../../lib/content-labels'
 
 // SCREEN_SPECS §8 — Session Selection.
 // Q-22.4 (2026-05-12) = A: no recent-sessions row on this screen.
@@ -39,24 +43,6 @@ const QUERY_TO_CHIP: Record<string, SubjectKey> = {
   all: 'all',
 }
 
-function PathwaySkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Loading pathways"
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-    >
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          aria-hidden="true"
-          className="h-40 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-        />
-      ))}
-    </div>
-  )
-}
-
 interface PathwayCardProps {
   pathway: PathwayDTO
   isPending: boolean
@@ -75,7 +61,7 @@ function PathwayCard({ pathway, isPending, onStart }: PathwayCardProps) {
           <div>
             <h2 className="text-base font-semibold text-[var(--text)]">{pathway.display_name}</h2>
             <p className="mt-1 text-xs text-[var(--muted)]">
-              {pathway.exam_family} · Year {pathway.year_levels.join(', ')}
+              {getExamFamilyLabel(pathway.exam_family)} · Year {pathway.year_levels.join(', ')}
             </p>
           </div>
           <span
@@ -102,7 +88,7 @@ function PathwayCard({ pathway, isPending, onStart }: PathwayCardProps) {
       <div>
         <h2 className="text-base font-semibold text-[var(--text)]">{pathway.display_name}</h2>
         <p className="mt-1 text-xs text-[var(--muted)]">
-          {pathway.exam_family} · Year {pathway.year_levels.join(', ')} · 20–30 min
+          {getExamFamilyLabel(pathway.exam_family)} · Year {pathway.year_levels.join(', ')} · 20–30 min
         </p>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -146,6 +132,7 @@ export default function SessionSelectionPage() {
 
   const [subject, setSubject] = useState<SubjectKey>(initialSubject)
   const [activeSessionConflict, setActiveSessionConflict] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
 
   const pathwaysQuery = usePathways()
   const createSession = useCreateSession()
@@ -158,6 +145,7 @@ export default function SessionSelectionPage() {
 
   function handleStart(pathway: PathwayDTO, mode: Mode) {
     setActiveSessionConflict(false)
+    setShowUpgrade(false)
     createSession.mutate(
       {
         assessment_profile_id: null,
@@ -165,7 +153,7 @@ export default function SessionSelectionPage() {
         assignment_id: null,
         mode,
         target_skills: null,
-        pathway_id: pathway.slug,
+        pathway_id: pathway.id,
       },
       {
         onSuccess: (response) => {
@@ -185,11 +173,7 @@ export default function SessionSelectionPage() {
             return
           }
           if (apiErr.status === 402 || apiErr.code === 'FEATURE_GATED') {
-            toast.addToast({
-              title: 'This is a Premium feature',
-              description: 'Upgrade your plan to unlock more pathways.',
-              variant: 'warn',
-            })
+            setShowUpgrade(true)
             return
           }
           toast.addToast({
@@ -234,6 +218,14 @@ export default function SessionSelectionPage() {
           </div>
         )}
 
+        {showUpgrade && (
+          <UpgradeState
+            tier="Standard"
+            description="This feature requires the Standard plan."
+            onUpgrade={() => router.push('/billing')}
+          />
+        )}
+
         <div role="tablist" aria-label="Filter by subject" className="flex flex-wrap gap-2">
           {SUBJECT_CHIPS.map((chip) => {
             const selected = chip.key === subject
@@ -258,20 +250,18 @@ export default function SessionSelectionPage() {
         </div>
 
         <section id="pathway-list" role="tabpanel" aria-label="Pathways">
-          {pathwaysQuery.isPending && <PathwaySkeleton />}
+          {pathwaysQuery.isPending && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[0, 1, 2].map((i) => <LoadingState key={i} variant="card" />)}
+            </div>
+          )}
 
           {pathwaysQuery.isError && (
-            <Card>
-              <EmptyState
-                title="Could not load pathways"
-                description="Something went wrong fetching your study options."
-                action={
-                  <Button variant="secondary" onClick={() => void pathwaysQuery.refetch()}>
-                    Try again
-                  </Button>
-                }
-              />
-            </Card>
+            <ErrorState
+              title="Could not load pathways"
+              description="Something went wrong fetching your study options."
+              onRetry={() => void pathwaysQuery.refetch()}
+            />
           )}
 
           {pathwaysQuery.isSuccess && filteredPathways.length === 0 && (

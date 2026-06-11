@@ -104,7 +104,7 @@ INSERT INTO class_student (class_id, student_id)
 VALUES ('00000000-0000-0000-0006-000000000010', '00000000-0000-0000-0006-000000000003');
 
 INSERT INTO skill_graph_version (id, version, status)
-VALUES ('00000000-0000-0000-0006-000000000011', 6001, 'published');
+VALUES ('00000000-0000-0000-0006-000000000011', 6001, 'draft');
 
 INSERT INTO skill_node (id, graph_version_id, level, name, slug)
 VALUES ('00000000-0000-0000-0006-000000000012',

@@ -14,13 +14,71 @@ const ProgressSchema = z.object({
   time_remaining_ms: z.number().int().nullable(),
 });
 
+// ─── PracticeExamComposerParams (v1.1-S2, ADR-0036) ─────────────────────────
+// Optional, additive extension to CreateSessionRequest. When present, the
+// session is composed from the question bank by pathway + difficulty mix +
+// time limit. Bounds per ADR-0036 §Bounds; integer-distribution model per
+// Decision 6 (sum of band counts === item_count).
+//
+// item_count ∈ [5, 80]; time_limit_ms ∈ [300_000, 10_800_000].
+// difficulty_distribution: integer counts per band, each ≥ 0, sum === item_count.
+
+const DifficultyDistributionSchema = z.object({
+  easy: z.number().int().nonnegative(),
+  mid:  z.number().int().nonnegative(),
+  hard: z.number().int().nonnegative(),
+});
+export type DifficultyDistribution = z.infer<typeof DifficultyDistributionSchema>;
+
+export const PracticeExamComposerParamsSchema = z
+  .object({
+    item_count: z.number().int().min(5).max(80),
+    difficulty_distribution: DifficultyDistributionSchema,
+    time_limit_ms: z.number().int().min(300_000).max(10_800_000),
+  })
+  .refine(
+    (v) => v.difficulty_distribution.easy + v.difficulty_distribution.mid + v.difficulty_distribution.hard === v.item_count,
+    {
+      message: 'difficulty_distribution band counts must sum to item_count',
+      path: ['difficulty_distribution'],
+    },
+  )
+  .refine(
+    (v) => v.difficulty_distribution.easy + v.difficulty_distribution.mid + v.difficulty_distribution.hard > 0,
+    {
+      message: 'difficulty_distribution must contain at least one item across all bands',
+      path: ['difficulty_distribution'],
+    },
+  );
+export type PracticeExamComposerParams = z.infer<typeof PracticeExamComposerParamsSchema>;
+
+// ─── SimulationParams (v1.1-S3, ADR-0037) ───────────────────────────────────
+// Optional, additive extension to CreateSessionRequest. When present, the
+// session is administered under strict simulation-exam conditions. Orthogonal
+// to PracticeExamComposerParams — both can be set on the same request (compose
+// then administer). Minimum flag set per ADR-0037 §Decision 2:
+// - no_back_nav: locks LinearEngine.canNavigateBack to false. Enforced server-side.
+// - hide_feedback_until_submit: gates per-item feedback exposure in
+//   respondToSession (handlers.ts:535 — is_correct returned as null when true).
+// Both flags default-true when simulation_params is present.
+// strict_timing intentionally OMITTED — redundant against mode='exam'
+// server-authoritative timing per spec §18 'Exam' row.
+
+export const SimulationParamsSchema = z.object({
+  no_back_nav: z.boolean().default(true),
+  hide_feedback_until_submit: z.boolean().default(true),
+});
+export type SimulationParams = z.infer<typeof SimulationParamsSchema>;
+
 export const CreateSessionRequestSchema = z.object({
   assessment_profile_id: z.string().uuid().nullable(),
   repair_sequence_id: z.string().uuid().nullable(),
   assignment_id: AssignmentIdSchema.nullable(),
   mode: SessionModeSchema,
   target_skills: z.array(z.string()).nullable(),
-  pathway_id: z.string().nullable(),
+  pathway_id: z.string().uuid().nullable(),
+  composer_params: PracticeExamComposerParamsSchema.optional(),
+  simulation_params: SimulationParamsSchema.optional(),
 });
 export type CreateSessionRequest = z.infer<typeof CreateSessionRequestSchema>;
 
@@ -102,6 +160,10 @@ export const SessionStateDTOSchema = z.object({
   answered_item_ids: z.array(z.string()),
   lock_token: z.string(),
   version: z.number().int(),
+  // v1.1-S5 (ADR-0039 Q-1.1-5.4 Option a): server-authoritative simulation flag.
+  // assessment-svc resumeSession derives this from engine_state_snapshot.simulation_params.
+  // Additive; clients read only. Persists correctly on session resume.
+  is_simulation: z.boolean(),
 });
 export type SessionStateDTO = z.infer<typeof SessionStateDTOSchema>;
 
@@ -109,8 +171,8 @@ export const SessionSummaryDTOSchema = z.object({
   session_id: SessionIdSchema,
   mode: z.string(),
   pathway_name: z.string().nullable(),
-  started_at: z.string().datetime(),
-  submitted_at: z.string().datetime().nullable(),
+  started_at: z.string().datetime({ offset: true }),
+  submitted_at: z.string().datetime({ offset: true }).nullable(),
   duration_ms: z.number().int().nullable(),
   active_duration_ms: z.number().int().nullable(),
   score_band: z.string().nullable(),
@@ -135,6 +197,6 @@ export const CheckpointRequestSchema = z.object({
       response_data: z.record(z.string(), z.unknown()),
     }),
   ),
-  client_timestamp: z.string().datetime(),
+  client_timestamp: z.string().datetime({ offset: true }),
 });
 export type CheckpointRequest = z.infer<typeof CheckpointRequestSchema>;

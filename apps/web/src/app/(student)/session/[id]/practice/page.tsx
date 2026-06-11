@@ -1,11 +1,13 @@
 'use client'
-import { use, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AppShell,
   Button,
   Card,
+  ErrorState,
   FocusHeader,
+  LoadingState,
   PageHeader,
   useToast,
 } from '@mm/ui'
@@ -201,9 +203,9 @@ function Modal({ title, description, primaryLabel, onPrimary }: ModalProps) {
 export default function PracticePage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }) {
-  const { id: sessionId } = use(params)
+  const { id: sessionId } = params
   const router = useRouter()
   const toast = useToast()
 
@@ -334,17 +336,27 @@ export default function PracticePage({
       <AppShell variant="focus">
         <FocusHeader onExit={() => router.push('/dashboard')} />
         <main className="max-w-3xl mx-auto px-6 py-8">
-          <div
-            role="status"
-            aria-label="Loading session"
-            className="h-64 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-          />
+          <LoadingState />
         </main>
       </AppShell>
     )
   }
 
-  if (sessionState.isError || currentItem === null) {
+  if (sessionState.isError) {
+    return (
+      <AppShell variant="focus">
+        <FocusHeader onExit={() => router.push('/dashboard')} />
+        <main className="max-w-3xl mx-auto px-6 py-8">
+          <ErrorState
+            title="Could not load session"
+            description="Something went wrong fetching this practice session."
+            onRetry={() => void sessionState.refetch()}
+          />
+        </main>
+      </AppShell>
+    )
+  }
+  if (currentItem === null) {
     return (
       <AppShell variant="focus">
         <FocusHeader onExit={() => router.push('/dashboard')} />

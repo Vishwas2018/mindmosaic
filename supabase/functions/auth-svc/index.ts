@@ -1,9 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getTraceId } from "../_shared/trace-id.ts";
 import { jsonOk, jsonError } from "../_shared/error-envelope.ts";
+import { CORS_HEADERS } from "../_shared/cors.ts";
 import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { verifyBearer } from "../_shared/auth.ts";
 import { log } from "../_shared/logger.ts";
+// config.toml: verify_jwt = false — gateway JWT check disabled because signup/login
+// are the primitives that create sessions; they cannot require a prior valid JWT.
+// verifyBearer() is used only on sub-routes that do require an existing session.
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -29,8 +33,10 @@ Deno.serve(async (req: Request) => {
   const traceId = getTraceId(req);
 
   const url = new URL(req.url);
-  // Strip function prefix: /functions/v1/auth-svc/auth/signup → /auth/signup
-  const path = url.pathname.replace(/^\/functions\/v1\/auth-svc/, "");
+  // Strip function prefix — handle both forms the Supabase gateway may send:
+  //   /functions/v1/auth-svc/auth/signup  (full path forwarded)
+  //   /auth-svc/auth/signup               (/functions/v1 already stripped by gateway)
+  const path = url.pathname.replace(/^\/(functions\/v1\/)?auth-svc/, "").replace(/\/$/, "");
   const method = req.method;
 
   let status = 200;
@@ -40,11 +46,7 @@ Deno.serve(async (req: Request) => {
     if (method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: {
-          "X-Trace-Id": traceId,
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Trace-Id, Idempotency-Key",
-        },
+        headers: { "X-Trace-Id": traceId, ...CORS_HEADERS },
       });
     }
 
@@ -128,7 +130,7 @@ async function handleSignup(req: Request, traceId: string): Promise<Response> {
     );
   }
 
-  const { error } = await anonClient().auth.signUp({
+  const { data: signUpData, error } = await anonClient().auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName.trim(), role: "parent" } },
@@ -140,6 +142,37 @@ async function handleSignup(req: Request, traceId: string): Promise<Response> {
       return jsonOk({ message: "Check your email to confirm your account." }, traceId);
     }
     return jsonError("SIGNUP_FAILED", error.message, traceId, 400);
+  }
+
+  // Synchronous app_metadata write — no poll needed.
+  // handle_new_user() is AFTER INSERT; it commits user_profile+tenant before
+  // signUp() returns, so tenant_id is queryable immediately.
+  const newUserId = signUpData?.user?.id;
+  if (newUserId) {
+    const svc = serviceClient();
+    const { data: profile } = await svc
+      .from("user_profile")
+      .select("tenant_id, role")
+      .eq("id", newUserId)
+      .single();
+    if (profile) {
+      const { error: metaErr } = await svc.auth.admin.updateUserById(newUserId, {
+        app_metadata: { tenant_id: profile.tenant_id, role: profile.role },
+      });
+      if (metaErr) {
+        console.error(JSON.stringify({
+          level: "error", trace_id: traceId,
+          event: "app_metadata_write_failed",
+          user_id: newUserId, err: metaErr.message,
+        }));
+      }
+    } else {
+      console.error(JSON.stringify({
+        level: "error", trace_id: traceId,
+        event: "user_profile_missing_after_signup",
+        user_id: newUserId,
+      }));
+    }
   }
 
   return jsonOk({ message: "Check your email to confirm your account." }, traceId);
@@ -233,7 +266,7 @@ async function handleLogout(
     return jsonError("LOGOUT_FAILED", error.message, traceId, 400);
   }
 
-  return new Response(null, { status: 204, headers: { "X-Trace-Id": traceId } });
+  return new Response(null, { status: 204, headers: { "X-Trace-Id": traceId, "Access-Control-Allow-Origin": CORS_HEADERS["Access-Control-Allow-Origin"] } });
 }
 
 async function handleForgotPassword(req: Request, traceId: string): Promise<Response> {

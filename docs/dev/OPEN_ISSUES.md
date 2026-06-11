@@ -5,6 +5,970 @@
 
 ## Open
 
+### ISSUE-0088 — billing-svc GET /billing/subscription returns 500 (×4 background failures in results-flow E2E run)
+
+- Status: open
+- Severity: low (deferred billing surface; not in family-beta scope — background network failures only, no in-scope assertion depends on it)
+- Reported: 2026-06-11 (E2E gate close — observed in results-flow run)
+- Area: backend (supabase/functions/billing-svc — subscription read path)
+- Tags: billing · subscription · e2e · deferred · scope-deferred
+
+**Symptom.** `GET /billing/subscription` returns HTTP 500 — observed as 4 background request failures during the results-flow E2E run. No in-scope test assertion depends on the billing surface; the failures are background fetches from pages that probe subscription state.
+
+**Scope.** deferred — billing surface (Stripe Stages 42–47) is not yet wired; out of family-beta scope. No fix required to close the current E2E gate.
+
+**Investigation (un-defer time).** Pull billing-svc Edge Function logs for the 500; likely the subscription read queries a table/row not yet provisioned in the E2E project. Confirm against `supabase/functions/billing-svc` subscription handler.
+
+Related: billing Stages 42–47 (DEV_PLAN.md), `supabase/functions/billing-svc`
+
+---
+
+### ISSUE-0087 — E2E teacher-student-detail.spec.ts test 19 (not-found branch) skipped — deferred surface + strict-mode locator bug
+
+- Status: open (test.skip — `apps/web/playwright/e2e/teacher-student-detail.spec.ts:42`)
+- Severity: low (deferred out-of-scope surface, family beta; test-side skip, no product impact)
+- Reported: 2026-06-11 (E2E gate close)
+- Area: tests (apps/web/playwright/e2e/teacher-student-detail.spec.ts)
+- Tags: e2e · teacher · deferred · scope-deferred · strict-mode-locator
+
+**Symptom.** `teacher-student-detail.spec.ts:42` (test 19, "not-found branch: accessing an unknown student ID shows empty state") — teacher student-detail surface deferred; the not-found empty state is not reached. Additionally a strict-mode locator bug: `page.getByText(/student not found|ask your admin|not have access/i)` (line 50) matches 2 elements, so the assertion would fail strict-mode even once the surface lands.
+
+**Scope.** deferred — teacher student-detail surface out of family-beta scope. Skipped test-side with ISSUE-0087 ref, matching the existing in-body `test.skip` convention at `teacher-student-detail.spec.ts:54`.
+
+**One-line fix for un-skip time.** Scope the locator to the heading or use `.first()` — e.g. `page.getByRole('heading', { name: /student not found|ask your admin|not have access/i })` or `page.getByText(/.../i).first()` — to resolve the strict-mode 2-element match, then remove the `test.skip(true, …)`.
+
+Related: `apps/web/playwright/e2e/teacher-student-detail.spec.ts:42,50`, teacher-student-detail.spec.ts:54 (already-skipped sibling)
+
+---
+
+### ISSUE-0086 — E2E student-assignments.spec.ts test 14 (empty Assigned tab) skipped — deferred assignments surface
+
+- Status: open (test.skip — `apps/web/playwright/e2e/student-assignments.spec.ts:50`)
+- Severity: low (deferred out-of-scope surface, family beta; test-side skip, no product impact)
+- Reported: 2026-06-11 (E2E gate close)
+- Area: tests (apps/web/playwright/e2e/student-assignments.spec.ts)
+- Tags: e2e · student · assignments · deferred · scope-deferred
+
+**Symptom.** `student-assignments.spec.ts:50` (test 14, "assignments page — empty Assigned tab shows empty state copy") — assignments surface deferred; the "No assignments yet" empty-state copy is not rendered on the Assigned tab.
+
+**Scope.** deferred — student assignments surface out of family-beta scope. Skipped test-side with ISSUE-0086 ref, matching the in-body `test.skip` convention at `teacher-student-detail.spec.ts:54`.
+
+Related: `apps/web/playwright/e2e/student-assignments.spec.ts:50`
+
+---
+
+### ISSUE-0085 — E2E assignment-engine.spec.ts test 2 (publish flow) skipped — deferred teacher assignment publishing surface
+
+- Status: open (test.skip — `apps/web/playwright/e2e/assignment-engine.spec.ts:54`)
+- Severity: low (deferred out-of-scope surface, family beta; test-side skip, no product impact)
+- Reported: 2026-06-11 (E2E gate close)
+- Area: tests (apps/web/playwright/e2e/assignment-engine.spec.ts)
+- Tags: e2e · teacher · assignments · deferred · scope-deferred
+
+**Symptom.** `assignment-engine.spec.ts:54` (test 2, "wizard — practice assignment publish flow") — teacher assignment publishing deferred; the "Assignment Published" success view is not reached.
+
+**Scope.** deferred — teacher assignment publishing surface out of family-beta scope. Skipped test-side with ISSUE-0085 ref, matching the in-body `test.skip` convention at `teacher-student-detail.spec.ts:54`.
+
+Related: `apps/web/playwright/e2e/assignment-engine.spec.ts:54`
+
+---
+
+### ISSUE-0084 — content-svc contract tests: no `id` assertion on PathwayDTO output (listPathways + getPathwayBySlug)
+
+- Status: open
+- Severity: low (fix commit 5ddb904 ships the runtime data; gap is test coverage only — no user impact)
+- Reported: 2026-06-08 (Round P-FIX — commit 5ddb904)
+- Area: tests (content-svc contract suite)
+- Tags: contract-test · pathway · dto · id
+
+**Summary.** `supabase/functions/content-svc/__tests__/contract.test.ts` has no assertion that `id` is present and a valid UUID in the `PathwayDTO` returned by `listPathways` (line 78-131) or `getPathwayBySlug` (line 136-160). The runtime mapping was missing `id` and was fixed in commit 5ddb904; the tests were passing because they only asserted on `entitled` and `locked_reason`. Any future regression that drops `id` from the mapping would not be caught by the contract suite.
+
+**Required fix.** In both test blocks, add after the existing entitlement assertions:
+```ts
+expect(dto.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+```
+where `dto` is the first element of `listPathways` response and the single object of `getPathwayBySlug` response.
+
+**Related.** commit 5ddb904, `PathwayDTOSchema` (`packages/types/src/content.ts:12`), local `PathwayDTO` interface (`handlers.ts:62-70`).
+
+---
+
+### ISSUE-0083 — E2E auth-svc signup returns 404/empty via E2E_BASE_URL (tests 9, 12)
+
+- Status: resolved — 2026-06-06 (Round K — `E2E_BASE_URL` secret corrected to Supabase Edge Functions URL)
+- Severity: high (blocks session-flow and parent-dashboard E2E; API chain untestable)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
+- Area: infra (CI secrets + Supabase Edge Function routing)
+- Tags: ci · e2e · auth-svc · secrets · ISSUE-0079
+
+**Resolution.** `E2E_BASE_URL` was pointing at the Vercel web URL instead of the Supabase Edge Functions URL. Updated 2026-06-06. Confirmed in run 27014754835: test 9 signup no longer returns 404 (progresses to page navigation); test 12 signup/login succeed and now surfaces `CONTENT_SELECT_FAILED` (ISSUE-0077) instead of the empty-body guard.
+
+Related: ISSUE-0081 (Vercel SSO — still blocking page nav), ISSUE-0077 (now confirmed in CI), `playwright/e2e/helpers/auth.ts`, `supabase/functions/auth-svc`
+
+---
+
+### ISSUE-0082 — axe color-contrast: footer "Terms"/"Privacy Policy" links fail WCAG AA (tests 6, 7, 16, 17)
+
+- Status: open
+- Severity: medium (E2E axe gate red on 4 pages; WCAG AA violation ships to real users)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
+- Area: frontend (shared footer component)
+- Tags: a11y · wcag · color-contrast · axe · footer
+
+**Summary.** axe-core flags a `color-contrast` [serious] violation on every page that renders the shared footer. The offending elements are:
+
+```html
+<a href="/legal/terms"  class="... text-xs text-gray-600! ...">Terms</a>
+<a href="/legal/privacy-policy" class="... text-xs text-gray-600! ...">Privacy Policy</a>
+```
+
+Measured contrast: `#a8a8a8` foreground on `#fafafa` background = **2.27:1**. WCAG AA requires **4.5:1** for normal text at 12px. Failing tests: 6 (`/teacher/content`), 7 (`/teacher/content/new`), 16 (`/practice`), 17 (`/exam-sim`).
+
+**Fix.** Replace `text-gray-600!` with a darker shade that achieves ≥4.5:1 on `#fafafa`. `text-gray-500` = `#6b7280` gives ratio ~4.53:1 — just passes. Or use `text-gray-600` (non-important) and verify actual rendered bg. The `!` (Tailwind important) suggests the class is overriding something; trace which component applies it.
+
+Related: `apps/web/src/` footer component (locate with `grep -r "privacy-policy" --include="*.tsx"`), `playwright/e2e/exam-content-a11y.spec.ts`, `playwright/e2e/student-composer-a11y.spec.ts`
+
+---
+
+### ISSUE-0081 — Vercel preview deployment protection blocks all authenticated E2E navigation (13/20 tests)
+
+- Status: open (bypass wired in Round K — `2f86737` — but NOT effective; see investigation notes)
+- Severity: critical (blocks 13 of 20 E2E specs; CI gate cannot pass until resolved)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013886741)
+- Area: infra (Vercel project settings + CI workflow)
+- Tags: ci · e2e · vercel · deployment-protection · ISSUE-0079
+
+**Summary.** Every test that navigates to a URL under the Vercel preview domain is redirected to `vercel.com/login?next=%2Fsso-api%3Furl%3D...`. The `/sso-api` path in the redirect identifies this as **Vercel Team Authentication** (requires a Vercel account login), not basic Password Protection. Round K wired `x-vercel-protection-bypass` header in `playwright.config.ts` + `VERCEL_AUTOMATION_BYPASS_SECRET` CI secret, but the redirect persists in run 27014754835 — the bypass is not taking effect.
+
+**Why the bypass isn't working (investigation notes).** Three candidates:
+1. **(Most likely) "Protection Bypass for Automation" was not actually enabled.** The Vercel project may have "Vercel Authentication" (Team SSO) toggled on but "Protection Bypass for Automation" is a separate sub-toggle that must be explicitly enabled. If it was not enabled, the bypass secret sent in headers is simply ignored.
+2. **Secret mismatch.** The secret generated in Vercel and the value entered in GitHub may not match. Verify: Vercel project → Settings → Deployment Protection → the exact token value matches `VERCEL_AUTOMATION_BYPASS_SECRET` in GitHub Actions.
+3. **New deployment required.** Some Vercel configurations require a new deployment after enabling bypass for the feature to activate on existing preview URLs. Push a new commit to create a fresh preview deployment after confirming items 1 and 2.
+
+**Fastest alternative.** If the above investigation doesn't resolve it quickly: Vercel project → Settings → Deployment Protection → disable "Vercel Authentication" for Preview deployments entirely. This makes the preview URL publicly accessible — acceptable for a non-production preview of a non-yet-launched product.
+
+Related: ISSUE-0079, `.github/workflows/ci.yml`, `apps/web/playwright.config.ts`
+
+---
+
+### ISSUE-0080 — CI E2E: `pnpm exec playwright install` fails — playwright not in root workspace
+
+- Status: resolved — 2026-06-05 (commit fac945d: `pnpm --filter @mm/web exec playwright install --with-deps chromium`)
+- Severity: high (blocks every CI E2E run; Playwright never installs, test matrix unobservable)
+- Reported: 2026-06-05 (Round J-VERIFY — run 27013717709)
+- Area: infra (CI — .github/workflows/ci.yml)
+- Tags: ci · playwright · e2e · pnpm-workspace · ISSUE-0079
+
+**Summary.** The "Install Playwright browsers" step in the E2E job runs `pnpm exec playwright install --with-deps chromium`. `pnpm exec` resolves binaries against the root workspace; `@playwright/test` is only declared in `apps/web/package.json`, so the binary is absent from the root node_modules and the command exits 254 (`ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "playwright" not found`).
+
+**Fix.** Scope the install command to the `@mm/web` package:
+```yaml
+run: pnpm --filter @mm/web exec playwright install --with-deps chromium
+```
+
+This is the same filter used on the subsequent `Run E2E tests` step (`pnpm --filter @mm/web e2e`), so it resolves the binary from `apps/web/node_modules/.bin/`.
+
+Related: ISSUE-0079, `.github/workflows/ci.yml` line 97, `apps/web/package.json`
+
+---
+
+### ISSUE-0078 — pgTAP column-assertion sweep: verify column existence for all `.from('<table>').select('<cols>')` call sites
+
+- Status: open
+- Severity: low
+- Reported: 2026-06-05 (ROUND I doc hygiene — ADR-0044 §Follow-ups origin)
+- Area: tests (supabase/tests/)
+- Tags: pgtap · schema-validation · content-svc · assessment-svc · pre-merge
+
+**Summary.** ADR-0044 §Follow-ups explicitly defers a pgTAP column-assertion test for `framework_config` that verifies the `.config` column exists in `information_schema.columns`. The same gap applies to any Edge Function that calls `.from('<table>').select('<cols>')` with named columns — if a column is dropped or renamed, the mismatch surfaces only at runtime (or in E2E), not at the pgTAP gate. The `framework_config.config` discovery (ADR-0044: column missing from migration 0003, undetected until E2E gate) establishes the precedent for why column-presence tests have value.
+
+**Scope.** Grep all named-column `.select()` calls across `supabase/functions/` and match each table+column pair against a `has_column()` assertion in the relevant pgTAP test file. Priority tables: `framework_config`, `item`, `item_version`, `blueprint`, `pathway`, `assessment_profile`.
+
+**Fix.** Add `has_column('<schema>', '<table>', '<col>', '<description>')` assertions to the relevant pgTAP test files. No migration or source code change required — tests only.
+
+Related: ADR-0044 §Follow-ups, `supabase/tests/rls/003_assessment_config.sql`, `supabase/tests/migrations/0027_framework_config_config.sql`
+
+---
+
+### ISSUE-0075 — Local Edge Function BOOT_ERROR: Deno TLS cert failure on esm.sh (all functions, cold cache)
+
+- Status: resolved — 2026-06-08 (Round Q — CI deploy-functions job; local TLS still applies but E2E gate is CI-only)
+- Severity: critical (blocks 17/19 local E2E specs; all Edge Functions return 503 in local dev)
+- Reported: 2026-06-05 (Round H E2E investigation)
+- Area: infra (local dev — Docker edge runtime)
+- Tags: edge-runtime · deno · tls · local-dev · e2e-blocker
+
+**Summary.** Every local Edge Function call returns `503 {"code":"BOOT_ERROR","message":"Worker failed to boot (please check logs)"}`. The Docker container `supabase_edge_runtime_mindmosaic` (edge-runtime v1.73.13 / Deno v2.1.4) logs the following stack trace verbatim on every request to any function:
+
+```
+worker boot error: failed to bootstrap runtime: failed to create the graph:
+Import 'https://esm.sh/@supabase/auth-js@2.106.2/dist/module/index.d.ts' failed:
+error sending request for url
+(https://esm.sh/@supabase/auth-js@2.106.2/dist/module/index.d.ts):
+client error (Connect): invalid peer certificate: UnknownIssuer
+    at https://esm.sh/@supabase/auth-js@2.106.2/denonext/auth-js.mjs:1:1
+InvalidWorkerCreation: worker boot error: ... invalid peer certificate: UnknownIssuer
+    at async Function.create (ext:user_workers/user_workers.js:156:29)
+    at async Object.handler (file:///var/tmp/sb-compile-edge-runtime/root/index.ts:224:22)
+```
+
+**Root cause (deepened — ROUND H2 2026-06-05).** The Deno cache Docker volume (`supabase_edge_runtime_mindmosaic`) lost entries for `@supabase/supabase-js` after a `supabase stop/start`. When workers cold-boot they try to re-download from `esm.sh`. The real CA signing `esm.sh` is **Norton Web/Mail Shield Root** (Norton Antivirus SSL/TLS scanning — confirmed by `openssl s_client -connect esm.sh:443`, issuer `CN=Norton Web/Mail Shield Root`). The edge-runtime v1.73.13 uses a **compiled-in Rust `webpki-roots` Mozilla CA bundle** — Norton's CA is not in it and cannot be added via any standard mechanism:
+
+| Bypass attempted | Result |
+|---|---|
+| `DENO_UNSAFELY_IGNORE_CERTIFICATE_ERRORS=esm.sh` (container env) | ❌ Ignored — edge-runtime worker TLS is Rust-level, not Deno env-level |
+| `DENO_CERT=/certs/norton-ca.pem` (valid Norton CA PEM, verified OK) | ❌ Ignored — same reason; worker TLS config is compiled-in |
+| `update-ca-certificates` (Norton CA added to Debian system store) | ❌ Ignored — edge-runtime uses compiled-in `webpki-roots`, not system store |
+| `vendor: true` in `deno.json` + `supabase/functions/vendor/` created | ❌ Partially — edge-runtime v1.73.13 uses explicit `importMapPath` in `EdgeRuntime.userWorkers.create()`, which bypasses `deno.json` discovery; vendor directory not used |
+| Import map redirect to vendor files | ❌ Incompatible — vendored `.mjs` files use `/@supabase/...` CDN-relative paths that only resolve inside Deno's vendor resolution context |
+
+**Current state (2026-06-05 — ROUND I-CLEANUP).** The partial vendor implementation (`deno.json` `vendor:true`, `supabase/functions/vendor/`, `supabase/functions/deno.lock`) was **discarded** — reverted/deleted in ROUND I-CLEANUP 2026-06-05. Working tree is clean. **This is a local-only blocker on this dev machine** caused by Norton Web/Mail Shield SSL/TLS inspection; no other dev machine or CI environment is affected.
+
+**What WILL work:**
+1. **Disable Norton SSL scanning for Docker traffic** (Norton GUI → Firewall settings → Application exception for Docker Desktop) — most direct; no code change needed. Local unblock workaround.
+2. **Run H1 E2E gate in CI** (GitHub Actions / cloud environment where Norton is absent) — edge-runtime downloads esm.sh with real Mozilla CA → workers boot → H1 passes. **Merge gate moves to CI E2E (ISSUE-0079).**
+3. **Upgrade Supabase CLI + vendor (ISSUE-0076, post-merge DX)** — tracked separately as ISSUE-0076; activates only after edge-runtime upgrade supports `vendor: true` in worker context.
+
+**This is NOT a code bug.** All function code is correct. Deployed Supabase (remote) is unaffected.
+
+**E2E impact.** 17/19 specs blocked locally. H1 gate must run in CI or after Norton exclusion.
+
+**Workarounds / fix options (updated).**
+
+1. **(Local — disable Norton SSL scanning for Docker)** Norton GUI → Settings → Firewall → Application Traffic → add Docker Desktop / `com.docker.backend` to exclusions. No code change. After exclusion: `docker restart supabase_edge_runtime_mindmosaic` and re-run H1.
+
+2. **(CI — run H1 in GitHub Actions)** Edge-runtime downloads esm.sh normally (no Norton in CI). Alternatively, commit the `vendor/` directory first (ISSUE-0076) so CI also doesn't need network access.
+
+3. **(Long-term — Supabase CLI upgrade + vendor)** `vendor: true` + `supabase/functions/vendor/` are already implemented (unstaged). Once edge-runtime respects `vendor: true` in worker context (newer CLI/runtime version), all future cold boots are network-free.
+
+Related: ISSUE-0076 (vendor implementation), ISSUE-0067 (host Node.js TLS — same Norton root), ISSUE-0077 (selectItems 500 — TBD pending H1), `supabase_edge_runtime_mindmosaic` Docker container, all 12 Edge Functions.
+
+---
+
+### ISSUE-0077 — selectItems 500 on POST /content/select after BOOT_ERROR unblock: status TBD pending H1 run
+
+- Status: open — **CONFIRMED IN CI** (Round K run 27014754835 — not a BOOT_ERROR symptom)
+- Severity: high (blocks all session-create flows: session-flow test 12, exam-flow, practice-flow, results-flow)
+- Reported: 2026-06-05 (Round H E2E analysis — observed in pre-ISSUE-0075 trace)
+- Area: backend (supabase/functions/content-svc — selectItems path)
+- Tags: content-svc · select-items · e2e-gate
+
+**Confirmed.** Round K test 12 (session-flow) now gets past signup/login (ISSUE-0083 resolved) and reaches `POST /sessions/create`. The response is:
+
+```json
+{"error":{"code":"CONTENT_SELECT_FAILED","message":"content-svc /content/select returned 500","trace_id":"e0576ba5-ba44-49b5-9dd9-80d3a4cfef28"}}
+```
+
+`content-svc /content/select` returns 500 in the deployed Supabase project. This is not caused by ISSUE-0075 (BOOT_ERROR, local Norton TLS) — CI has no Norton and the Edge Functions boot correctly. The 500 is a real application error in `content-svc selectItems`.
+
+**Investigation needed.** Use trace_id `e0576ba5-ba44-49b5-9dd9-80d3a4cfef28` to pull Supabase Edge Function logs for the `content-svc` function. Likely causes: (a) the `framework_config` table has no row matching the pathway/engine combination the session uses, (b) the `item` table has no `active` items for the seeded pathway, (c) a schema mismatch between what `selectItems` queries and what `seed-e2e.ts` inserts. The seed inserts `pathway_id = 00000000-e2e0-0000-0000-000000000002` and items with `lifecycle = 'active'` — verify `selectItems` uses matching filter values.
+
+Related: ISSUE-0083 (resolved — signup now reaches this point), ISSUE-0075 (not related), content-svc/handlers.ts `selectItems`, `scripts/seed-e2e.ts`
+
+---
+
+### ISSUE-0079 — Set up CI E2E: GitHub Actions against Vercel preview deployments (merge gate)
+
+- Status: open
+- Severity: medium
+- Reported: 2026-06-05 (ROUND I-CLEANUP — ISSUE-0075 local-blocked by Norton; merge gate moves to CI)
+- Area: infra (CI — .github/workflows/)
+- Tags: ci · e2e · playwright · merge-gate · vercel-preview
+
+**Summary.** Local E2E (H1 Playwright gate) is blocked on this dev machine by ISSUE-0075 (Norton SSL inspection incompatible with edge-runtime compiled CA bundle). CI is unaffected — GitHub Actions runners have no Norton and download `esm.sh` with real Mozilla CAs. Setting up CI E2E against Vercel preview deployments replaces the local H1 gate as the pre-merge quality gate.
+
+**Scope.**
+1. Add a GitHub Actions workflow (`.github/workflows/e2e.yml`) that triggers on pull_request to `main` and `v1.1/*` branches.
+2. Deploy to Vercel preview (or reuse an existing preview URL via env var injection).
+3. Run all 13 Playwright specs / 20 tests against the preview URL (`E2E_WEB_URL`, `E2E_TEST_ANON`, `E2E_TEST_SERVICE_ROLE`).
+4. Gate: workflow must pass before merge is permitted (branch protection rule).
+
+**Why not vendor instead.** ISSUE-0076 (vendor) would eliminate the network dependency at boot but requires a Supabase CLI upgrade before edge-runtime respects `vendor:true` in worker context. CI E2E is immediately actionable and covers the same quality gate without waiting for the CLI upgrade.
+
+**Activation.** Resolves ISSUE-0075 as a merge-gate blocker (local remains blocked until Norton exclusion or CLI upgrade; CI path unblocks merge). ISSUE-0077 (selectItems 500 TBD) resolves when CI E2E runs clean.
+
+Related: ISSUE-0075 (root cause), ISSUE-0076 (vendor long-term DX), ISSUE-0077 (selectItems 500 — resolves on CI E2E run)
+
+---
+
+### ISSUE-0076 — Deno vendor: eliminate esm.sh network dependency at Edge Function boot (durable fix for ISSUE-0075)
+
+- Status: open — partial implementation discarded (ROUND I-CLEANUP 2026-06-05; not blocking merge gate)
+- Severity: **low** (reverted to low 2026-06-05 — post-merge DX, not pre-merge gate; CI E2E doesn't need vendor; vendor activates only after edge-runtime upgrade supports `vendor: true` in worker context)
+- Reported: 2026-06-05 (ISSUE-0075 root-cause analysis)
+- Area: infra (supabase/functions/ — all 12 Edge Functions + deno.json)
+- Tags: edge-runtime · deno · vendor · tls · local-dev · post-merge-dx
+
+**Summary.** ISSUE-0075 Option 3 (long-term durable fix): vendor all `https://esm.sh/*` imports into a `vendor/` directory committed to the repo. Eliminates runtime network dependency at boot — no TLS required, no cache loss on `supabase stop/start`. **Not a merge-gate prerequisite.** CI E2E (ISSUE-0079) does not need vendor; merge gate moves to CI. Vendor is a post-merge DX improvement once edge-runtime supports `deno.json` `vendor:true` in worker context.
+
+**Current state (2026-06-05 — ROUND I-CLEANUP).** Partial implementation **discarded** — `supabase/functions/deno.json` reverted, `supabase/functions/vendor/` and `supabase/functions/deno.lock` deleted. Rationale: CI E2E (ISSUE-0079) does not require vendor (no Norton in CI); the merge gate moves to CI, not vendor. Blocker remains: edge-runtime v1.73.13 uses explicit `importMapPath` bypassing `deno.json` discovery — vendor would not activate until a Supabase CLI upgrade enables `vendor:true` in worker context.
+
+**Implementation steps (when activating — post-merge DX):**
+1. Re-run `denoland/deno:2.1.4` with `DENO_CERT` to regenerate `vendor/`, `deno.json` (`vendor: true`), `deno.lock` once edge-runtime upgrade is available.
+2. Commit and verify CI passes with vendor (standard Deno in CI uses vendor directory).
+3. Update edge-runtime Docker mounts if required (vendor/ is inside the functions bind mount — already accessible).
+4. Add CI step: `denoland/deno cache` with `--check` to detect vendor drift on dep changes.
+
+**`deno vendor` note.** `deno vendor` was removed in Deno 2.x. The equivalent is `deno.json` `"vendor": true` + `deno cache`. Standard Deno 2.1.4 was used to populate the vendor directory via `DENO_CERT` bypassing Norton.
+
+Related: ISSUE-0075 (root cause + all bypass attempts), `supabase/functions/deno.json`, `supabase/functions/vendor/`, all 12 Edge Functions
+
+---
+
+### ISSUE-0074 — fetchContentSelect missing Authorization header; Supabase gateway returns 401 before content-svc is invoked
+
+- Status: resolved — 2026-06-04 (commits dd33739 + 7629b5c, ADR-0045)
+- Severity: high
+- Reported: 2026-06-04 (ISSUE-0074 investigation — session creation 401 path)
+- Resolved: 2026-06-04
+- Area: backend (supabase/functions/assessment-svc/index.ts, content-svc/config.toml, intelligence-svc/config.toml)
+- Tags: auth · edge-function · service-to-service · session-create
+
+**Summary.** `POST /sessions/create` failed with a 401 when `fetchContentSelect` called `content-svc /content/select`. The gateway at `${SUPABASE_URL}/functions/v1/*` requires a valid JWT in `Authorization: Bearer` before invoking any Edge Function; the service_role JWT is not accepted as a user token by `auth.getUser()`.
+
+**Resolution (two-pass).** Pass 1 (dd33739): Added `Authorization: Bearer SERVICE_ROLE_KEY` to `fetchContentSelect` + `fetchIntelligenceProcess` outbound headers. Still 401 — gateway validates JWTs as user tokens; service_role key is not a user token. Pass 2 (7629b5c): Added `verify_jwt = false` to `supabase/functions/content-svc/config.toml` and `intelligence-svc/config.toml`. Both functions are service-only callers and retain application-level `x-mm-service-role` gate for all routes. ADR-0045 documents the decision. `Authorization: Bearer SERVICE_ROLE_KEY` headers from pass 1 retained as defence-in-depth.
+
+Related: assessment-svc/index.ts:114–135, content-svc/config.toml, intelligence-svc/config.toml, ADR-0045
+
+---
+
+### ISSUE-0068 — teacher/content locked pathway cards non-interactive (pointer-events-none blocks upgrade CTA)
+
+- Status: resolved — 2026-05-24 (Cluster G G3 commit 57c3b95)
+- Severity: medium
+- Reported: 2026-05-24 (v1.1 polish matrix sweep)
+- Area: frontend (apps/web/src/app/(teacher)/teacher/content/page.tsx)
+- Tags: upgrade-state · a11y · ux · interactive
+
+**Summary.** teacher/content local `UpgradeState` wrapper applied `opacity-60 pointer-events-none` to the entire locked-pathway card group, making upgrade CTAs unreachable by pointer and keyboard. Renamed to `LockedPathwayCards`, removed `pointer-events-none`, added per-card `<Button aria-label="Upgrade to unlock {name}">` wired to `/billing?intent=upgrade`. Page-level empty-state gate replaced with shared `<UpgradeState>` from `@mm/ui`.
+
+**Fix.** Commit 57c3b95 (Cluster G G3).
+
+Related: ISSUE-0063 (shared UpgradeState primitive)
+
+---
+
+### ISSUE-0073 — E2E suite tests all roles as parent; student/teacher role coverage silently dropped
+
+- Status: resolved
+- Severity: medium
+- Reported: 2026-05-30 (E2E signup-route fix pass 3 — auth-svc G1 constraint analysis)
+- Resolved: 2026-05-30 (ROUND B1 — admin-API helper)
+- Area: tests (apps/web/playwright/e2e/)
+- Tags: e2e · role-coverage · auth-svc · g1
+
+**Summary.** `handle_new_user()` raises an exception for any non-`'parent'` role, and auth-svc `handleSignup` hardcodes `role: "parent"` in the Supabase `signUp` call regardless of the role sent in the request body. All 13 affected E2E specs create parent accounts; the JWT carries `app_metadata.role = 'parent'` for every test. Tests that navigate to student-specific routes (`/assignments`, `/practice`, `/exam-sim`, `/results`) or teacher-specific routes (`/teacher`, `/teacher/assignments`, `/teacher/content`, `/teacher/students`) run as a parent user; whether the page gate passes or redirects depends on each route's role check.
+
+**Affected specs (13):** dashboard-flow, results-flow, teacher-dashboard, assignment-engine (×4 tests), student-assignments (×3 tests), exam-content-a11y (×2 tests), student-composer-a11y (×2 tests), parent-dashboard, teacher-student-detail, exam-flow, practice-flow, session-flow.
+
+**Resolution.** Implemented Option 1 (Admin-API path). Added `signUpAndInstallSessionAs(page, webUrl, baseUrl, anon, role, prefix)` to `helpers/auth.ts`. For non-parent roles: (1) admin-creates user with `user_metadata.role='parent'` to satisfy trigger, (2) PATCHes `user_profile.role` via service-role REST, (3) PUTs `app_metadata.role` via admin API so JWT carries correct claim, (4) signs in via password auth and installs cookie. Migrated 8 specs using `signUpAndInstallSession` + 2 inline-signup specs (exam-flow, practice-flow converted from localStorage to cookie path). `E2E_TEST_SERVICE_ROLE` added to module-level skip guards on all 10 migrated specs. `parent-dashboard` and `session-flow` unchanged.
+
+Related: auth-svc/index.ts:119–131, supabase/migrations/0001_enums_tenancy_auth.sql (handle_new_user), apps/web/playwright/e2e/helpers/auth.ts
+
+---
+
+### ISSUE-0072 — signup raw_user_meta_data key mismatch: full_name sent, display_name read by trigger
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-28 (deployment auth debug — side observation during app_metadata fix)
+- Area: backend (supabase/functions/auth-svc/index.ts, supabase/migrations/0001_enums_tenancy_auth.sql)
+- Tags: auth · signup · display_name · user_profile
+
+**Summary.** `auth-svc POST /auth/signup` passes `full_name` in `raw_user_meta_data`:
+
+```typescript
+// auth-svc/index.ts:131
+options: { data: { full_name: fullName.trim(), role: "parent" } }
+```
+
+`handle_new_user()` reads `display_name` from the same metadata:
+
+```sql
+-- 0001_enums_tenancy_auth.sql:244-246
+v_display_name := COALESCE(
+  NEW.raw_user_meta_data ->> 'display_name',
+  split_part(NEW.email, '@', 1)
+);
+```
+
+Because `display_name` is absent, the `COALESCE` always falls through to `split_part(email, '@', 1)`. Every `user_profile.display_name` created via the signup flow is the email prefix (e.g., `"john"` from `"john@example.com"`) rather than the user's submitted full name.
+
+**Fix.** Two equivalent options — either:
+1. Change `auth-svc/index.ts:131` to send `display_name: fullName.trim()` instead of `full_name`; or
+2. Change `0001_enums_tenancy_auth.sql:245` to read `'full_name'` instead of `'display_name'`.
+
+Option 1 (auth-svc rename) is preferred — keeps the DB trigger generic and avoids a migration for a pure metadata-key fix.
+
+**Backfill.** Existing `user_profile` rows have incorrect `display_name`. After deploying the auth-svc fix, a SQL UPDATE sourcing `auth.users.raw_user_meta_data ->> 'full_name'` corrects them. Trivial for small user counts.
+
+Related: auth-svc/index.ts:131, 0001_enums_tenancy_auth.sql:244-246
+
+---
+
+### ISSUE-0071 — New partitions created by pg_partman/manual carve-ups born RLS-disabled
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-27 (ISSUE-0060 empirical resolution — partition layout audit)
+- Area: infra (supabase/migrations/)
+- Tags: rls · security · partition · v1.1
+
+**Summary.** Migration 0025 fixes ISSUE-0060 by enabling RLS + deny-all on the current `_default` partitions (`learning_event_default`, `intelligence_audit_log_default`). However, when v1.1 introduces pg_partman or manual monthly range partitions (e.g., `learning_event_2026_06`, `intelligence_audit_log_2026_06`), each new partition is created without RLS enabled by default — PostgreSQL does not propagate `ENABLE ROW LEVEL SECURITY` from parent to new child partitions. This reopens the same direct-partition read bypass that ISSUE-0060 closed.
+
+**Fix (before first pg_partman or monthly-carve-up migration).** Each new partition creation must be immediately followed by:
+```sql
+ALTER TABLE <partition_name> ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "<prefix>_deny_all" ON <partition_name> FOR ALL USING (false);
+```
+For pg_partman: configure `after_partition_created_proc` to a stored procedure that applies the above pattern automatically. For manual monthly migrations: include the ALTER/CREATE POLICY in the same migration statement as the `CREATE TABLE ... PARTITION OF`. Never create a partition without immediately applying the deny-all.
+
+**Scope.** Affects any future partition of `learning_event` and `intelligence_audit_log`. Other partitioned tables do not exist in v1 schema.
+
+Related: ISSUE-0060, migration 0025, migration 0004 (`learning_event`), migration 0005 (`intelligence_audit_log`)
+
+---
+
+### ISSUE-0070 — ISSUE-0045 AT announcement carry to preview gate
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-24 (v1.1 polish matrix sweep)
+- Area: frontend (apps/web/src/app/(student)/session/[id]/practice/page.tsx)
+- Tags: a11y · screen-reader · preview-gate
+
+**Summary.** Cluster E wired `h1` focus on mount (code fix done, tested in jsdom, commit 5e158f8). The AT announcement — whether a screen reader announces the h1 on navigation — requires manual verification on NVDA/VoiceOver. jsdom cannot test this. Carry to preview gate.
+
+Related: ISSUE-0045
+
+---
+
+### ISSUE-0069 — F5 + F7 visual fidelity carry to preview gate
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-24 (v1.1 polish matrix sweep)
+- Area: frontend (apps/web/src/app/(student)/session-selection/page.tsx, dashboard/page.tsx)
+- Tags: loading · visual-fidelity · cls · preview-gate
+
+**Summary.** Two visual-fidelity items deferred to preview gate:
+
+1. **F5 (session-selection):** loading skeleton (3 × `LoadingState variant="card"` in `grid-cols-3`) footprint confirmed matching loaded state. Carry for AT + motion audit in browser — cannot verify in jsdom.
+
+2. **F7 (dashboard QuickStart + PathwayTile locked state):** `PathwayTile` locked state uses inline `opacity-50` div + "Upgrade to access" copy rather than the shared `UpgradeState` primitive. Visual parity decision deferred to preview gate.
+
+Related: ISSUE-0064, ISSUE-0063, Cluster F (e525d2a)
+
+---
+
+### ISSUE-0067 — Local prod build blocked by TLS cert verification failure (Google Fonts)
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P8)
+- Area: infra (apps/web/next.config.mjs, apps/web/src/app/layout.tsx)
+- Tags: build · tls · next-font · local-env
+
+**Summary.** `pnpm turbo build` fails locally with `UNABLE_TO_VERIFY_LEAF_SIGNATURE` when `next/font` fetches `DM Sans` and `DM Serif Display` from `fonts.googleapis.com` at build time. The Node.js TLS stack on the local Windows machine does not trust the certificate chain issued by Google's CA. CI and Vercel deployments use system CAs and are unaffected.
+
+**Workaround (local only).** `NODE_TLS_REJECT_UNAUTHORIZED=0 pnpm turbo build` (disables TLS verification — for local use only, never CI). Alternatively use `NODE_OPTIONS=--use-system-ca` (Node.js 22+).
+
+**Fix.** Add the Google root CA to the local machine's trusted store, or configure `next.config.mjs` to fall back to a self-hosted font if the Google Fonts fetch fails (using `display: 'swap'` and a local fallback). Or upgrade to Node.js 22+ and use `--use-system-ca`.
+
+Related: apps/web/src/app/layout.tsx (DM Sans + DM Serif Display font declarations)
+
+---
+
+### ISSUE-0066 — console.warn in production code path (exam page autosave)
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-22 (v1.1 pre-polish audit P6)
+- Area: frontend (apps/web/src/app/(student)/session/[id]/exam/page.tsx)
+- Tags: logging · production · exam-mode
+
+**Summary.** `apps/web/src/app/(student)/session/[id]/exam/page.tsx:333` contains `console.warn('autosave failed', err)` in the autosave error handler. In production builds, browser console output is visible to users via DevTools and may expose internal error objects. Should use structured error reporting (Sentry or equivalent) instead.
+
+**Fix.** Remove `console.warn` or replace with a structured error reporting call. Ensure the autosave failure is surfaced to the user via the UI (e.g., the `SavedPill` component or an inline error indicator) rather than the browser console.
+
+Related: apps/web/src/app/(student)/session/[id]/exam/page.tsx:333
+
+---
+
+### ISSUE-0065 — role="alert" on static overdue banner in assignments page
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-22 (v1.1 pre-polish audit P5)
+- Area: frontend (apps/web/src/app/(student)/assignments/page.tsx)
+- Tags: a11y · aria · assignments
+
+**Summary.** `apps/web/src/app/(student)/assignments/page.tsx:327` uses `role="alert"` on an overdue-assignment banner that is conditionally rendered based on `overdueCount > 0`. `role="alert"` triggers an ARIA live-region assertive announcement — appropriate for asynchronously injected urgent notifications, not for a count-based banner rendered on page load. Use `role="status"` (polite live region) or no role if the banner is always present when the page loads.
+
+**Fix.** Replace `role="alert"` with `role="status"` on the overdue banner, or remove the live-region role if the banner is always present when overdueCount > 0 on mount.
+
+Related: ISSUE-0046 (role="alert" misuse in StudentComposerForm)
+
+---
+
+### ISSUE-0064 — LoadingState primitive underutilised: 11+ pages define inline skeletons
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-22 (v1.1 pre-polish audit P4)
+- Area: frontend (apps/web/src/app/)
+- Tags: ui-consistency · loading-state · polish
+
+**Summary.** The shared `LoadingState` primitive exists in `packages/ui/src/LoadingState/` but 11+ student and teacher pages define inline skeleton components (`SkeletonCard`, `SkeletonRow`, `PathwaySkeleton`) as page-scoped functions or components. Instances: dashboard/page.tsx:67,351,388,422,510,736; session-selection/page.tsx:44; session/[id]/exam/page.tsx:438; session/[id]/practice/page.tsx:332; results/[id]/page.tsx:60; assignments/page.tsx:209; teacher/page.tsx:39,84,114,210,306; teacher/students/page.tsx:21,222; teacher/content/page.tsx:25.
+
+**Fix.** Replace inline skeleton implementations with `import { LoadingState } from '@mm/ui'` and use the existing `variant` prop. Polish-stage item.
+
+Related: ISSUE-0047 (inline loading on teacher content pages)
+
+---
+
+### ISSUE-0063 — Missing shared UpgradeState primitive: 402 paywall shown as toast, not visual component
+
+- Status: resolved — 2026-05-24 (Cluster A created shared UpgradeState primitive 5144b9a; G3 wired all call sites + teacher/content LockedPathwayCards 57c3b95)
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P4)
+- Area: frontend (packages/ui/src/, apps/web/src/app/(student)/session-selection/)
+- Tags: ui-consistency · upgrade-state · a11y · pre-launch
+
+**Summary.** No `UpgradeState` component exists in `packages/ui/src/`. UI_CONTRACT §6 row 556 requires a persistent visual upgrade-prompt card (CTA: 'Upgrade to {tier}' → `/billing`) for 402 gate responses. Current implementation: `apps/web/src/app/(student)/session-selection/page.tsx:188-194` handles 402 via a toast notification — ephemeral and inaccessible after dismissal. An inline `UpgradeState()` function exists in `apps/web/src/app/(teacher)/teacher/content/page.tsx:48-69` but is not shared.
+
+**Fix.** Create `packages/ui/src/UpgradeState/` primitive. Update session-selection to render `<UpgradeState />` component instead of toast. Replace teacher/content inline function with shared import.
+
+Related: ISSUE-0039 (402 discrimination on submit), UI_CONTRACT §6
+
+---
+
+### ISSUE-0062 — Missing shared ErrorState primitive: 7+ pages handle errors inline without retry
+
+- Status: resolved — 2026-05-24 (Cluster A created shared ErrorState primitive 5144b9a; Cluster G G1 wired all 11 surfaces across student/teacher/parent/billing 57c3b95)
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P4)
+- Area: frontend (packages/ui/src/, apps/web/src/app/)
+- Tags: ui-consistency · error-state · ux · pre-launch
+
+**Summary.** No `ErrorState` component exists in `packages/ui/src/`. Seven+ pages implement error UI inline, inconsistently. Critical gap: `apps/web/src/app/(student)/dashboard/page.tsx` has 6 data-bound query hooks (`useRecentSessions`, `usePathways`, `useLearnerProfile`, `useLearningPlan`, `useCausalMap`, `useWeeklyPlan`) with no `isError` handler — errors are silently swallowed and the widget simply shows nothing. `apps/web/src/app/(student)/assignments/page.tsx:225` also has no error handler for `assignments.isError`. UI_CONTRACT §5.3 requires widget-level error cards with retry button.
+
+**Fix.** Create `packages/ui/src/ErrorState/` primitive with title, description, and optional retry callback. Add `isError` handlers to all data-bound sections on dashboard and assignments pages. Replace inline error cards in exam, practice, results, and teacher pages with shared primitive.
+
+Related: ISSUE-0047 (inline LoadingState on teacher content pages), UI_CONTRACT §5.3
+
+---
+
+### ISSUE-0061 — ItemCreateDTOSchema and ItemUpdateDTOSchema use z.string() for DB enum fields
+
+- Status: resolved — 2026-05-24 (Cluster C `ItemCreateDTOSchema` / `ItemUpdateDTOSchema` tightened to `z.enum()` for `response_type`, `bloom_level`; commit 3a2fca6)
+- Severity: medium
+- Reported: 2026-05-22 (v1.1 pre-polish audit P2)
+- Area: backend (packages/types/src/content.ts)
+- Tags: validation · zod · content-api · enum
+
+**Summary.** `ImportManifestItemSchema` was tightened to `z.enum()` for `response_type`, `exam_families`, and `bloom_level` by ISSUE-0057 (commit d2cf946). The admin API input schemas were not updated in the same pass:
+
+- `packages/types/src/content.ts:71` — `ItemCreateDTOSchema.response_type`: `z.string().min(1)` — DB has `response_type` enum (7 values)
+- `packages/types/src/content.ts:81` — `ItemCreateDTOSchema.bloom_level`: `z.string().nullable()` — DB has `bloom_level` enum (6 values)
+- `packages/types/src/content.ts:97` — `ItemUpdateDTOSchema.bloom_level`: `z.string().nullable()` — same gap
+
+A client calling `POST /content/items` directly with an invalid `response_type` (e.g., `"multiple_choice"`) will receive a 500 INTERNAL_ERROR from the DB constraint violation rather than a 422 VALIDATION_ERROR from Zod. The admin API is not end-user-facing, reducing blast radius, but the contract violation is the same class as ISSUE-0057.
+
+**Fix.** Tighten these three fields to `z.enum([...])` using the same enum values as `ImportManifestItemSchema`. Add tests matching the ISSUE-0057 pattern.
+
+Related: ISSUE-0057 (manifest schema tightening), packages/types/src/content.ts:71,81,97
+
+---
+
+### ISSUE-0059 — Manifest template §3 difficulty bands teach IRT logit scale; spec §6.4 mandates [0,1] normalized
+
+- Status: resolved — 2026-05-22 (commit d2cf946 — fix(types,content): §3 replaced with [0,1] band-midpoint table; IRT logit references removed)
+- Severity: medium
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III — root cause of ISSUE-0058 difficulty scale mismatch)
+- Area: content-ops (docs/content/specs/australian-y5-numeracy.md)
+- Tags: content-authoring · difficulty · template · dx · s7.2-blocker
+
+**Summary.** The authoring template `docs/content/specs/australian-y5-numeracy.md §3` documents difficulty bands using IRT logit notation (B1 θ≈-2, B2 θ≈-1, B3 θ≈0, B4 θ≈+1, B5 θ≈+2). This directly caused manifest authors to write difficulty values of -2.0, -1.0, 0.0, 1.0, 2.0 in the Gate III batch, violating the DB `CHECK (difficulty BETWEEN 0 AND 1)` constraint and breaking the live import.
+
+The canonical scale is [0,1] normalized per spec §6.4 and §15.1 (CTT p-value; `new_difficulty = 1.0 - observed_p`). Engine Zod contracts enforce `z.number().min(0).max(1)`. The template must be corrected to the linear band-midpoint mapping adopted as ISSUE-0058 resolution before any S7.2 authoring begins.
+
+**Required template correction (§3 difficulty bands):**
+
+| Band | Label | IRT θ (remove) | [0,1] value (add) |
+|------|-------|----------------|-------------------|
+| B1   | Foundation / Very Easy | θ ≈ -2 | 0.10 |
+| B2   | Developing / Easy      | θ ≈ -1 | 0.30 |
+| B3   | Proficient / Average   | θ ≈  0 | 0.50 |
+| B4   | Advanced / Hard        | θ ≈ +1 | 0.70 |
+| B5   | Expert / Very Hard     | θ ≈ +2 | 0.90 |
+
+Remove all IRT logit references. Replace with [0,1] values and cite spec §6.4 for the canonical scale. Note that IRT/2PL is a Phase 3 deferred path (spec §15.6).
+
+**Fix.** Update `docs/content/specs/australian-y5-numeracy.md §3`. Can be bundled with the S7.1 batch content commit or done as a `docs(content):` chore. Must complete before S7.2 authoring session.
+
+Related: ISSUE-0058 (root cause), spec §6.4, spec §15.1, spec §15.6
+
+---
+
+### ISSUE-0060 — RLS disabled on intelligence_audit_log_default + learning_event_default
+
+- Status: resolved (pending re-run) — 2026-05-27 (migration 0025 filed; confirmation gate = rls-check-e2e.sql exit 0)
+- Severity: medium
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III — surfaced by `supabase db query` advisory)
+- Area: infra (supabase/migrations/)
+- Tags: rls · security · audit-log
+
+**Summary.** `supabase db query` advisory reports that `public.intelligence_audit_log_default` and `public.learning_event_default` have Row Level Security disabled. rls-check-e2e.sql q2 + q4 empirical gate confirmed the bypass: both queries returned N_ROWS as `anon`, proving the _default partitions do not inherit the parent's RLS in PostgreSQL 15 when queried directly.
+
+**Resolution.** Migration 0025 (`0025_default_partition_rls.sql`) adds `ENABLE ROW LEVEL SECURITY` + a deny-all `USING(false)` policy (`led_deny_all` / `iald_deny_all`) to each _default partition. Partition policies in PostgreSQL 15 apply only on direct partition access; parent-table queries (the app path) continue to use the parent's full policy sets (migrations 0004/0005) unaffected. Service_role (BYPASSRLS) and SECURITY DEFINER write paths are unaffected. Resolution is confirmed when rls-check-e2e.sql reruns and exits 0 with q2 + q4 = 0_ROWS or ERROR.
+
+**v1.1 follow-up.** See ISSUE-0071 — new partitions created by pg_partman or manual carve-ups are born RLS-disabled and reopen this bypass. The creation path must apply the same ENABLE RLS + deny-all pattern.
+
+Related: migration 0025, ISSUE-0071, rls-check-e2e.sql q2+q4, migration 0004 (le_ policies), migration 0005 (ial_ policies)
+
+---
+
+### ISSUE-0057 — ImportManifestSchema: z.string() for exam_families + bloom_level lets invalid enum values pass dry-run but fail live import
+
+- Status: resolved — 2026-05-22 (commit d2cf946 — fix(types,content): tightened ImportManifestItemSchema to z.enum() for response_type, exam_families, bloom_level; 4 regression tests added)
+- Severity: medium
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III unblock — exposed by exam_family + bloom_level rejections)
+- Area: backend (packages/types/src/content.ts, supabase/functions/content-svc/handlers.ts)
+- Tags: validation · zod · manifest · dry-run · content-ops
+
+**Summary.** `ImportManifestSchema` uses `z.string()` for `exam_families` items and `bloom_level`, matching no DB enum constraint. A dry-run passes Zod validation and returns all items `status: "ok"` even with invalid enum values. The live import then fails at the DB INSERT level (`invalid input value for enum exam_family`) — the dry-run gives false confidence. This is the same class of gap as Q-1.1-7.T1A (`response_type`).
+
+**Reproduction.** Gate III: manifest used `exam_families: ["au_numeracy_y5_format"]` against a DB with old enum values (`naplan`/`icas`). Dry-run (no DB writes): 8/8 `status: "ok"`. Live import: 8/8 rejected with `invalid input value for enum exam_family`. The enum mismatch was a stale DB issue, not a manifest bug, but the gap still means a dry-run that passes is not a reliable pre-flight for live import.
+
+**Fields to tighten in `ImportManifestSchema`:**
+- `items[].item.exam_families[]` — should be `z.enum(['au_numeracy_y5_format', 'au_math_paper_c_format', 'selective', 'singapore_math', 'olympiad'])`
+- `items[].item.bloom_level` — should be `z.enum(['remember', 'understand', 'apply', 'analyse', 'evaluate', 'create'])`
+- `items[].item.response_type` — noted in Q-1.1-7.T1A; same fix needed
+
+**Fix deferred.** These enums are stable; tighten in the next content-authoring iteration. Companion test should verify `ImportManifestSchema.safeParse` rejects invalid enum values.
+
+Related: Q-1.1-7.T1A, `packages/types/src/content.ts`, Gate III unblock
+
+---
+
+### ISSUE-0054 — MCQ auto-scoring broken in v1 exam mode: UI submits `{ choice }`, server reads `responseData['option_id']`
+
+- Status: resolved — 2026-05-22 (commit 005f466 — fix(web): correct MCQ response key choice→option_id; 2 scoring contract tests added)
+- Severity: high
+- Reported: 2026-05-20 (v1.1-S7.1 Gate I — by-product of Q-1.1-S7-RC.1 investigation)
+- Area: frontend + backend
+- Tags: bug · scoring · exam-mode · pre-launch-blocker
+
+**Summary.** `computeCorrectness` in `assessment-svc/handlers.ts:1064-1073` checks `responseData['option_id']` to determine if a student's MCQ answer is correct. The exam page (`apps/web/src/app/(student)/session/[id]/exam/page.tsx:282`) submits `response_data: { choice: selected }` — the key is `choice`, not `option_id`. As a result, `typeof submitted !== 'string'` is `true` (the `option_id` key is `undefined`), and `computeCorrectness` returns `false` for every MCQ response. MCQ auto-scoring is non-functional in v1 exam mode regardless of `response_config` shape.
+
+**Reproduction.**
+1. Start an exam-mode session with an MCQ item whose `response_config.correct_option_id` is set correctly
+2. Select the correct option and submit
+3. Expected: session records `is_correct: true`; Actual: session records `is_correct: false`
+
+**Root cause.** Field name mismatch between submit path and scoring path:
+- `apps/web/src/app/(student)/session/[id]/exam/page.tsx:282` — submits `{ choice: selected }`
+- `supabase/functions/assessment-svc/handlers.ts:1070` — reads `responseData['option_id']`
+
+**Fix (preferred — Option A):** Change `exam/page.tsx:282` to submit `{ option_id: selected }` — one-line client fix, keeps server contract stable.
+
+**Pre-launch blocker note.** Items land as `draft` during S7.1 — not served to students in exam mode. This bug does not block S7.1 authoring or import. Blocker activates when any item reaches `active` and enters an exam-mode session.
+
+Related: Q-1.1-S7-RC.1, assessment-svc/handlers.ts:1064-1073, apps/web exam/page.tsx:282
+
+---
+
+### ISSUE-0053 — Skill graph extension: Probability + Statistics skill nodes missing
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.T1C)
+- Area: backend (supabase/seeds/) + content-ops
+- Tags: skill-graph · content-ops · s7.2+
+
+**Summary.** The seeded skill graph (`supabase/seeds/01_skill_graph.sql`) contains 6 skill nodes across 2 strands: Number & Algebra (place-value, fractions-decimals, operations, word-problems) and Measurement & Space (geometry, data-interpretation). The AC v9.0 Mathematics curriculum has 6 strands including Probability (AC9M5P) and a richer Statistics strand. No Probability skill node exists in the seed; `data-interpretation` covers some statistics-adjacent content but not the full Statistics strand.
+
+Impact on S7.1: Probability items suppressed (Q-1.1-7.T1C Option A). Statistics items map to `data-interpretation` (skill_id `a0000001-0000-0000-0000-000000000009`); this is an approximate mapping acceptable for S7.1.
+
+**Fix (before S7.2+ Probability/Statistics authoring).**
+1. Add `probability` skill node to `skill_graph_version` v1 (or a v2) seed under Number & Algebra strand.
+2. Optionally add a richer `statistics` skill node (distinct from `data-interpretation`) for more granular strand coverage.
+3. Update `docs/content/specs/australian-y5-numeracy.md §2` strand mix to restore 2 Probability items once the node is seeded.
+4. Remove Q-1.1-7.T1C reference from strand-mix note.
+
+Related: Q-1.1-7.T1C, DEV-20260520-1, `supabase/seeds/01_skill_graph.sql`
+
+---
+
+### ISSUE-0052 — Manifest slug→UUID resolution: `importItems` passes `skill_ids` directly to DB
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.T1B Option C)
+- Area: backend (supabase/functions/content-svc/handlers.ts)
+- Tags: content-import · skill-graph · dx · post-s7.1
+
+**Summary.** `importItems` in `content-svc/handlers.ts` passes `itemFields.skill_ids` directly to the Supabase INSERT at `item.skill_ids uuid[]` without slug-to-UUID resolution. Authors must supply valid UUIDs from the `skill_node` table. Working with 36-character UUIDs at authoring volume is error-prone; a slug-resolution step would allow authors to use human-readable slug strings (e.g., `"fractions-decimals"`) instead.
+
+The slug-resolution pattern is already proven at [handlers.ts:481–488](../../../supabase/functions/content-svc/handlers.ts#L481) (`selectFromBlueprint` resolves `skill_slugs → skill_ids` via `SELECT id, slug FROM skill_node WHERE slug IN (...)`). The same pattern could be applied inside `importItems` before the `createItem` call.
+
+**Fix (post-S7.1 — after S7.1 pilot proves end-to-end loop).**
+1. In `importItems`, before calling `createItem`: batch-resolve all unique slug values across the manifest using `skill_node.slug IN (...)`.
+2. Build a `Map<slug, uuid>`. Replace string entries in each item's `skill_ids` array: UUIDs pass through; slugs are resolved; unresolved slugs → per-item rejection with reason `"unknown skill_id: <slug>"`.
+3. Update `ImportManifestItemSchema` and `manifest-format.md §3.1` to document slug-or-UUID semantics.
+4. Update template §10 example and `manifest-format.md §9` to use slug format once implemented.
+
+Related: Q-1.1-7.T1B, ADR-0041 §Implementation Notes Step T1B addendum, handlers.ts:481
+
+---
+
+### ISSUE-0051 — Trademark strings remain in non-enum surfaces (program column, display_name, slugs, feature_key, UI copy)
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-20 (v1.1-S7-prep step 1c chore close — Q-1.1-S7-LEGAL-2.4 carry)
+- Area: backend + frontend + content-ops
+- Tags: legal · trademark · content-ops
+
+**Summary.** Step 1c (a5140e0) renamed the `exam_family` Postgres enum values from `'naplan'`/`'icas'`
+to neutral identifiers `'au_numeracy_y5_format'`/`'au_math_paper_c_format'`. This covers the highest-risk
+trademark surface (DB enum + API wire format). The following non-enum surfaces were explicitly deferred
+per Q-1.1-S7-LEGAL-2.4 and require separate legal + operational review before remediation is scoped:
+
+1. **`program` column values** — `'NAPLAN'` and `'ICAS'` stored in `item.program[]` array. Present in
+   `seeds/03_assessment_config.sql`, `seeds/02_content.sql` (item inserts). API-exposed via
+   `GET /pathways` response DTO and item list responses. Internal identifier, but appears in API wire
+   format.
+
+2. **`display_name` values** — pathway `display_name` column values include `'NAPLAN Year 5 Numeracy'`
+   and `'ICAS Mathematics Paper C'`. Stored in `pathway` table; exposed in `GET /pathways` response
+   to all authenticated users. High visibility — likely intentional marketing copy, but flagged for
+   legal review.
+
+3. **Pathway slugs** — `naplan-y5-numeracy` and `icas-math-paper-c` used as URL path segments (student
+   session-selection) and SDK pathway slug keys. Step 1c explicitly preserved these slugs (Q-2.5 fix
+   reads `pathway.exam_family` from DB, not the slug). Slug changes are breaking (URL-visible) and
+   require a redirect strategy.
+
+4. **`feature_key` values** — `naplan_y5` and `icas_math_y5` in `framework_config.feature_key` column.
+   Internal identifier used for feature-flag lookup; not API-exposed to end users, but present in DB.
+
+5. **UI copy strings** — `apps/web/src/lib/billing.ts` plan description strings and auth-shell copy
+   reference `'NAPLAN'`/`'ICAS'` by name. These are marketing/display strings; may be intentional brand
+   references (like `display_name`) or may warrant rewriting to generic descriptors.
+
+**Affected files (enumerated from step 1c grep catalogue):**
+- `supabase/seeds/02_content.sql` — program column: `'NAPLAN'` ×25, `'ICAS'` ×25
+- `supabase/seeds/03_assessment_config.sql` — display_name column, feature_key column, program column
+- `apps/web/src/lib/billing.ts` — UI copy strings
+- `apps/web/src/app/(student)/session-selection/page.tsx` — `pathway.display_name` render
+- `apps/web/src/app/(teacher)/teacher/content/page.tsx` — `p.display_name` render
+- `apps/web/src/app/auth/*/` — auth-shell copy (NAPLAN/ICAS mentions)
+
+**Pre-launch blocker status: TBD.** Legal re-review of `docs/content/specs/australian-y5-numeracy.md`
+(Step 2 gate) will determine whether any of the above surfaces constitute trademark infringement
+risk at the v1.1 launch context (educational platform, non-commercial item names, curriculum-alignment
+framing, §0 non-affiliation disclaimer in place). Remediation scope and priority determined after
+that review. Owner: operator-side legal; no code action until legal direction received.
+
+**Do not close this issue without legal sign-off on the surface enumeration above.**
+
+Related: Q-1.1-S7-LEGAL-2.4, ADR-0041 §Step 1c addendum, a5140e0
+
+---
+
+### ISSUE-0050 — Cross-import exact-match dedup: cross-DB stem SHA + cross-import external_key
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-19 (v1.1-S6 chore close — Q-1.1-6.7 Option C + Q-1.1-6.8 Option B deferrals)
+- Area: backend (supabase/functions/content-svc/)
+- Tags: content-import · duplicate-detection · post-launch
+
+**Summary.** The S6 import pipeline implements exact-match SHA dedup and external_key dedup within the
+submitted manifest only (intra-manifest). Two cross-boundary dedup paths are deferred:
+
+1. **Cross-DB stem SHA dedup (Q-1.1-6.7 Option C):** Compare each incoming item's `normaliseStem` SHA
+   against `item_version.stem_sha` (or equivalent) for all `is_current = true` rows already in the DB.
+   Would catch re-import of an item already in the bank across distinct manifest submissions.
+   Implementation: requires either storing `stem_sha` in `item_version` (new column, migration) and
+   indexing it, or computing SHAs at batch-start via a `SELECT stem FROM item_version WHERE is_current`.
+   Empty-bank rationale: at S6 launch the bank is empty; cross-lookup has no value.
+
+2. **Cross-import external_key dedup (Q-1.1-6.8 Option B):** Reject items whose `external_key` already
+   appears in a prior successful import. Implementation: requires an `import_external_key` lookup table or
+   extending the idempotency record with per-item `external_key` tracking. Idempotency-Key replay already
+   handles re-submission of the *same manifest*, but a different manifest containing a previously-imported
+   `external_key` would not be caught by idempotency.
+
+Both `DUPLICATE_STEM` and `DUPLICATE_EXTERNAL_KEY` outcome codes are reserved in the response schema
+(`ImportItemOutcome.status`) as upgrade-path hooks.
+
+**Fix (post-launch).** Implement when content bank reaches meaningful size (~100+ items) or when
+cross-batch dedup errors are first observed in S7 operations. Decision between stem_sha DB column vs
+batch-start query deferred to implementation. Coordinate with ISSUE-0049 (fuzzy detection) to avoid
+redundant migrations.
+
+---
+
+### ISSUE-0049 — Fuzzy/embedding-based duplicate detection in content import pipeline
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-19 (v1.1-S6 prep — Q-1.1-6.3 ii resolution, ADR-0041 §Decision 3)
+- Area: backend (supabase/functions/content-svc/)
+- Tags: content-import · duplicate-detection · copyright · post-launch
+
+**Summary.** The S6 import pipeline implements exact-match SHA deduplication on normalised stem JSON (ADR-0041 §Decision 3). This catches verbatim duplicate imports (same manifest re-imported) but does not detect near-duplicates or paraphrase-level reproduction — the primary copyright risk from the v1.1-phase-plan.md §Critical constraint. The `draft → review` lifecycle gate is the current enforcement mechanism for paraphrase detection, relying on human review.
+
+Fuzzy/embedding-based similarity would detect near-duplicates mechanically. Two candidate approaches:
+- **(A) pgvector cosine similarity** — embed stem text via an embedding model; store in `item_version.stem_embedding vector(N)` column (new migration + pgvector extension); flag imports with similarity > threshold as `status: "near_duplicate"`.
+- **(B) MinHash/Jaccard shingling** — character-level shingles; approximate similarity without an embedding API; lower accuracy but zero external dependency.
+
+Decision between (A) and (B) deferred to implementation. Value increases with content bank size.
+
+**Fix (post-launch).** Implement Option A or B when content bank exceeds ~500 items or when human review throughput becomes a bottleneck. Coordinate with legal review of threshold definition.
+
+---
+
+### ISSUE-0048 — PROJECT_STATE.md per-package test count discrepancy
+
+- Status: resolved — 2026-05-24 (chore(v1.1-polish) close — PROJECT_STATE overwritten with real pnpm -r test output; corrected baseline 854, current total 945)
+- Severity: low
+- Reported: 2026-05-18 (v1.1-S5 chore close — P8 audit)
+- Area: docs (docs/dev/PROJECT_STATE.md)
+- Tags: documentation · test-count
+
+**Summary.** `docs/dev/PROJECT_STATE.md` §Test suite documents the per-package breakdown as `@mm/types=160` and `apps/web=85`. Actual `pnpm -r run test` output at v1.1-S5 close shows `@mm/types=153` and `apps/web=92`. Total 828 is correct in both the docs and the actual run — the discrepancy is in how the +33 S5 delta was distributed across packages. No functional impact; total gate count is correct.
+
+**Fix (documentation).** Correct the per-package breakdown line in `PROJECT_STATE.md` to `@mm/types=153` and `apps/web=92` at next evening-ritual overwrite.
+
+---
+
+### ISSUE-0047 — Inline LoadingState in S4 teacher content pages
+
+- Status: resolved — 2026-05-24 (Cluster F replaced 13 inline skeletons with `LoadingState` primitive across 6 pages; commit e525d2a)
+- Severity: low
+- Reported: 2026-05-18 (v1.1-S5 chore close — P4 audit)
+- Area: frontend (apps/web/src/app/(teacher)/content/)
+- Tags: components · ui-consistency
+
+**Summary.** `apps/web/src/app/(teacher)/content/page.tsx` and `teacher/content/new/page.tsx` define local inline skeleton `LoadingState()` functions instead of importing the shared `LoadingState` component from `@mm/ui`. This introduces a divergence from the design system — future changes to the shared component will not propagate to these pages.
+
+**Fix.** Replace the inline `LoadingState` definitions with imports from `@mm/ui`. No behavior change — purely an import correction. Address at next S4/teacher-content touch.
+
+---
+
+### ISSUE-0046 — role="alert" misuse on non-urgent form validation messages
+
+- Status: resolved — 2026-05-24 (Cluster E corrected `role="alert"` → `role="status"` on `StudentComposerForm` validation messages + overdue banner; commit 5e158f8)
+- Severity: low
+- Reported: 2026-05-18 (v1.1-S5 chore close — P5 audit)
+- Area: frontend (apps/web/src/components/student/StudentComposerForm.tsx)
+- Tags: a11y · aria · form-validation
+
+**Summary.** `StudentComposerForm.tsx` lines 216, 247, 296, 360 apply `role="alert"` to inline form validation messages (e.g., item count bounds, difficulty sum mismatch). `role="alert"` is semantically reserved for time-sensitive/urgent interruptions (live region, assertive). Non-urgent validation feedback should use `role="status"` (polite) or no live-region role at all when tied to a submit action.
+
+**Fix.** Replace `role="alert"` with `role="status"` on field-level validation messages; reserve `role="alert"` for genuine error conditions. Address at next StudentComposerForm touch.
+
+---
+
+### ISSUE-0045 — Focus management missing on /practice and /exam-sim route entry
+
+- Status: open
+- Severity: medium
+- Reported: 2026-05-18 (v1.1-S5 chore close — P5 audit)
+- Area: frontend (apps/web/src/app/(student)/practice/, exam-sim/)
+- Tags: a11y · focus-management · navigation
+
+**Summary.** Neither `/practice/page.tsx` nor `/exam-sim/page.tsx` manage focus on route entry. After navigating to these pages (e.g., via StudentNav), keyboard and screen-reader users land with focus in an indeterminate position. UI_CONTRACT §a11y (lines 748–759) requires focus to land on the page heading or the first interactive element after navigation. The `<SimulationBanner />` on `exam/page.tsx` is correctly handled (it is an inline conditional, not a navigation target) — this issue covers the entry pages only.
+
+**Fix.** Add `useEffect(() => { headingRef.current?.focus() }, [])` on route entry, or use Next.js `router.events` approach per existing pattern in other student routes. Address before launch or at next S5 touch.
+
+---
+
+### ISSUE-0044 — assignments-svc flat error format inconsistent with other services
+
+- Status: open
+- Severity: low
+- Reported: 2026-05-18 (v1.1-S5 chore close — P3 audit)
+- Area: backend (supabase/functions/assignments-svc/handlers.ts)
+- Tags: error-format · api-consistency
+
+**Summary.** `assignments-svc/handlers.ts` returns flat error objects `{ data: null, status: 4xx, error: 'CODE' }`. `content-svc` and `assessment-svc` use a tagged-union format `{ ok: false, error: { code, message } }`. The SDK error-handling layer normalises responses, but divergence in raw wire format makes direct debugging and contract testing harder. Found at P3 error-handling audit.
+
+**Fix.** Align `assignments-svc` error shape with the tagged-union format used by other services. Low priority — SDK normalisation masks the discrepancy at runtime. Address when assignments-svc is next touched for S6+ work.
+
+---
+
+### ISSUE-0043 — assessment-svc /respond and /submit missing Idempotency-Key enforcement
+
+- Status: resolved — 2026-05-24 (Cluster C added `Idempotency-Key` header extraction + idempotency-window validation to `/respond` and `/submit`; commit 3a2fca6)
+- Severity: medium
+- Reported: 2026-05-18 (v1.1-S5 chore close — P2 audit)
+- Area: backend (supabase/functions/assessment-svc/index.ts)
+- Tags: idempotency · api · assessment-svc
+
+**Summary.** `assessment-svc` POST `/sessions/{id}/respond` and POST `/sessions/{id}/submit` do not read or enforce the `Idempotency-Key` header. The CLAUDE.md non-negotiable requires `Idempotency-Key` on every `POST`/`PATCH`/`DELETE`. `assignments-svc` has the same gap (tracked as ISSUE-0023 — logged-only, not enforced). For `/respond`, duplicate delivery without idempotency protection risks double-scoring a session response; for `/submit`, duplicate submission risks double-closing a session. Extends the pattern identified in ISSUE-0023.
+
+**Fix.** Add `Idempotency-Key` header extraction and idempotency-window check (matching the content-svc pattern) to both endpoints. Address before launch — high replay risk in mobile/flaky-network scenarios.
+
+**Concurrent-submit CAS hardening (2026-06-11, commit ad21e03).** The idempotency-key enforcement (3a2fca6) dedupes replays that carry a key, but the `/submit` terminal UPDATE keyed on `id` alone (read-then-update), leaving a TOCTOU window: two submits racing past the key could both pass the `status==='active'` read guard and both write a terminal row + `outbox_event`, double-triggering the pipeline. Hardened by making the terminal transition a DB-level compare-and-swap — added `.eq('status','active')` to the `session_record` terminal UPDATE in `assessment-svc/handlers.ts` so the race loser matches zero rows and returns the same 409 `SESSION_CONFLICT` as the sequential-duplicate guard, *before* the outbox insert. No duplicate `session.submitted` regardless of idempotency-key presence; double-close now impossible. A null driver result is treated as success (no regression).
+
+**Coverage.** Concurrent-submit CAS branch (handlers.ts terminal UPDATE `.eq('status','active')`) covered by reasoning + the E2E submit→results path; no dedicated unit test (mock harness cannot simulate concurrent submits).
+
+---
+
+### ISSUE-0041 — N+1 query patterns in assignments-svc
+
+- Status: resolved — 2026-05-24 (Cluster C batched `fetchDisplayName` lookups into single `IN (...)` query per handler in `assignments-svc/handlers.ts`; commit 3a2fca6)
+- Severity: medium
+- Reported: 2026-05-18 (v1.1-S5 chore close — P7 audit)
+- Area: backend (supabase/functions/assignments-svc/handlers.ts)
+- Tags: performance · n+1 · assignments-svc
+
+**Summary.** Four `await`-in-loop patterns identified in `assignments-svc/handlers.ts`:
+
+1. `publishAssignment` (~lines 570–576): per-`classId` loop calling individual DB queries.
+2. `getAssignmentsForStudent` (~lines 716–720): `fetchDisplayName` called per assignment row.
+3. `getAssignmentsForClass` (~lines 784–787): `fetchDisplayName` called per assignment row.
+4. `getAssignmentTracking` (~lines 813–816): `fetchDisplayName` called per tracking row.
+
+Under small class sizes (v1 launch), these are acceptable. At scale (50+ students per class), these become O(n) DB round-trips per request, violating the `BUILD_CONTRACT §10` dashboard load budget (p95 2000 ms).
+
+**Fix.** Batch `fetchDisplayName` lookups into a single `IN (...)` query per handler; join or use `Promise.all` with a single batch call. Address before launch scaling validation or when assignments-svc performance is next measured.
+
+---
+
+### ISSUE-0040 — SDK hooks missing staleTime causes refetch storms
+
+- Status: resolved — 2026-05-24 (Cluster D added `staleTime` to 16 hooks across 6 files in `packages/sdk/src/`; commit 4353d78)
+- Severity: medium
+- Reported: 2026-05-18 (v1.1-S5 chore close — P7 audit)
+- Area: frontend (packages/sdk/src/hooks/content.ts, session.ts, assignments.ts)
+- Tags: performance · react-query · sdk
+
+**Summary.** Three SDK hooks use React Query with `staleTime` defaulting to 0: `usePathways` (`content.ts`), `useSessionState` (`session.ts`), and `useAssignmentsForClass` (`assignments.ts`). With `staleTime: 0`, React Query re-fetches from the server on every window focus event and component remount. On the `/practice` and `/exam-sim` pages, `usePathways` fires a fresh network request every time the user alt-tabs back to the browser. Under `useSessionState` during an active exam, this causes unnecessary re-fetches mid-session. `BUILD_CONTRACT §10` item delivery p95 budget is 200 ms; refetch storms compound latency.
+
+**Fix.** Add appropriate `staleTime` values: `usePathways` 5–10 minutes (reference data), `useSessionState` 0–30 seconds (session data, should be fresh but not every focus), `useAssignmentsForClass` 1–2 minutes. Coordinate with cache invalidation on mutation. Address before launch or when SDK hooks are next touched.
+
+---
+
+### ISSUE-0039 — Submit error does not discriminate 402 Upgrade Required
+
+- Status: resolved — 2026-05-24 (Cluster B added 402/`FEATURE_GATED` discrimination on session-selection + student assignments `isError` guard; `StudentComposerForm` and `teacher/content/new` wired to `<UpgradeState />`; commit 9705579)
+- Severity: medium
+- Reported: 2026-05-18 (v1.1-S5 chore close — P3 + P4 audit)
+- Area: frontend (apps/web/src/components/student/StudentComposerForm.tsx, apps/web/src/app/(teacher)/content/new/page.tsx)
+- Tags: error-handling · billing · upgrade-flow
+
+**Summary.** `StudentComposerForm.tsx:359–362` and `teacher/content/new/page.tsx:347–354` render a generic error message on any submit failure. Neither handler inspects the response status for 402 and redirects or renders the `<UpgradeState />` component. The 5-state matrix requires the Upgrade (402) state on every data-bound component (UI_CONTRACT:547–557); the form-submit error path is a second entry point where a 402 can surface (e.g., user upgrades plan in another tab, then submits a form — the UI must direct them to upgrade, not show a generic error).
+
+**Fix.** On submit failure, check `error.status === 402` and render `<UpgradeState />` (or route to upgrade page) instead of the generic error message. Applies to both `StudentComposerForm.tsx` and `teacher/content/new/page.tsx`. Address before launch.
+
+---
+
 ### ISSUE-0036 — pgTAP test/schema drift for migrations 0012, 0015, 0016 (resolved at Stage 48)
 
 - Status: open → resolved at Stage 48 impl commit
@@ -523,7 +1487,121 @@ grep -rn "IndexedDB\|idb-keyval\|next-pwa\|sw\.js\|serviceWorker" apps/web/
 
 L5 writes `async_pipeline_event` (scope_type='student_pathway'); L7/L9 write both. L1/L2/L3a/L3b continue writing `pipeline_event`. Linked: ADR-0032, ADR-0033, Q-29.4, Q-30.2, ISSUE-0017.
 
+---
+
+### ISSUE-0038 — v1.1-S4 axe-core E2E live run pending
+
+- Status: open
+- Severity: info
+- Reported: 2026-05-18 (v1.1-S4 close)
+- Area: tests (apps/web — Playwright)
+- Tags: playwright · a11y · axe-core · exam-content
+
+**Summary.** axe-core E2E spec authored at `apps/web/playwright/e2e/exam-content-a11y.spec.ts`. Spec uses `test.skip()` guard when `E2E_WEB_URL` is absent (codebase pattern) — 2 tests covering `/teacher/content` and `/teacher/content/new`. UI_CONTRACT DoD (lines 748–759) requires zero serious/critical violations on both new teacher content routes — gate is enforced when the spec runs live. No code action required; resolves on first green preview/CI run.
+
+**Tracking pointer.** v1.1-S4 impl commit b8b8290. Spec covers `/teacher/content` and `/teacher/content/new`. ADR-0038 §Implementation Notes.
+
 ## Resolved
+
+### ISSUE-0058 — Content manifest difficulty scale mismatch: manifest uses IRT logit notation, DB enforces [0,1] normalized p-value
+
+- Status: resolved — 2026-05-21 (v1.1-S7.1 Gate III r2 — Option 1 linear band-midpoint transform applied)
+- Severity: high
+- Reported: 2026-05-21 (v1.1-S7.1 Gate III — `item_difficulty_check` constraint failures on items 001/002/003/008)
+- Area: content-ops (docs/content/manifests/) + infra (supabase/migrations/0002_content_skill_graph.sql)
+- Tags: content-authoring · difficulty · schema · manifest
+
+**Summary.** Gate III live import: 4/8 items rejected with `item_difficulty_check` constraint violation. Manifest used IRT logit notation (-2.0 to +2.0); DB `CHECK (difficulty BETWEEN 0 AND 1)`. Engine Zod contracts (`contracts.ts:88`: `z.number().min(0).max(1)`), DiagnosticEngine binary search, SkillEngine clamps, and band selector (handlers.ts:113–117 `easy:[0,0.35]`, `mid:[0.35,0.7]`, `hard:[0.7,1.0]`) all confirm [0,1] is canonical. Spec §6.4 mandates 0.0–1.0 float; §15.1 uses CTT p-value recalibration (`new_difficulty = 1.0 - observed_p`). Seed data (02_content.sql): all values 0.3/0.55/0.8.
+
+**Resolution.** Option 1 (linear band-midpoint) applied: `-2→0.10`, `-1→0.30`, `0→0.50`, `+1→0.70`, `+2→0.90`. 4 partial rows (items 004–007) deleted by UUID before clean re-import. Gate III r2: HTTP 200, imported: 8, rejected: 0. DB verification: 8 rows at difficulty `0.1, 0.3, 0.3, 0.5, 0.5, 0.7, 0.7, 0.9`.
+
+**Follow-ups filed.** ISSUE-0059 (template correction for S7.2), ISSUE-0060 (RLS advisory).
+
+Related: Gate III r2, ISSUE-0057, ISSUE-0059, `supabase/migrations/0002_content_skill_graph.sql:167`
+
+---
+
+### ISSUE-0055 — Edge runtime BOOT_ERROR: @mm/types symlink path mismatch + .js extension failure
+
+- Status: resolved — 2026-05-21 (v1.1-S7.1 Gate II unblock)
+- Severity: critical (blocked all content-svc local dev requests)
+- Area: infra
+- Tags: edge-runtime · import-map · deno · symlink
+
+**Summary.** pnpm workspace symlinks `@mm/types` using Git Bash path `/c/Users/...`, which doesn't exist inside Docker (container mounts as `/Users/...`). Node-modules resolution failed. Import map with `src/index.ts` pointer failed next because Deno can't resolve `.js` extension relative imports inside `.ts` source files (TypeScript ESM convention); import map scopes cannot intercept relative specifiers. `deno.json` `unstable: ["sloppy-imports"]` failed because the edge runtime pre-compiles to `/var/tmp/sb-compile-edge-runtime/` where `.ts` source files are absent.
+
+**Fix.** `supabase/functions/deno.json` (newly created) provides the import map via its `imports` key — this is what the edge runtime worker ACTUALLY reads (not `import_map.json` from `SUPABASE_INTERNAL_FUNCTIONS_CONFIG`, which is ignored by workers). Both `@mm/types` and `@mm/engines` point to `../../packages/types/dist/index.js` and `../../packages/engines/dist/index.js` respectively. Compiled `.js` files in `dist/` contain relative `.js` imports that resolve to sibling `.js` files — no extension remapping needed. `packages/types` dist was rebuilt (`pnpm --filter @mm/types build`) to include `ImportManifestSchema` added in v1.1.
+
+**Files.** `supabase/functions/deno.json` (created), `supabase/functions/import_map.json` (updated — was previously unused by workers; retained for CLI tooling). `import_map.json` `scopes` section removed (scopes cannot intercept relative specifiers per WHATWG spec).
+
+**Gate II unblocked.** HTTP 200, `dry_run: true`, `rejected: 0`, all 8 items `status: ok`.
+
+---
+
+### ISSUE-0056 — content-svc route dispatcher 404 in local dev: URL prefix not stripped
+
+- Status: resolved — 2026-05-21 (v1.1-S7.1 Gate II unblock, BUG-0001)
+- Severity: critical (all routes returned 404 in local dev)
+- Area: backend
+- Tags: edge-runtime · routing · local-dev
+
+**Summary.** The Supabase edge runtime v1.73.13 passes `req.url` with pathname `/content-svc/<rest>` (no `/functions/v1/` prefix) in local dev. `content-svc/index.ts:96` stripped only `/functions/v1/content-svc`, so `path` was always `/content-svc/content/import` instead of `/content/import`. Every route check failed; all requests fell through to the catch-all 404.
+
+**Fix.** Regex changed from `/^\/functions\/v1\/content-svc/` to `/^\/(functions\/v1\/)?content-svc/` — makes the `/functions/v1/` prefix optional. Both production and local dev URL forms now reduce correctly to the bare `/route` path. Regression test added: `contract.test.ts` describe block `'content-svc — route prefix stripping (BUG-0001)'` (5 cases: production form, local-dev form, no-prefix passthrough incl. `/functions/v1/billing-svc/x`, mid-path anchor, bare `/content-svc` → empty string).
+
+**Files.** `supabase/functions/content-svc/index.ts:96`, `supabase/functions/content-svc/__tests__/contract.test.ts`.
+
+---
+
+### ISSUE-0042 — Zod parse gap at content-svc and assessment-svc API boundaries
+
+- Status: resolved — 2026-05-19 (commit b3eb668)
+- Severity at resolution: high
+- Reported: 2026-05-18 (v1.1-S5 chore close — P2 audit)
+- Area: backend (supabase/functions/content-svc/handlers.ts, assessment-svc/index.ts)
+- Tags: validation · zod · api-boundary · security
+
+**Summary.** Two API boundary violations of the CLAUDE.md non-negotiable "Zod validation at every API boundary":
+
+1. **content-svc `createItem` / `updateItem`** (`handlers.ts:840–848`): assertion-based checks instead of `ItemCreateDTOSchema.parse()`.
+2. **assessment-svc `createSession`** (`index.ts:222`): `as CreateSessionRequest` type assertion with no Zod parse.
+
+**Resolution.** content-svc scope closed at b3eb668 (2026-05-19): `createItem` and `updateItem` now use `ItemCreateDTOSchema.safeParse()` / `ItemUpdateDTOSchema.safeParse()`; 422 VALIDATION_ERROR returned on failure with first-issue field-path message. +3 contract tests. content-svc scope only; assessment-svc `index.ts:222` type-assertion gap carries non-blocking per ADR-0040.
+
+---
+
+### ISSUE-0037 — `sb_secret_*` literal observed in local working tree of `apps/web/.env.local.example`
+
+- Status: resolved — 2026-05-15 (ISSUE-0037 remediation, this commit on v1.1/exam-content)
+- **Severity at resolution: info** (downgraded from initial filing's "high" — see Findings)
+- Reported: 2026-05-15 (v1.1-S2 impl — surfaced during pre-push V16 diff inspection)
+- Area: infra · security · template-hygiene
+- Tags: secrets · supabase · env-template · pre-commit-guard
+
+**Initial filing** asserted: a committed `sb_secret_*` service_role credential in `apps/web/.env.local.example`, propagating to every clone via git history, requiring rotation + scrub + history rewrite + CI guard. Severity = high.
+
+**Findings at remediation** (two, both reducing severity):
+
+1. **Never-committed.** `git log --all -S "sb_secret_N7UND0UgjKTVK" -- apps/web/.env.local.example` returns **empty**. HEAD's `.env.local.example` always carried the original `your-anon-key` / `your-service-role-key` placeholder strings (see commits `5e3e1f0` Stage 14, `75984c6` Stage 26, `3a782fc` Stage 42 — only three modifications, none introducing the literal). The `sb_*` literals existed only in the operator's local unstaged working tree and never reached origin. The single attempt to commit them — embedded as evidence inside the ISSUE-0037 description block in `OPEN_ISSUES.md:21` during the v1.1-S2 chore — was correctly blocked by GitHub push-protection; that chore landed clean at `f72a7a8` after redaction.
+
+2. **CLI shared defaults, not project secrets.** `npx supabase start` output on this project includes the explicit banner: *"API keys and JWT secrets are shared defaults. Do not use in production."* The exact `sb_publishable_*` and `sb_secret_*` values printed by the CLI (suffixes redacted here so this doc itself does not carry the literal — `npx supabase status` reveals them on any developer's machine) are built into the Supabase CLI itself and byte-identical across every install running the new-format key flag. `stop && start` cannot rotate them by design (would defeat the CLI's consistent-dev-keys UX). They are not exclusive credentials.
+
+**Combined severity profile after findings:** info / template-hygiene defect. No incident, no exposure beyond what every Supabase CLI user already has locally, no rotation possible. The original "high" rating assumed an exclusive credential in committed history; both legs of that assumption were wrong.
+
+**Remediation delivered (this commit):**
+
+- **D1 N/A (rotation impossible).** `npx supabase stop && npx supabase start` was run and confirmed the keys are byte-identical CLI defaults. No actual rotation; documented as N/A above.
+- **D2 scrub.** `apps/web/.env.local.example` now uses placeholders of identical shape: `sb_publishable_REPLACE_WITH_LOCAL_ANON_KEY` / `sb_secret_REPLACE_WITH_LOCAL_SERVICE_ROLE_KEY` + a comment block telling contributors to retrieve live values via `npx supabase status`. Stripe placeholders already correct. The HEAD-vs-working-tree divergence that triggered the filing is closed: working tree now matches a clean template.
+- **D3 pre-commit guard.** `.githooks/pre-commit` rejects any staged line `KEY=<prefix><value>` where `<prefix>` ∈ {`sb_secret_`, `sb_publishable_`, `sk_live_`, `sk_test_`, `eyJ`} AND `<value>` contains BOTH lowercase letters AND digits (the real-key entropy heuristic). Tested: placeholders pass, real key shape rejected. Documented in `CLAUDE.md §Pre-commit secret guard`. Active per clone after `git config core.hooksPath .githooks` (same activation as the existing commit-msg hook).
+- **D4 this entry.** Severity downgraded high → info; resolution paragraph written.
+
+**Operator follow-ups (none required for security):**
+- If desired, a future migration to a per-project JWT signing secret (override the CLI shared default) would create truly project-exclusive keys. Out of v1.1 scope; would need an ADR if pursued.
+- If GitHub repository-level secret-scanning rules ever produce a false-positive backlog because of the CLI's shared-default values appearing in dev tooling output, document an allowlist exception for that specific known value.
+
+**Cross-refs.** `CLAUDE.md §Pre-commit secret guard`; `.githooks/pre-commit`; `apps/web/.env.local.example` HEAD post-remediation; commit `f72a7a8` (v1.1-S2 chore, where the literal was first redacted-on-attempt by GitHub push-protection).
+
+---
 
 ### ISSUE-0029 — Stage close typecheck gate may return stale turbo-cached green when node_modules drift
 

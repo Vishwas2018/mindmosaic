@@ -259,6 +259,27 @@ describe('jobs-worker — backoff scheduling', () => {
     // At least 30s in the future (2^1 × 30s = 60s after first failure).
     expect(scheduledAt).toBeGreaterThan(before + 29_000);
   });
+
+  it('dispatchJob forwards Authorization Bearer header (ISSUE-0074)', async () => {
+    const job = buildJob({ id: 'job-auth-check' });
+    const client = buildWorkerClient({ pickupBatches: [{ data: [job], error: null }] });
+
+    let capturedHeaders: Record<string, string> | undefined;
+    const httpFetch = vi.fn(
+      async (_url: string, init: { headers: Record<string, string>; body: string }): Promise<FetchResponse> => {
+        capturedHeaders = init.headers;
+        return { ok: true, status: 200, text: async () => '{}' };
+      },
+    );
+
+    await processJobBatch({
+      client, httpFetch, routeMap: TEST_ROUTE_MAP,
+      serviceRoleKey: 'test-service-key', workerId: 'w-auth',
+    });
+
+    expect(capturedHeaders?.['Authorization']).toBe('Bearer test-service-key');
+    expect(capturedHeaders?.['x-mm-service-role']).toBe('test-service-key');
+  });
 });
 
 // ─── Opt-in real-Postgres integration test (Docker only) ────────────────────

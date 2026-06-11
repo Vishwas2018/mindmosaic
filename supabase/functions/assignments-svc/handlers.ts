@@ -111,6 +111,8 @@ interface AssignmentRow {
   updated_at: string;
   published_at: string | null;
   archived_at: string | null;
+  composer_params: unknown | null;
+  simulation_params: unknown | null;
 }
 
 interface AssignmentTargetRow {
@@ -179,7 +181,7 @@ async function fetchAssignment(
   const { data: rows, error } = (await db
     .from('assignment')
     .select(
-      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at',
+      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at,composer_params,simulation_params',
     )
     .eq('id', assignmentId)
     .limit(1)) as { data: AssignmentRow[] | null; error: unknown };
@@ -208,6 +210,18 @@ async function fetchDisplayName(userId: string, db: DbClient): Promise<string> {
     .eq('id', userId)
     .limit(1)) as { data: UserProfileRow[] | null; error: unknown };
   return rows?.[0]?.display_name ?? '';
+}
+
+async function fetchDisplayNames(userIds: string[], db: DbClient): Promise<Map<string, string>> {
+  const ids = [...new Set(userIds)];
+  if (ids.length === 0) return new Map();
+  const { data: rows } = (await db
+    .from('user_profile')
+    .select('id,display_name')
+    .in('id', ids)) as { data: UserProfileRow[] | null; error: unknown };
+  const map = new Map<string, string>();
+  for (const r of rows ?? []) map.set(r.id, r.display_name ?? '');
+  return map;
 }
 
 function buildAssignmentDTO(
@@ -240,6 +254,17 @@ function buildAssignmentDTO(
 // createAssignment
 // ---------------------------------------------------------------------------
 
+interface ComposerParamsBody {
+  item_count: number;
+  difficulty_distribution: { easy: number; mid: number; hard: number };
+  time_limit_ms: number;
+}
+
+interface SimulationParamsBody {
+  no_back_nav: boolean;
+  hide_feedback_until_submit: boolean;
+}
+
 interface CreateBody {
   title: string;
   description?: string;
@@ -253,6 +278,8 @@ interface CreateBody {
   targets: Array<{ type: 'student' | 'class'; id: string }>;
   auto_generated?: boolean;
   rationale?: string | null;
+  composer_params?: ComposerParamsBody | null;
+  simulation_params?: SimulationParamsBody | null;
 }
 
 function parseCreateBody(raw: unknown): CreateBody {
@@ -280,6 +307,14 @@ function parseCreateBody(raw: unknown): CreateBody {
     targets: b['targets'] as Array<{ type: 'student' | 'class'; id: string }>,
     auto_generated: typeof b['auto_generated'] === 'boolean' ? b['auto_generated'] : false,
     rationale: typeof b['rationale'] === 'string' ? b['rationale'] : null,
+    composer_params:
+      typeof b['composer_params'] === 'object' && b['composer_params'] !== null
+        ? (b['composer_params'] as ComposerParamsBody)
+        : null,
+    simulation_params:
+      typeof b['simulation_params'] === 'object' && b['simulation_params'] !== null
+        ? (b['simulation_params'] as SimulationParamsBody)
+        : null,
   };
 }
 
@@ -336,9 +371,11 @@ export async function createAssignment(
       due_at: body.due_at ?? null,
       auto_generated: body.auto_generated ?? false,
       rationale: body.rationale ?? null,
+      composer_params: body.composer_params ?? null,
+      simulation_params: body.simulation_params ?? null,
     })
     .select(
-      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at',
+      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at,composer_params,simulation_params',
     )
     .single()) as { data: AssignmentRow | null; error: unknown };
   if (insertErr || !inserted) {
@@ -493,7 +530,7 @@ export async function updateAssignment(
     .update(patch)
     .eq('id', assignmentId)
     .select(
-      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at',
+      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at,composer_params,simulation_params',
     )
     .single()) as { data: AssignmentRow | null; error: unknown };
   if (updateErr || !updated) return { data: null, status: 500, error: 'DB_ERROR' };
@@ -542,11 +579,11 @@ export async function publishAssignment(
     .map((t) => t.class_id as string);
 
   const classStudentIds: string[] = [];
-  for (const classId of classIds) {
+  if (classIds.length > 0) {
     const { data: roster } = (await db
       .from('class_student')
       .select('student_id')
-      .eq('class_id', classId)) as { data: ClassStudentRow[] | null; error: unknown };
+      .in('class_id', classIds)) as { data: ClassStudentRow[] | null; error: unknown };
     for (const r of roster ?? []) classStudentIds.push(r.student_id);
   }
 
@@ -587,7 +624,7 @@ export async function publishAssignment(
     .update({ status: 'published', published_at: now })
     .eq('id', assignmentId)
     .select(
-      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at',
+      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at,composer_params,simulation_params',
     )
     .single()) as { data: AssignmentRow | null; error: unknown };
   if (updateErr || !updated) return { data: null, status: 500, error: 'DB_ERROR' };
@@ -623,7 +660,7 @@ export async function archiveAssignment(
     .update({ status: 'archived', archived_at: now })
     .eq('id', assignmentId)
     .select(
-      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at',
+      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at,composer_params,simulation_params',
     )
     .single()) as { data: AssignmentRow | null; error: unknown };
   if (updateErr || !updated) return { data: null, status: 500, error: 'DB_ERROR' };
@@ -675,7 +712,7 @@ export async function getAssignmentsForStudent(
   const { data: assignmentRows, error: asgErr } = (await db
     .from('assignment')
     .select(
-      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at',
+      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at,composer_params,simulation_params',
     )
     .in('id', assignmentIds)) as { data: AssignmentRow[] | null; error: unknown };
   if (asgErr) return { data: null, status: 500, error: 'DB_ERROR' };
@@ -688,11 +725,7 @@ export async function getAssignmentsForStudent(
 
   const skillNames = await fetchSkillNames(allSkillIds, db);
 
-  const displayNames = new Map<string, string>();
-  for (const creatorId of creatorIds) {
-    const name = await fetchDisplayName(creatorId, db);
-    displayNames.set(creatorId, name);
-  }
+  const displayNames = await fetchDisplayNames(creatorIds, db);
 
   const sessionByAssignment = new Map<string, AssignmentSessionRow>();
   for (const s of sessionRows) sessionByAssignment.set(s.assignment_id, s);
@@ -747,7 +780,7 @@ export async function getAssignmentsForClass(
   const { data: rows, error: asgErr } = (await db
     .from('assignment')
     .select(
-      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at',
+      'id,tenant_id,created_by,title,description,mode,pathway_id,target_skill_ids,difficulty_range,item_count,time_limit_ms,due_at,status,auto_generated,rationale,created_at,updated_at,published_at,archived_at,composer_params,simulation_params',
     )
     .in('id', assignmentIds)) as { data: AssignmentRow[] | null; error: unknown };
   if (asgErr) return { data: null, status: 500, error: 'DB_ERROR' };
@@ -755,10 +788,11 @@ export async function getAssignmentsForClass(
   const allSkillIds = [...new Set((rows ?? []).flatMap((a) => a.target_skill_ids))];
   const skillNames = await fetchSkillNames(allSkillIds, db);
 
+  const creatorIds = [...new Set((rows ?? []).map((r) => r.created_by))];
+  const displayNames = await fetchDisplayNames(creatorIds, db);
   const result: AssignmentDTO[] = [];
   for (const row of rows ?? []) {
-    const displayName = await fetchDisplayName(row.created_by, db);
-    result.push(buildAssignmentDTO(row, skillNames, displayName));
+    result.push(buildAssignmentDTO(row, skillNames, displayNames.get(row.created_by) ?? ''));
   }
 
   return { data: result, status: 200 };
@@ -784,11 +818,7 @@ export async function getAssignmentTracking(
   const sessions = sessionRows ?? [];
   const studentIds = sessions.map((s) => s.student_id);
 
-  const displayNames = new Map<string, string>();
-  for (const sid of studentIds) {
-    const name = await fetchDisplayName(sid, db);
-    displayNames.set(sid, name);
-  }
+  const displayNames = await fetchDisplayNames(studentIds, db);
 
   const total = sessions.length;
   const completedCount = sessions.filter((s) => s.status === 'completed').length;
@@ -860,6 +890,18 @@ export async function startAssignment(
   }
 
   // Q-33.8 Option A: read pathway_id from assignment row; forward to POST /sessions/create.
+  // ADR-0038: also forward composer_params + simulation_params when present on assignment row.
+  const sessionPayload: Record<string, unknown> = {
+    assessment_profile_id: null,
+    repair_sequence_id: null,
+    assignment_id: assignmentId,
+    mode: row.mode,
+    target_skills: row.target_skill_ids,
+    pathway_id: row.pathway_id,
+  };
+  if (row.composer_params != null) sessionPayload['composer_params'] = row.composer_params;
+  if (row.simulation_params != null) sessionPayload['simulation_params'] = row.simulation_params;
+
   const sessionRes = await fetch(`${assessmentSvcUrl}/sessions/create`, {
     method: 'POST',
     headers: {
@@ -867,14 +909,7 @@ export async function startAssignment(
       Authorization: authorizationHeader,
       'x-mm-trace-id': traceId,
     },
-    body: JSON.stringify({
-      assessment_profile_id: null,
-      repair_sequence_id: null,
-      assignment_id: assignmentId,
-      mode: row.mode,
-      target_skills: row.target_skill_ids,
-      pathway_id: row.pathway_id, // Q-33.8 Option A: sourced from assignment row
-    }),
+    body: JSON.stringify(sessionPayload),
   });
 
   if (!sessionRes.ok) {

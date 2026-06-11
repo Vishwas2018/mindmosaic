@@ -21,10 +21,10 @@ export type PlanCatalogDTO = z.infer<typeof PlanCatalogDTOSchema>;
 export const SubscriptionDTOSchema = z.object({
   tier: SubscriptionTierSchema,
   is_active: z.boolean(),
-  started_at: z.string().datetime(),
-  current_period_end: z.string().datetime().nullable(),
-  cancel_at: z.string().datetime().nullable(),
-  canceled_at: z.string().datetime().nullable(),
+  started_at: z.string().datetime({ offset: true }),
+  current_period_end: z.string().datetime({ offset: true }).nullable(),
+  cancel_at: z.string().datetime({ offset: true }).nullable(),
+  canceled_at: z.string().datetime({ offset: true }).nullable(),
   stripe_subscription_id: z.string().nullable(),
 });
 export type SubscriptionDTO = z.infer<typeof SubscriptionDTOSchema>;
@@ -49,8 +49,8 @@ export const InvoiceDTOSchema = z.object({
   amount_cents: z.number().int(),
   currency: z.string(),
   status: InvoiceStatusSchema,
-  invoiced_at: z.string().datetime(),
-  paid_at: z.string().datetime().nullable(),
+  invoiced_at: z.string().datetime({ offset: true }),
+  paid_at: z.string().datetime({ offset: true }).nullable(),
   hosted_invoice_url: z.string().url().nullable(),
   invoice_pdf_url: z.string().url().nullable(),
 });
@@ -68,7 +68,7 @@ export const InvoicesResponseSchema = z.object({
 export type InvoicesResponse = z.infer<typeof InvoicesResponseSchema>;
 
 export const CancelResponseSchema = z.object({
-  cancel_at: z.string().datetime().nullable(),
+  cancel_at: z.string().datetime({ offset: true }).nullable(),
   is_active: z.boolean(),
 });
 export type CancelResponse = z.infer<typeof CancelResponseSchema>;

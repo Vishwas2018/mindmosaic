@@ -5,9 +5,1156 @@
 
 ## Open
 
-<!-- none -->
+### Q-50 — entitled=false: pathway buttons absent for admin-created student users (tests 8, 10, 11)
+
+- Date raised: 2026-06-08 (v1.1/exam-content E2E repair R2)
+- Asked of: self / architect
+- Source: apps/web/playwright/e2e/exam-flow.spec.ts:60, practice-flow.spec.ts:61
+- Question: Why do tests 8 (exam-flow), 10 (practice-flow), and 11 (results-flow) fail at the pathway action button visibility check on /session-selection? The pathway card is either rendering in locked state (entitled=false) or the pathways query is erroring.
+- Why ambiguous: R2 hypothesis 1 (ignoreDuplicates:true silently skipping required_feature_key) is empirically eliminated — seed ran correctly in the latest CI run (✓ Seed E2E data) yet buttons are absent. Candidate causes that could not be ruled out without empirical data:
+  1. **H2 — content-svc 403**: callerTenantId returns null → tenantId === undefined → early 403. Triggered if handle_new_user DB trigger did NOT create user_profile/tenant rows for the admin-created test user. React Query retries 3× then shows ErrorState → no buttons. diagnostic probe (diag-pathways-probe.ts) will confirm or deny.
+  2. **H3 — cold start >10s**: content-svc complex bundle may take >10s on first invocation. Mitigated by session-flow (test 12) now GREEN — test 12 calls auth-dependent endpoints and passes; however test 12 does NOT call /pathways (uses pathway ID directly), so a cold-start affect on content-svc specifically remains possible. Probe will reveal if the call times out.
+  3. **H4 — project-ref mismatch** (formerly H1): E2E_BASE_URL and E2E_SUPABASE_URL may reference different Supabase projects. Cookie name sb-{ref}-auth-token installed by the helper may not match what the Vercel deployment expects. Probe prints both refs for comparison.
+- Blocking? yes — tests 8, 10, 11 remain red until resolved
+- Assumed answer (if proceeding): H2 (403) is the most likely candidate given test 9 (parent dashboard) is GREEN with the same auth path but does not call content-svc /pathways.
+- Code affected: scripts/diag-pathways-probe.ts (new), .github/workflows/ci.yml (diagnostic step)
+- Status: open
+- Resolution: —
+
+### Q-1.1-AUDIT-1 — RLS access pattern for intelligence_audit_log_default + learning_event_default
+
+- Date raised: 2026-05-22 (v1.1 pre-polish audit P6 — ISSUE-0060 T3 flag)
+- Asked of: product owner / architect
+- Source: supabase/migrations/0004 (learning_event), 0005 (intelligence_audit_log); CLAUDE.md RLS non-negotiable
+- Question: What access pattern should govern RLS on `public.intelligence_audit_log_default` and `public.learning_event_default`? Which roles may read/write these tables, and what policies must be written before RLS is enabled? Secondary sub-question: do PostgreSQL 15 default partitions inherit `ENABLE ROW LEVEL SECURITY` from their parent partition table — if yes, does the parent-level enable in migrations 0004/0005 already cover the defaults, making ISSUE-0060 a false positive?
+- Why ambiguous: (1) Access-pattern analysis — no client-side query path against these tables was found in the P6 audit, but absence of evidence is not evidence of absence; (2) Structural question — PostgreSQL documentation on partition RLS inheritance for default partitions is not definitive across versions; a live schema inspection would resolve it but is out of scope for a static audit.
+- Blocking? yes — ISSUE-0060 cannot be closed (confirmed fix or false-positive) without this answer
+- Assumed answer (if proceeding): Option 1 — Pattern G (service-role only). `USING (false)` deny policy for `anon` + `authenticated`; service_role bypasses. Consistent with migration 0018 Pattern G. No client query path found; internal logging tables should not be client-readable.
+- Code affected: supabase/migrations/ (new migration required if Option 1 or 2 chosen); supabase/migrations/0004_learning_pipeline.sql, 0005_intelligence_core.sql (parent tables)
+- Status: open
+- Resolution: —
 
 ## Resolved
+
+### Q-1.1-AUDIT-2 — dark mode / global theme scope for v1.1 family-beta
+
+- Date raised: 2026-06-11 (v1.1 in-scope E2E gate close — audit observation)
+- Asked of: product owner / self
+- Source: audit observation — an ephemeral "dark spec" surfaced during the gate audit
+- Question: Is a global light/dark theme in scope for v1.1 / family-beta, and should a dark-mode VRT (visual-regression) spec be added now?
+- Why ambiguous: a "dark spec" was seen during the audit, implying dark-mode coverage might be expected. In reality no runtime theme mechanism exists in the app — no root `data-theme` setter, no `[data-theme=dark]` design-token block, no toggle, no persistence.
+- Blocking? no
+- Assumed answer (if proceeding): out of scope
+- Code affected: none
+- Status: resolved
+- Resolution: **OUT of v1.1/family-beta scope (2026-06-11).** No runtime theme mechanism exists; global light/dark theme is deferred post-beta. A real implementation — root `data-theme` setter + `[data-theme=dark]` design-token block + UI toggle + persistence — is required BEFORE any dark-mode VRT spec is meaningful (a VRT spec without the mechanism would assert against a non-existent state). The "dark spec" observed during the audit was ephemeral MCP scaffolding, not a tracked file in the repo — no cleanup needed.
+
+### Q-1.1-POLISH-B1 — jsdom + @testing-library/react in @mm/web for render tests
+
+- Date raised: 2026-05-23 (Cluster B consumer wiring)
+- Asked of: operator
+- Source: Cluster B brief §4 test floor (+7 render tests); ISSUE-0062
+- Question: The Cluster B brief listed +7 widget-level render tests (6 dashboard ErrorState guards + 1 assignments guard) but noted they require jsdom not yet configured in `apps/web`. Were these to be deferred to a follow-up commit, or added immediately in Cluster B?
+- Why ambiguous: `apps/web/vitest.config.ts` had no `environment: 'jsdom'` or `@testing-library/react` devDep, making render tests impossible without config work. Brief was silent on whether that config work was in scope.
+- Blocking? yes — render tests cannot be written until config is updated
+- Assumed answer (if proceeding): defer to follow-up; write 11 pure-logic tests now
+- Code affected: `apps/web/vitest.config.ts`, `apps/web/package.json`, `apps/web/src/__tests__/dashboard-error-states.test.tsx`
+- Status: resolved
+- Resolution: Operator ordered immediate fix (2026-05-23): add jsdom + @testing-library/react NOW, not deferred. ISSUE-0062 is a pre-launch blocker; render path must be tested in same cluster. Implemented: vitest.config.ts updated, 3 devDeps added, setup.ts created, 7 render tests written. Total 860 → 878 (+18: 11 logic + 7 render).
+
+### Q-1.1-POLISH-7 — ISSUE-0039 + ISSUE-0045 scope placement in polish stage
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2a; ADR-0042 §Carried issues confirmed still open
+- Question: ISSUE-0039 (402 discrimination on submit) and ISSUE-0045 (focus management on /practice + /exam-sim) are Medium per the brief and confirmed carries in ADR-0042, but were absent from the morning ritual triage prompt buckets. Are they in-scope for this polish stage as Medium issues?
+- Why ambiguous: Omission from the morning ritual triage buckets could indicate intentional carry or oversight.
+- Blocking? no — both are deferrable but both are straightforward fixes within this stage's budget
+- Assumed answer (if proceeding): in-scope as Medium — ISSUE-0039 is a direct UpgradeState consumer (0063); ISSUE-0045 is a standalone a11y fix
+- Code affected: ISSUE-0039: `apps/web/src/components/student/StudentComposerForm.tsx`, `apps/web/src/app/(teacher)/content/new/page.tsx`; ISSUE-0045: `apps/web/src/app/(student)/practice/page.tsx`, `apps/web/src/app/(student)/exam-sim/page.tsx`
+- Status: resolved
+- Resolution: **Confirmed in-scope as Medium. ISSUE-0039 folds into Cluster B (depends on Cluster A UpgradeState). ISSUE-0045 folds into Cluster E (a11y). (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-6 — ISSUE-0067 local build TLS gate
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: ISSUE-0067; v1.1-polish-stage-brief.md §7 (anticipated)
+- Question: Does the local prod build TLS cert failure (ISSUE-0067) block polish stage close, or carry as a README note?
+- Why ambiguous: ISSUE-0067 is Medium severity but CI and Vercel deployments are unaffected; the failure is machine-specific (Google Fonts TLS chain on Windows).
+- Blocking? no
+- Assumed answer (if proceeding): carry — add `NODE_OPTIONS=--use-system-ca` workaround note to README; CI/Vercel unaffected
+- Code affected: `README.md` or `apps/web/README.md` (workaround note only); ISSUE-0067 remains open
+- Status: resolved
+- Resolution: **Carry. Add `NODE_OPTIONS=--use-system-ca` workaround note to README.md. Polish stage does not block on this. CI/Vercel unaffected. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-5 — Low issues to elevate to fix-in-stage
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2a; ISSUE-0044, 0046, 0047, 0064, 0065, 0066
+- Question: Which Low findings (ISSUE-0044, 0046, 0047, 0064, 0065, 0066) are elevated to fix-in-stage rather than deferred to v1.2?
+- Why ambiguous: All six Lows are deferrable per brief default; elevation is operator-discretion based on effort vs benefit.
+- Blocking? no
+- Assumed answer (if proceeding): defer all unless operator elevates
+- Code affected: elevations affect Cluster E (a11y) and Cluster F (loading-consistency)
+- Status: resolved
+- Resolution: **Elevate: ISSUE-0046 + ISSUE-0065 → Cluster E (role="alert" corrections, low effort, a11y coherence). ISSUE-0064 + ISSUE-0047 → Cluster F (LoadingState consolidation, visual-only, no test delta). Defer: ISSUE-0044 (assignments-svc error format) + ISSUE-0066 (console.warn). (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-4 — axe-core live-run gating
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2d; ISSUE-0038
+- Question: Does this stage block on preview env being provisioned (axe-core live run), or does ISSUE-0038 carry to the preview deploy stage?
+- Why ambiguous: axe-core page-level E2E run requires a running app; preview env provisioning is not in this stage's control.
+- Blocking? no
+- Assumed answer (if proceeding): carry-to-preview
+- Code affected: ISSUE-0038 tracking only; no code change
+- Status: resolved
+- Resolution: **carry-to-preview. ISSUE-0038 axe-core live run gates the preview deploy stage, not the polish stage. No code action here. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-3 — Mobile breakpoint scope
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §2b
+- Question: Full mobile pass (all v1.1 routes) or student-facing only?
+- Why ambiguous: Teacher surfaces are desktop-primary by design; applying a full mobile pass to 20+ routes vs targeted student routes is a significant effort difference.
+- Blocking? no
+- Assumed answer (if proceeding): student-facing only
+- Code affected: `apps/web/src/app/(student)/**` routes only
+- Status: resolved
+- Resolution: **student-facing only. Teacher and admin surfaces are desktop-primary; no mobile breakpoint pass on teacher/admin routes in this stage. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-2 — Commit batching strategy
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §4; CLAUDE.md §Atomic commits
+- Question: One commit per ISSUE-NNNN, or cluster commits grouped by area?
+- Why ambiguous: Per-issue gives fine-grained bisect; per-cluster reduces commit noise and groups logically dependent changes (e.g. ErrorState primitive + ErrorState consumer wiring).
+- Blocking? no
+- Assumed answer (if proceeding): cluster by area (a11y, sdk, backend-idempotency, ui-states)
+- Code affected: commit discipline only; no code change
+- Status: resolved
+- Resolution: **cluster by area — 6 clusters (A: ui-primitives; B: dashboard-errors; C: backend; D: sdk; E: a11y; F: loading-consistency), one commit per cluster. Cluster order: A → (B + D parallel) → C → E → F → matrix sweep. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-POLISH-1 — Design token scope
+
+- Date raised: 2026-05-22 (v1.1 polish morning ritual)
+- Asked of: operator
+- Source: v1.1-polish-stage-brief.md §3 (out-of-scope: design system or token overhaul); §7
+- Question: Should the polish stage introduce an explicit token file, use minimal inline Tailwind-class consistency, or make no token changes?
+- Why ambiguous: Clarifying whether any new `tokens.css` entries are needed or whether consistency work uses only existing design tokens.
+- Blocking? no
+- Assumed answer (if proceeding): minimal — fix class inconsistencies without adding new token file entries
+- Code affected: `packages/ui/src/tokens.css` (no change)
+- Status: resolved
+- Resolution: **minimal — fix class inconsistencies using existing tokens only; no new `tokens.css` entries introduced in this stage. (2026-05-22 operator)**
+
+---
+
+### Q-1.1-S7-RC.1 — response_config shape: correct_option_id + string[] options
+
+- Date raised: 2026-05-20 (v1.1-S7.1 Gate I)
+- Asked of: operator (T3 structural — DTO shape)
+- Source: manifest-format.md §9; australian-y5-numeracy.md §6/§10; assessment-svc/handlers.ts:1064-1073; apps/web/src/app/(student)/session/[id]/exam/page.tsx:62-68
+- Question: Which shape should MCQ `response_config` use for the correct-answer field and options array?
+- Why ambiguous: Three-way inconsistency — manifest-format.md §9 used `"correct"` + `string[]`; authoring spec §6/§10 used `"correct"` + `[{key,text}]` objects; delivery code reads `correct_option_id` + expects `string[]`.
+- Blocking? yes — Gate I format approval; manifest authored with wrong shape before investigation
+- Assumed answer: Option A — flat string options + `correct_option_id` (server ground truth wins)
+- Code affected: docs/content/manifest-format.md §3.2/§9; docs/content/specs/australian-y5-numeracy.md §6/§10; docs/content/manifests/s7.1-batch-01-preview.json (pending update)
+- Status: resolved
+- Resolution: **Option A — flat string options + `correct_option_id`** (2026-05-20 operator). Server ground truth (`computeCorrectness` at `assessment-svc/handlers.ts:1068`) wins; spec docs corrected. Evidence chain: (1) `handlers.ts:1064-1073` reads `cfg['correct_option_id']` — `"correct"` field never read by engine; (2) `exam/page.tsx:62-68` `readOptions()` returns `string[]` only — object arrays return `[]` (empty render); (3) assessment-svc contract test fixtures lines 82-85 confirm `correct_option_id`. Docs updated: `manifest-format.md §3.2/§9`; authoring spec `§6/§10`. By-product: pre-existing v1 scoring bug surfaced as ISSUE-0054 — UI sends `{ choice }` but server reads `responseData['option_id']`; MCQ auto-scoring non-functional in v1 exam mode regardless of content shape.
+
+---
+
+### Q-1.1-7.9 — T5 adaptation for S7 content work
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3 structural — process gate model)
+- Source: CLAUDE.md §T-Discipline T5; v1.1-phase-plan.md §S7
+- Question: Does T5 (layout sketch → skeleton → fill) apply to S7 content work, and if so what is the adapted gate model?
+- Why ambiguous: T5 is defined for UI stages. S7 produces items, not code. A content-adapted T5 would use dry-run mechanics as the gate proxy.
+- Blocking? yes — determines whether S7.1 is gated or free-running
+- Assumed answer: 3-gate adapted. Gate I: dry-run of first 5–10 pilot items (format + coverage direction check) → operator approval. Gate II: full 50-item manifest dry-run → zero rejections → operator approval before live import. Gate III: live import + coverage matrix update.
+- Code affected: S7.1 workflow discipline only; no code change
+- Status: resolved
+- Resolution: **Default accepted. 3-gate adapted T5 for S7 content work: Gate I (5–10 item pilot dry-run + format check) → operator approval; Gate II (full 50-item manifest dry-run, zero rejections) → operator approval; Gate III (live import + coverage matrix update). (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.8 — Manifest file storage: in repo / private store / gitignored
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3 structural — repository hygiene + content traceability)
+- Source: v1.1-phase-plan.md §S7; `docs/content/manifest-format.md`
+- Question: Where are authored manifest files stored — in the repo, in a private store, or gitignored?
+- Why ambiguous: In-repo provides full audit trail and traceability; private store keeps content out of the public git history (relevant if this repo is public); gitignored avoids the question but breaks reproducibility.
+- Blocking? yes — determines directory structure and `.gitignore` additions before first item is authored
+- Assumed answer: In repo at `docs/content/manifests/<batch>.json`. Pilot transparency preferred; scale concerns (hundreds of manifests) revisited at S7.2+.
+- Code affected: `.gitignore` (if private store or gitignored); `docs/content/manifests/` (new directory if in-repo)
+- Status: resolved
+- Resolution: **Default accepted. Manifests stored in-repo at `docs/content/manifests/<batch>.json`. Scale review deferred to S7.2+. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.7 — Commit granularity: per-item / per-batch / per-strand
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3)
+- Source: CLAUDE.md §Atomic commits; v1.1-phase-plan.md §S7
+- Question: What is the commit unit for S7 content work? Options: (A) per-item (50 commits for S7.1), (B) per-batch (one commit per import run, all batch artefacts bundled), (C) per-strand (6 commits for S7.1, one per AC v9.0 strand).
+- Why ambiguous: Per-item gives maximum granularity for bisect but is impractical at volume; per-batch is the natural unit given the import pipeline; per-strand aligns with the coverage matrix.
+- Blocking? yes — determines how manifests, review logs, and coverage updates are staged
+- Assumed answer: Option B — per-batch. One commit per import run: manifest file + review log entries + `docs/content/coverage.md` update, atomic. Commit message format: `content(s7.1): batch N — <strand> <item-count> items imported`.
+- Code affected: commit discipline only; no code change
+- Status: resolved
+- Resolution: **Option B accepted. Per-batch commit model: manifest + review log + coverage update, atomic. Commit format: `content(s7.1): batch N — <strand> <item-count> items imported`. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.6 — Test surface for S7 content commits
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3)
+- Source: CLAUDE.md §Quality non-negotiables; v1.1-phase-plan.md §S7
+- Question: What automated test surface covers S7 content commits? Options: (A) per-item smoke (curl dry-run per item before authoring), (B) per-batch dry-run as the gate (full manifest `POST /content/import?dry_run=true` → zero rejections before live import), (C) no automated test beyond the pipeline's own Zod validation.
+- Why ambiguous: S7 is content, not code — no unit tests exist for item content. The import pipeline already validates schemas. Additional testing may be redundant or essential depending on the review model.
+- Blocking? yes — determines CI / quality gate shape for S7 commits
+- Assumed answer: Option B — per-batch dry-run is the test. `POST /content/import?dry_run=true` on the full manifest before every live import; zero rejections required. No new test files. The dry-run IS the test. Combined with Q-1.1-7.9 Gate II.
+- Code affected: workflow discipline only; no new test files
+- Status: resolved
+- Resolution: **Option B accepted. Per-batch dry-run is the test gate: `POST /content/import?dry_run=true` zero-rejections before every live import. No new test files. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.5 — Lifecycle transition ownership and gates
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3)
+- Source: spec §15.3 lifecycle FSM; ADR-0041 §Decision 6; DEV-20260520-1
+- Question: Who triggers `draft → review` and `review → active` transitions, and what gates each?
+- Why ambiguous: The FSM exists in content-svc; the operational ownership is not defined. Under DEV-20260520-1, no item may reach `active` until legal pre-launch sign-off — but the `review` state must be reachable for copyright review to occur before that gate.
+- Blocking? yes — determines whether `draft → review` can be triggered during S7.1 or must wait for legal
+- Assumed answer: Operator-only triggers transitions via content-svc lifecycle endpoint. `draft → review` gates on §9.2 review-log entry present (per Q-1.1-7.3). `review → active` gates on legal pre-launch sign-off (DEV-20260520-1 — blocked until pre-launch gate). Items may accumulate in `review` state during S7.1 authoring.
+- Code affected: operational process only; no code change
+- Status: resolved
+- Resolution: **Default accepted. Operator-only lifecycle transitions. `draft → review` requires review-log entry present (Q-1.1-7.3 artifact). `review → active` blocked on DEV-20260520-1 legal pre-launch gate. Items may accumulate in `review` state during S7.1. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.4 — Import target environment
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3)
+- Source: ADR-0041; `POST /content/import`; v1.1-phase-plan.md §S7
+- Question: Where are S7.1 items imported — local Supabase, a preview project, or a staging project?
+- Why ambiguous: Local Supabase is accessible immediately with no additional credentials; preview/staging requires a provisioned environment. Items imported to local cannot be accessed by other team members or the production deploy.
+- Blocking? yes — determines `SUPABASE_URL` + service-role key used for `POST /content/import`; determines whether S7.1 items are visible at the pre-launch gate
+- Assumed answer: Local Supabase for S7.1 dry-runs + live import. Content migration to preview/staging carried to pre-launch gate (sequence step 4 in v1.1 deploy checklist).
+- Code affected: operational only; no code change
+- Status: resolved
+- Resolution: **Default accepted. Local Supabase for S7.1 dry-runs and live import. Content migration to preview/staging deferred to pre-launch gate. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.3 — Originality review owner + artifact (§9.2 gate)
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3)
+- Source: `docs/content/specs/australian-y5-numeracy.md §9.2`; spec §15.3 (`draft → review` gate)
+- Question: Who performs the §9.2 originality review for each authored item, and what is the review artifact that gates the `draft → review` lifecycle transition?
+- Why ambiguous: §9.2 requires "human originality review" for AI-assisted items and "reviewed by a second person before setting to `review`". Ownership and artifact format are not specified.
+- Blocking? yes — the `draft → review` transition requires sign-off; without a defined artifact there is no machine- or process-checkable gate
+- Assumed answer: Operator-side review. Artifact: per-item entry in `docs/content/reviews/<batch>.md` committed alongside the manifest. Entry fields: `external_key`, `reviewer`, `date`, §9.2 checklist items (7 checkboxes per template). File committed in the same batch commit (Q-1.1-7.7).
+- Code affected: `docs/content/reviews/` (new directory); no code change
+- Status: resolved
+- Resolution: **Default accepted with Q-1.1-7.3.1 tightening. Operator-side review. Artifact: `docs/content/reviews/<batch>.md`, per-item entries using `docs/content/reviews/_template.md` (7-item checklist). Committed in same batch commit as manifest. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.2 — Authoring source format
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3 structural — authoring workflow)
+- Source: `docs/content/manifest-format.md`; `docs/content/specs/australian-y5-numeracy.md`
+- Question: In what format are items authored before import? Options: (A) directly as manifest-format JSON per `docs/content/manifest-format.md`; (B) intermediate markdown per §5–§8 fields, assembled into JSON by a script; (C) hybrid — markdown for review/QA, JSON assembled for import.
+- Why ambiguous: Direct JSON is the most traceable and requires no intermediate tooling; markdown is more human-readable for review but adds an assembly step. The review artifact (Q-1.1-7.3) may benefit from a markdown intermediate.
+- Blocking? yes — determines the authoring artifact that exists before manifest assembly
+- Assumed answer: Option A — direct manifest JSON. Fewest moving parts for S7.1 pilot. No intermediate script needed. Review artifact (Q-1.1-7.3) is the review log file, not the manifest format. Revisit at S7.2+ if volume demands a more ergonomic authoring format.
+- Code affected: no code change; directory structure only (per Q-1.1-7.8)
+- Status: resolved
+- Resolution: **Option A accepted. Direct manifest JSON authoring. No intermediate tooling for S7.1 pilot. Revisit at S7.2+ if volume demands. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.1 — Authoring approach: AI-assisted / Human SME / Hybrid
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — Q-1.1-7.* round)
+- Asked of: operator (T3 structural — determines `authoring_method` value on every manifest item)
+- Source: v1.1-phase-plan.md §S7 authoring approaches; `docs/content/specs/australian-y5-numeracy.md §9.2`; migration 0023 (`authoring_method` field)
+- Question: Which authoring approach is used for the S7.1 pilot batch?
+  - **AI-assisted (Claude):** Claude drafts original items to the S6 spec template → output as manifest JSON → human originality review before import. `authoring_method: "ai_assisted_human_reviewed"`.
+  - **Human SME:** Subject-matter expert authors items directly to the template → manifest JSON. `authoring_method: "human"`.
+  - **Hybrid (recommended by phase plan):** Claude drafts → human SME reviews, corrects, approves → import. `authoring_method: "ai_assisted_human_reviewed"`.
+- Why ambiguous: All three produce valid items; the choice determines the `authoring_method` value declared in every manifest item, shapes the review artifact (Q-1.1-7.3), and determines who does the work.
+- Blocking? yes — must be decided before the first item is drafted; `authoring_method` is a required NOT NULL field (migration 0023) with no DEFAULT
+- Assumed answer: Hybrid — Claude drafts original items to template, operator (or SME) reviews against §9.2 checklist, approves, commits. Every item gets `authoring_method: "ai_assisted_human_reviewed"`.
+- Code affected: every manifest item's `authoring_method` field; no code change
+- Status: resolved
+- Resolution: **Hybrid approach accepted: `authoring_method: "ai_assisted_human_reviewed"` on all S7.1 items. Claude drafts original items to spec template; operator reviews against §9.2 checklist and commits. (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.T1C — Probability strand has no skill node in seed; template §2 targets 2 items
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — T1 pre-read finding)
+- Asked of: operator (T3 medium — strand mix + skill graph coverage)
+- Source: `docs/content/specs/australian-y5-numeracy.md §2`; `supabase/seeds/01_skill_graph.sql`
+- Question: Template §2 pilot batch mix allocates 2 items to the Probability strand. The seeded skill graph contains no Probability skill node. Options: (A) suppress Probability for S7.1, redistribute 2 items; (B) add Probability + Statistics skill nodes before authoring begins.
+- Why ambiguous: Probability is a valid AC v9.0 strand but is absent from the v1 seed. Adding a skill node requires either a new seed entry or a migration.
+- Blocking? yes — authoring items with a non-existent skill UUID fails at DB; authoring with any non-UUID slug fails at cast.
+- Assumed answer: Option A (suppress Probability, redistribute)
+- Code affected: `docs/content/specs/australian-y5-numeracy.md §2` (strand mix table)
+- Status: resolved
+- Resolution: **Option A. Probability items suppressed for S7.1 pilot. Redistributed: +1 Number (21 total), +1 Measurement (11 total). Probability deferred to S7.2+ pending ISSUE-0053 (skill graph extension). (2026-05-20 operator decision)**
+
+---
+
+### Q-1.1-7.T1B — `skill_ids` field: manifest examples use slug strings; DB column is `uuid[]`
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — T1 pre-read finding)
+- Asked of: operator (T3 structural — manifest contract + handler behavior)
+- Source: `supabase/migrations/0002_content_skill_graph.sql:166` (`skill_ids uuid[] NOT NULL`); `supabase/functions/content-svc/handlers.ts:854` (passes directly to INSERT); `docs/content/specs/australian-y5-numeracy.md §10` (`"skill_ids": ["meas.area.rectangle"]`); `docs/content/manifest-format.md §9` (`"skill_ids": ["num.fractions.compare"]`)
+- Question: Manifest skill_ids examples use slug strings (`"meas.area.rectangle"`, `"num.fractions.compare"`). DB column is `uuid[]`. `importItems` passes them directly to Supabase INSERT without slug resolution — non-UUID strings cause a DB cast error. Options: (A) fix docs/examples to use UUIDs; (B) add slug resolution to `importItems`; (C) UUIDs for S7.1, file ISSUE for slug-resolution upgrade.
+- Why ambiguous: Template examples, manifest-format docs, and actual DB column type all conflict.
+- Blocking? yes — any non-UUID `skill_ids` value causes a DB cast error; item rejected.
+- Assumed answer: Option C (UUIDs in S7.1 manifests, ISSUE-0052 for upgrade)
+- Code affected: `docs/content/specs/australian-y5-numeracy.md §10`; `docs/content/manifest-format.md §3.1 + §9`; `docs/dev/OPEN_ISSUES.md` (ISSUE-0052)
+- Status: resolved
+- Resolution: **Option C. Manifests for S7.1 must supply valid UUIDs from `skill_node` table. Template + manifest-format docs updated to show real UUIDs from seed (Q-1.1-7.T1B Option C, 2026-05-20 operator decision). ISSUE-0052 filed for post-S7.1 slug-resolution upgrade to `importItems`.**
+
+Seeded skill UUIDs for S7.1 reference:
+- `place-value` → `a0000001-0000-0000-0000-000000000004`
+- `fractions-decimals` → `a0000001-0000-0000-0000-000000000005`
+- `operations` → `a0000001-0000-0000-0000-000000000006`
+- `word-problems` → `a0000001-0000-0000-0000-000000000007`
+- `geometry` → `a0000001-0000-0000-0000-000000000008`
+- `data-interpretation` → `a0000001-0000-0000-0000-000000000009`
+
+T3 classification: structural — manifest contract change affects all authored items; round-trip required and completed.
+
+---
+
+### Q-1.1-7.T1A — `response_type` values in template ≠ DB enum; import fails silently
+
+- Date raised: 2026-05-20 (v1.1-S7 morning ritual — T1 pre-read finding)
+- Asked of: operator (T3 structural — manifest contract)
+- Source: `supabase/migrations/0001_enums_tenancy_auth.sql:36–42` (enum: `'mcq', 'multi_select', 'short_answer', 'extended_response', 'drag_drop', 'cloze', 'numeric_entry'`); `supabase/migrations/0002_content_skill_graph.sql:165` (`response_type response_type NOT NULL`); `supabase/functions/content-svc/handlers.ts:853` (passes directly to INSERT); `docs/content/specs/australian-y5-numeracy.md §4` (`"multiple_choice"`, `"short_response"`); `docs/content/manifest-format.md §9` (`"multiple_choice"`)
+- Question: Template §4 and manifest-format §9 example both use `"multiple_choice"` and `"short_response"` as `response_type` values. DB enum has `'mcq'` and `'short_answer'`. Handler passes the value directly to INSERT — mismatch causes DB enum constraint violation. Options: (A) fix docs to use DB enum values; (B) add translation map in handler; (C) extend DB enum with new values.
+- Why ambiguous: Template and DB use different vocabularies; Zod uses `z.string()` so mismatch is invisible at validation time.
+- Blocking? yes — `"multiple_choice"` or `"short_response"` in a manifest causes DB INSERT failure; item rejected.
+- Assumed answer: Option A (DB enum is authoritative; fix docs)
+- Code affected: `docs/content/specs/australian-y5-numeracy.md §4 + §10`; `docs/content/manifest-format.md §3.1 + §9`; `docs/dev/decisions/0041-content-import-pipeline.md §Implementation Notes`
+- Status: resolved
+- Resolution: **Option A. DB enum is authoritative. Template + manifest-format docs updated: `"multiple_choice"` → `"mcq"`, `"short_response"` → `"short_answer"`. ADR-0041 §Implementation Notes records the constraint. No code change. (2026-05-20 operator decision)**
+
+T3 classification: structural — manifest contract; every authored item's response_type value is affected; round-trip required and completed.
+
+---
+
+### Q-1.1-S7-LEGAL-2 — exam_family enum values: trademark exposure in public-facing surfaces (item 9)
+
+- Date raised: 2026-05-19 (v1.1-S7 legal review — finding 9)
+- Asked of: operator (T3 structural — DB schema + migration)
+- Source: legal review of `docs/content/specs/australian-y5-numeracy.md`; exposure audit of `exam_family` enum surfaces
+- Question: Should `exam_family` enum values `naplan` and `icas` be renamed to neutral identifiers to reduce trademark exposure in public-facing API responses and UI labels?
+- Why ambiguous: "naplan" and "icas" appear in student-facing UI (session-selection/page.tsx:78,105), teacher UI (teacher/content/page.tsx:92), and API responses to all authenticated users (`GET /pathways`). Trademark risk from using registered trademark strings as bare technical identifiers. Three options surfaced: (A) full enum rename + migration 0024, (B) display-name map in UI only (no migration), (C) doc-only disclaimer reliance.
+- Blocking? yes — step 1c blocked; S7 gates on legal re-review
+- Assumed answer: Option A (full enum rename, migration 0024)
+- Code affected: `supabase/migrations/0024_exam_family_rename.sql` (new), `packages/types/src/content.ts`, `supabase/seeds/`, `supabase/tests/rls/`, `apps/web/src/app/(student)/session-selection/page.tsx`, `apps/web/src/app/(teacher)/content/page.tsx`, `supabase/functions/content-svc/handlers.ts`, `scripts/validate-content.ts`
+- Status: resolved
+- Resolution: **Option A. Full enum rename + migration 0024. (2026-05-19 operator decision)** New enum values TBD at step 1c morning ritual (neutral identifiers replacing `naplan`/`icas`). All surfaces updated in step 1c atomic commit.
+
+T3 classification: structural — one-way DDL (`ALTER TYPE`); schema + API wire format + UI all change; round-trip required and completed.
+
+---
+
+### Q-1.1-S7-LEGAL-1 — Authoring-method provenance in manifest schema (item 3)
+
+- Date raised: 2026-05-19 (v1.1-S7 legal review — finding 3)
+- Asked of: operator (T3 structural — Zod schema + migration)
+- Source: legal review of `docs/content/specs/australian-y5-numeracy.md` §9.2; `ImportManifestItemSchema` in `packages/types/src/content.ts`
+- Question: Should a machine-readable `authoring_method` field be added to `ImportManifestItemSchema` and `item_version` table to declare whether content was human-authored or AI-assisted (with human review)?
+- Why ambiguous: `copyright_declaration: "original"` attests originality but not authoring method. §9.2 AI-authoring clause (added in step 1a) requires human review but has no schema hook for enforcement or audit. Three options: (A) add `authoring_method` Zod enum + `NOT NULL` column in `item_version` (migration 0023), (B) doc-only enforcement, (C) Zod validation without DB storage.
+- Blocking? yes — step 1b blocked; S7 gates on legal re-review
+- Assumed answer: Option A (schema provenance, migration 0023)
+- Code affected: `packages/types/src/content.ts` (`ImportManifestItemSchema`), `supabase/migrations/0023_item_version_authoring_method.sql` (new), `supabase/functions/content-svc/handlers.ts` (`importItems`), contract tests (+3 minimum)
+- Status: resolved
+- Resolution: **Option A. Add `authoring_method: z.enum(['human', 'ai_assisted_human_reviewed'])` to `ImportManifestItemSchema` + `item_version` column (NOT NULL). Migration 0023. (2026-05-19 operator decision)** Enforces §9.2 at import and creates a permanent audit trail. Step 1b implements.
+
+T3 classification: structural — DTO shape change + DDL (NOT NULL column on `item_version`); one-way; round-trip required and completed.
+
+---
+
+### Q-1.1-6.1 — S6 scope: "content operation tooling" — human authoring tools vs automated generation?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual — §N trap)
+- Asked of: operator (T3 structural)
+- Source: v1.1-phase-plan.md §S6 ("content operation tooling"); spec §21.2 (`POST /content/import`)
+- Question: Does "content operation tooling" mean (a) tools FOR human content operators to author/import/QA items, or (b) automated content generation?
+- Why ambiguous: Phase plan uses "tooling" without specifying human vs automated; copyright constraint likely forbids (b).
+- Blocking? yes
+- Assumed answer: (a) tools for human operators — copyright constraint forbids scraping/reproduction
+- Code affected: content-svc/index.ts, handlers.ts (new route)
+- Status: resolved
+- Resolution: **Option A. HTTP endpoint primary. No script in S6 scope. (2026-05-19 T3 round-trip)** §N trap resolved: "content operation tooling" = tools FOR human content operators; copyright constraint forbids automated scraping/reproduction. AI-assisted authoring against spec templates is permitted for original items only.
+
+T3 classification: structural — endpoint shape determines router branch, Idempotency-Key requirement, and Pattern G gate wiring; round-trip required.
+
+---
+
+### Q-1.1-6.2 — Batch import path: `/content/items/batch` (phase plan) vs `POST /content/import` (spec §21.2)?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural)
+- Source: v1.1-phase-plan.md §S6 ("`POST /content/items/batch` or a `scripts/import-items.ts`"); spec §21.2 (`POST /content/import`)
+- Question: Which path is authoritative? Phase plan offers `/content/items/batch` or a script; spec §21.2 names `POST /content/import`.
+- Why ambiguous: Two sources disagree on path; both claim authority.
+- Blocking? yes — path determines router branch in index.ts and SDK endpoint string
+- Assumed answer: spec §21.2 wins
+- Code affected: supabase/functions/content-svc/index.ts (router branch)
+- Status: resolved
+- Resolution: **Option A. `POST /content/import` per spec §21.2. Idempotency-Key required. Pattern G strict (platform_admin + service-role). Phase plan path `/content/items/batch` is non-authoritative; spec wins. (2026-05-19 T3 round-trip)**
+
+T3 classification: structural — path is a contract (SDK, tests, manifest spec all reference it); cannot be corrected after impl commit without breaking callers; round-trip required.
+
+---
+
+### Q-1.1-6.3 — Copyright constraint: validation rules at import boundary (three sub-questions)
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural + tight detail)
+- Source: v1.1-phase-plan.md §Critical constraint; v1.1-phase-plan.md §S6 ("duplicate-similarity check"); spec §21.2
+- Question: (i) Per-item copyright_declaration field required? (ii) Dup check: exact-match only vs fuzzy? (iii) Legal review process owner?
+- Why ambiguous: Phase plan names validation gate and dup check without specifying mechanism; Zod schema alone cannot enforce copyright.
+- Blocking? yes (i, ii); no (iii — ownership, not code)
+- Assumed answer: (i) per-item declaration required; (ii) exact-match SHA for S6; (iii) operator-side
+- Code affected: packages/types/src/content.ts (new manifest schema field); content-svc/handlers.ts (importItems dup check)
+- Status: resolved
+- Resolution: **(i) `copyright_declaration: z.literal('original')` required field in manifest Zod schema. 422 on missing/invalid. (ii) Exact-match SHA of normalised stem JSON for S6. Fuzzy deferred as ISSUE-0049. (iii) Legal review owner: operator-side. ADR-0041 records hard gate for S7.1; not a code workflow item. (2026-05-19 T3 round-trip)**
+
+T3 classification: (i) structural — new required field in manifest schema changes the type contract; round-trip required. (ii) tight detail — implementation depth within agreed validation gate; self-resolve confirmed by operator. (iii) ownership question, not a code decision.
+
+---
+
+### Q-1.1-6.4 — assessment-svc createSession type-assertion gap: fix in S6 or carry?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural)
+- Source: ADR-0040 §Decision (ISSUE-0042 second half carry for assessment-svc); assessment-svc/index.ts:222
+- Question: Does S6 fix the assessment-svc `index.ts:222` `as CreateSessionRequest` type-assertion gap for write-path hygiene parity, or does it stay as carry?
+- Why ambiguous: ADR-0040 declared it non-blocking for S6, but S6 is the last planned platform touch before bulk content authoring begins.
+- Blocking? no
+- Assumed answer: carry per ADR-0040
+- Code affected: none if carry
+- Status: resolved
+- Resolution: **Carry per ADR-0040. S6 does NOT fix assessment-svc gap. (2026-05-19 T3 round-trip)** Adding assessment-svc to S6 scope would violate ADR-0040's decision boundary and add untracked changes to the impl commit footprint.
+
+T3 classification: structural — scope question; expands S6 impl commit if resolved as fix; round-trip required.
+
+---
+
+### Q-1.1-6.5 — T5 gate contradiction: S6 has no UI (PROJECT_STATE.md) vs T5 active (morning ritual)?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: operator (T3 structural)
+- Source: PROJECT_STATE.md §Notes ("S6 has no UI component — no T5 mockup gate"); morning ritual prompt ("T5 three-gate flow applies")
+- Question: Is there a minimal admin UI in S6 scope? Or is T5 discipline adapted to backend design artefacts?
+- Why ambiguous: Two sources disagree; phase plan §S6 makes no mention of UI.
+- Blocking? yes — determines whether component scaffolding is in scope
+- Assumed answer: no UI; T5 adapted to backend artefacts
+- Code affected: none if no UI; apps/web/ if UI in scope
+- Status: resolved
+- Resolution: **Option A. PROJECT_STATE.md §Notes wins — S6 no UI, no T5 mockup gate. T5 adapted to backend design artefacts: Gate I = API design sketch + manifest format spec + ADR-0041 outline; Gate II = handler skeleton + Zod manifest schema + router branch + test scaffolds (throw stubs); Gate III = fill + V1–V11 → "create the commit". ADR-0041 §Implementation Notes records T5 adaptation. (2026-05-19 T3 round-trip)**
+
+T3 classification: structural — wrong interpretation (adding UI) adds unplanned web package changes to the impl commit; round-trip required.
+
+---
+
+### Q-1.1-6.6 — Lifecycle for imported items: draft only, or manifest lifecycle override allowed?
+
+- Date raised: 2026-05-19 (v1.1-S6 morning ritual)
+- Asked of: self (T3 tight detail — self-resolve confirmed by operator)
+- Source: spec §15.3 (FSM: `draft` is start state); v1.1-phase-plan.md §S7 ("full lifecycle draft → review → active")
+- Question: Can the import manifest optionally specify a target lifecycle (e.g., import directly to `review`)?
+- Why ambiguous: Phase plan implies full lifecycle is S7's concern; lifecycle override would accelerate S7.1 pilot.
+- Blocking? no
+- Assumed answer: all imports land as `draft`; no override
+- Code affected: content-svc/handlers.ts (importItems — no lifecycle field in manifest schema)
+- Status: resolved
+- Resolution: **All imports land as `draft`. No lifecycle override field in manifest. (2026-05-19 T3 self-resolve confirmed by operator)** Lifecycle override would bypass the `draft → review` gate that exists "partly for" copyright enforcement (spec §15.3). Self-resolve defensible on tight-detail grounds; confirmed by operator.
+
+T3 classification: tight detail — implementation invariant within agreed FSM; self-resolve confirmed.
+
+---
+
+### Q-1.1-6.7 — Cross-DB stem SHA dedup: implement at S6 or defer?
+
+- Date raised: 2026-05-19 (v1.1-S6 Gate I)
+- Asked of: operator
+- Source: Gate I design sketch §4 (dup detection); spec §21.2 (import endpoint); ADR-0041 §Decision 3
+- Question: Should `POST /content/import` check `item_version.stem_sha` against the full DB (cross-import dedup), or only within the submitted manifest (intra-manifest dedup)?
+- Why ambiguous: Cross-DB dedup prevents duplicates across batches; intra-manifest dedup only prevents duplicates within one manifest. At S6 launch the item bank is empty, so cross-DB check operates against an empty set.
+- Blocking? no
+- Assumed answer: Defer; intra-manifest only (Option C)
+- Code affected: `supabase/functions/_shared/stemSha.ts`, `supabase/functions/content-svc/handlers.ts` (importItems — SHA Set, not DB query)
+- Status: resolved
+- Resolution: **Option C — defer cross-DB stem SHA dedup. Intra-manifest SHA Set only at S6. Empty-bank rationale: at launch the item bank contains 0 prior imports; cross-lookup operates against an empty set. Upgrade tracked as ISSUE-0049 extension (or sibling ISSUE-0050). (2026-05-19 operator decision)** ADR-0041 §Decision 3 amendment records both deferrals.
+
+---
+
+### Q-1.1-6.8 — Cross-import external_key dedup: implement at S6 or defer?
+
+- Date raised: 2026-05-19 (v1.1-S6 Gate III)
+- Asked of: operator
+- Source: `ImportManifestItemSchema.external_key` field; Q-1.1-6.7 precedent
+- Question: Should `external_key` be unique across all prior imports (DB lookup), or only within the current manifest (intra-manifest Map)?
+- Why ambiguous: Cross-import dedup prevents re-import of an item already in the bank. At S6 launch the bank is empty. Idempotency-Key replay handles re-submission of the same manifest body.
+- Blocking? no
+- Assumed answer: Defer; intra-manifest only (Option B, consistent with Q-1.1-6.7)
+- Code affected: `supabase/functions/content-svc/handlers.ts` (importItems — `intraKeyMap`, no DB lookup)
+- Status: resolved
+- Resolution: **Option B — defer cross-import external_key dedup. Intra-manifest Map only at S6. `DUPLICATE_EXTERNAL_KEY` outcome code stays in schema/ADR-0041 §Implementation Notes as upgrade path. (2026-05-19 operator decision)** ADR-0041 §Decision 3 amendment records both deferrals.
+
+---
+
+### Q-1.1-5.6 — Post-submission results: simulation-specific variant or reuse /results/[id]?
+
+- Date raised: 2026-05-18 (v1.1-S5 morning ritual)
+- Asked of: self (T3 tight detail)
+- Source: `apps/web/src/app/(student)/results/[id]/page.tsx` (mode='exam' → hero ring + topic
+  breakdown); SCREEN_SPECS §11 Variants table (scored variant for NAPLAN/ICAS/mock = ring +
+  accuracy + topic breakdown); ADR-0037 §Decision 1 (simulation sessions use mode='exam')
+- Question: Should S5 add a simulation-specific results variant on `/results/[id]`, or reuse
+  the existing scored (mode='exam') results view?
+- Why ambiguous: Simulation sessions are `mode='exam'`; the existing results page already
+  renders the scored variant with hero ring + accuracy + topic breakdown. A dedicated simulation
+  results view might add "Taken under exam conditions" context, but the core data is identical.
+- Blocking? no — scope cut
+- Assumed answer: Reuse existing `/results/[id]`; no simulation-specific variant.
+- Code affected: none (existing results page unchanged)
+- Status: resolved
+- Resolution: **Operator confirmed reuse existing `/results/[id]` (2026-05-18): no
+  simulation-specific results variant in S5. Simulation sessions use `mode='exam'`; existing
+  scored results view renders correctly. A "Taken under exam conditions" badge is deferred to
+  v1.1.2 pending UX evidence.** ADR-0039 Decision 6.
+
+---
+
+### Q-1.1-5.5 — Existing session-running UI: extend or leave unchanged?
+
+- Date raised: 2026-05-18 (v1.1-S5 morning ritual) — conditioned on Q-1.1-5.4 resolution
+- Asked of: architect (T3 structural — scope)
+- Source: `apps/web/src/app/(student)/session/[id]/exam/page.tsx:164` (ExamPage — no
+  simulation indicator currently); Q-1.1-5.4 resolution (Option a — `is_simulation` exposed
+  on `SessionStateDTO`)
+- Question: Following Q-1.1-5.4 resolving to Option a, should S5 (a) add a `<SimulationBanner
+  />` component on the exam page with conditional render on `state.is_simulation === true`, or
+  (b) leave the exam page unchanged and rely on the entry screen copy to communicate conditions?
+- Why ambiguous: Q-1.1-5.4 Option a makes `is_simulation` server-authoritative. Whether to
+  render a banner in the session is a separate UX scope decision.
+- Blocking? no — conditioned on Q-1.1-5.4 resolution
+- Assumed answer: Option a — add `<SimulationBanner />`, minimal scope.
+- Code affected: `apps/web/src/app/(student)/session/[id]/exam/page.tsx` (SimulationBanner
+  conditional)
+- Status: resolved
+- Resolution: **Operator confirmed Option a (2026-05-18): add `<SimulationBanner />`
+  conditional on `state.is_simulation === true`. Minimal — one new inline component, one
+  conditional branch on exam page. No new UI primitive (`SimulationBanner` is a thin inline
+  composition of existing primitives within exam-page scope).** ADR-0039 Decision 5.
+
+---
+
+### Q-1.1-5.4 — Simulation-mode UI affordances: how does client know this is a simulation session?
+
+- Date raised: 2026-05-18 (v1.1-S5 morning ritual) — structural decision requiring T3
+  round-trip
+- Asked of: architect (T3 STRUCTURAL — type contract + assessment-svc change)
+- Source: `packages/types/src/session.ts:152–164` (`SessionStateDTOSchema` — no
+  `simulation_params` field); `apps/web/src/app/(student)/session/[id]/exam/page.tsx:164`
+  (ExamPage — no simulation indicator); ADR-0037 §Decision 4 (`simulation_params` stored in
+  `engine_state_snapshot`, not exposed in state DTO); R12 morning-ritual pre-read
+- Question: Should S5 (a) add `is_simulation: boolean` to `SessionStateDTOSchema` and have
+  `assessment-svc` `getSessionState` read `engine_state_snapshot.simulation_params` and set
+  `is_simulation = !!state.simulation_params`, enabling a `<SimulationBanner />` on the exam
+  page; (b) infer simulation from `navigation.can_go_back` being consistently false (fragile
+  — also false at first item of any exam); (c) pass `?simulation=true` query param on
+  navigation (client-authoritative, not server-backed, lost on resume); or (d) no simulation
+  indicator on the exam page at all?
+- Why ambiguous: `SessionStateDTO` does not expose `simulation_params` (confirmed R12). Options
+  b/c are fragile or non-resumable. Option d is minimal scope but poor UX for simulation
+  fidelity. Option a is clean but adds a type contract change, assessment-svc handler change,
+  and a new banner component.
+- Blocking? yes — if Option a, impl scope includes types + SDK auto-propagation +
+  assessment-svc handler + exam page change
+- Assumed answer: Option a — additive `is_simulation: boolean`; server-authoritative; banner
+  persists on resume.
+- Code affected: `packages/types/src/session.ts` (SessionStateDTOSchema), `supabase/functions/
+  assessment-svc/handlers.ts` (getSessionState reads simulation_params), `apps/web/src/app/
+  (student)/session/[id]/exam/page.tsx` (SimulationBanner conditional)
+- Status: resolved
+- Resolution: **Operator confirmed Option a, scope-expanded (2026-05-18): add
+  `is_simulation: z.boolean()` to `SessionStateDTOSchema` additively. `assessment-svc`
+  `getSessionState` reads `engine_state_snapshot.simulation_params` and sets
+  `is_simulation = !!state.simulation_params`. S5 scope includes: types + SDK
+  auto-propagation + assessment-svc handler change + `SimulationBanner` conditional on exam
+  page. Server-authoritative; banner persists on session resume.** ADR-0039 Decision 4.
+
+---
+
+### Q-1.1-5.3 — Does S5 ship a student self-serve composer form?
+
+- Date raised: 2026-05-18 (v1.1-S5 morning ritual)
+- Asked of: architect (T3 structural — scope)
+- Source: v1.1-phase-plan.md §S5 ("Consumes S3 + S4"); ADR-0036 Decision 8 (student
+  self-serve auth for `composer_params` sessions); `apps/web/src/app/(student)/session-
+  selection/page.tsx` (existing pathway buttons without `composer_params`)
+- Question: Does S5 ship (a) a student-side composer form — pathway picker + difficulty
+  distribution (easy/mid/hard integer counts) + item count + time limit — mirroring S4's
+  teacher form for student self-serve; or (b) no student composer — S5 limited to navigation
+  polish on the existing session-selection screen, interpreting "consumes S3 + S4" narrowly
+  as teacher-assigned exam start only?
+- Why ambiguous: Phase plan says "Consumes S3 + S4." Option b interprets this as meaning
+  student-start of teacher-published S4 assignments (already works via `/assignments` +
+  `useStartAssignment`). Option a interprets it as student-initiated composed sessions —
+  the natural student counterpart to S4's teacher-side form.
+- Blocking? yes — defines the primary S5 deliverable
+- Assumed answer: Option a — student self-serve composer form.
+- Code affected: `apps/web/src/app/(student)/practice/page.tsx`, `apps/web/src/app/(student)/
+  exam-sim/page.tsx`
+- Status: resolved
+- Resolution: **Operator confirmed Option A (2026-05-18): S5 ships a student-side self-serve
+  composer form (pathway picker + difficulty distribution + item count + time limit). Mirrors
+  S4 teacher form on student side. Student-initiated composed/simulation sessions are the S5
+  deliverable; teacher-assigned exam start already works from Stage 40 via `/assignments` +
+  `useStartAssignment`.** ADR-0039 Decision 3.
+
+---
+
+### Q-1.1-5.2 — Route breakdown: two routes vs single route
+
+- Date raised: 2026-05-18 (v1.1-S5 morning ritual)
+- Asked of: architect (T3 structural — route structure)
+- Source: v1.1-phase-plan.md §S5 ("apps/web/src/app/(student)/practice/* + .../exam-sim/*");
+  `apps/web/src/app/(teacher)/teacher/content/` (S4 two-route pattern: `page.tsx` +
+  `new/page.tsx`); `apps/web/src/app/(student)/session-selection/page.tsx` (single combined
+  route for all modes)
+- Question: Should S5 implement (a) two separate routes `/practice` + `/exam-sim` with a
+  shared `<StudentComposerForm simulationLocked={bool} />` component, (b) a single unified
+  `/compose` route with a simulation toggle, or (c) extend existing `/session-selection` with
+  composer options?
+- Why ambiguous: Phase plan names both routes explicitly. Option a has ADR-0038 pattern
+  parity. Option b minimises route surface but departs from the two-route S4 pattern. Option c
+  avoids new routes but pollutes the existing session-selection screen.
+- Blocking? no — layout detail
+- Assumed answer: Option a — two routes with shared form component.
+- Code affected: `apps/web/src/app/(student)/practice/page.tsx`, `apps/web/src/app/(student)/
+  exam-sim/page.tsx` (both NET-NEW); shared `StudentComposerForm` component (NET-NEW)
+- Status: resolved
+- Resolution: **Operator confirmed Option A with shared form component (2026-05-18): two
+  routes `/practice` + `/exam-sim`, both thin wrappers around `<StudentComposerForm
+  simulationLocked={bool} />`. Pattern parity with S4's two-route model; code surface
+  minimised via shared component.** ADR-0039 Decision 2.
+
+---
+
+### Q-1.1-5.1 — §N trap: what does /exam-sim/* map to?
+
+- Date raised: 2026-05-18 (v1.1-S5 morning ritual) — §N trap (parallel to S2/S3/S4 structural
+  ambiguity catches)
+- Asked of: architect (T3 SCOPE BLOCKING — §N trap)
+- Source: v1.1-phase-plan.md §S5 ("apps/web/src/app/(student)/exam-sim/*"); ADR-0037
+  §Decision 1 (simulation exam mode = `mode='exam'` + `simulation_params`; no new session
+  type, no new session-running surface); `UI_CONTRACT §4.6` (focus shell for session-running
+  surfaces)
+- Question: Does `/exam-sim/*` map to (a) a student entry/setup screen that calls
+  `useCreateSession` with `simulation_params` and redirects to the existing
+  `/session/[id]/exam`, or (b) a new session-running surface with different UX parallel to
+  `/session/[id]/exam`?
+- Why ambiguous: Phase plan names `/exam-sim/*` as a route but does not specify entry screen
+  vs session-running surface. ADR-0037 established `mode='exam'` + `simulation_params` as the
+  mechanism — no new route type, no new engine. Option b would fork the exam engine page and
+  create a parallel session-running surface not backed by any spec distinction.
+- Blocking? yes — defines the entire UX shape and scope of S5
+- Assumed answer: Option A — entry/setup screen only; session runs on existing
+  `/session/[id]/exam`.
+- Code affected: `apps/web/src/app/(student)/exam-sim/page.tsx` (NET-NEW entry screen);
+  `apps/web/src/app/(student)/session/[id]/exam/page.tsx` (unchanged per Option A)
+- Status: resolved
+- Resolution: **Operator confirmed Option A (2026-05-18): `/exam-sim` is a student entry/setup
+  screen that calls `useCreateSession` with `simulation_params` and redirects to the existing
+  `/session/[id]/exam`. No new session-running surface.** ADR-0039 Decision 1.
+
+---
+
+### Q-1.1-4.8 — Should ADR-0038 §Decision 4 "zero migrations" be corrected?
+
+- Date raised: 2026-05-18 (v1.1-S4 pre-push verification)
+- Asked of: self (T2-tightened — implementation discovery)
+- Source: ADR-0038 §Decision 4 Rationale; pre-push V18 migration audit
+- Question: ADR-0038 §Decision 4 rationale states "zero migrations". Pre-push
+  audit found that `difficulty_range` already exists on the assignment table
+  (migration 0015 — semantic float-range field). `composer_params` and
+  `simulation_params` are structurally distinct jsonb fields and are not present
+  in any migration. Do these require a net-new migration, correcting the ADR?
+- Why ambiguous: difficulty_range is a similar jsonb field pattern on assignment;
+  the original rationale may have intended to rely on an existing mechanism.
+- Blocking? yes — handler references non-existent columns
+- Assumed answer: Yes. `difficulty_range` is a semantic field predating S4. The
+  two exam-mode fields are net-new and require migration 0022.
+- Code affected: `supabase/migrations/0022_assignments_composer_fields.sql`,
+  `supabase/functions/assignments-svc/handlers.ts`
+- Status: resolved
+- Resolution: Migration 0022 created (2026-05-18). ADR-0038 §Decision 4 amended
+  with Q-1.1-4.8 correction block.
+
+### Q-1.1-4.7 — PathwayDTO item count: can "247 items" stat be rendered in bank browser?
+
+- Date raised: 2026-05-15 (v1.1-S4 Checkpoint B skeleton — self-resolved inline per T3 Option 3 hybrid)
+- Asked of: self (T3 tight detail)
+- Source: Checkpoint A sketch included "247 items" item-count stat per pathway; `packages/sdk/src/hooks/content.ts` `usePathways()` return type — `PathwayDTOSchema` does not include an item count field; `useListItems` does not exist (ADR-0038 Decision 5)
+- Question: The Checkpoint A sketch included "247 items" per pathway in the bank browser. `usePathways()` does not return an item count. Can this stat be rendered, or must it be dropped?
+- Why ambiguous: Item count is a natural stat for a bank browser. The sketch was designed before T1 pre-read of hook return types confirmed the gap.
+- Blocking? no — sketch element only; drop if not in DTO
+- Assumed answer: Drop the item count label. `usePathways()` does not return item count; rendering it would require a `useListItems()` hook (deferred per ADR-0038 Decision 5 follow-up).
+- Code affected: `apps/web/src/app/(teacher)/teacher/content/page.tsx`
+- Status: resolved
+- Resolution: "247 items" label dropped from bank browser at Checkpoint B skeleton (2026-05-15). `C.itemCountLabel(n)` helper defined in `EXAM_CONTENT_COPY` but not rendered — reserved for when item-list endpoint ships per ADR-0038 Decision 5 follow-up. ADR-0038 §Implementation Notes addendum: "N items drop" bullet. *(Filed retroactively at chore close — T2-tightened gap.)*
+
+---
+
+### Q-1.1-4.6 — Distribution band picker: new numeric-slider primitive vs existing numeric Input?
+
+- Date raised: 2026-05-15 (v1.1-S4 Checkpoint A sketch — deferred from ADR-0038 draft)
+- Asked of: self (T3 tight detail — deferred from ADR-0038 Options §Decision 3 note)
+- Source: ADR-0038 draft note "Distribution band picker decision deferred to Checkpoint A sketch"; `packages/ui/src/` existing 31 primitives
+- Question: Should the easy/mid/hard item-count picker use (a) a new slider or drag-to-distribute component, or (b) three existing `<Input type="number">` fields from the existing primitive set?
+- Why ambiguous: A drag-to-distribute slider would be richer UX but requires a new UI primitive not in the existing 31. ADR-0038 deferred the choice to Checkpoint A.
+- Blocking? no — tight implementation detail
+- Assumed answer: Option b — three numeric Input fields. No new primitive required.
+- Code affected: `apps/web/src/app/(teacher)/teacher/content/new/page.tsx`
+- Status: resolved
+- Resolution: Option b confirmed at Checkpoint A (2026-05-15). Distribution band uses three numeric inputs from existing Input component. No new UI primitives added — composition from existing 31. ADR-0038 §Implementation Notes: "No new UI primitives by default." *(Filed retroactively at chore close — T2-tightened gap.)*
+
+---
+
+### Q-1.1-4.5 — Bank browser depth: item-level list endpoint vs pathway-level stats only?
+
+- Date raised: 2026-05-15 (v1.1-S4 morning ritual)
+- Asked of: architect (T3 structural — API scope)
+- Source: `packages/sdk/src/hooks/content.ts` (no `useListItems` hook; only `useItemAdmin(id)` platform_admin only + `usePathways()`); v1.1-phase-plan §S4 ("pick from bank")
+- Question: Does the S4 bank browser require (a) a new `/content-svc/items?pathway_id=` list endpoint + SDK hook, (b) pathway-level stats only (item counts per difficulty) via the existing `usePathways()`, or (c) item-level preview via `useItemAdmin(id)` surfaced behind a detail drawer?
+- Why ambiguous: Phase plan says "pick from bank" which could mean browsing items by ID, or simply selecting a pathway as the item pool. No `useListItems` SDK hook exists. Adding a list endpoint is a non-trivial API addition not mentioned in the S4 budget.
+- Blocking? yes — determines API scope for S4
+- Assumed answer: Option b. Pathway-level bank browse via `usePathways()` only. No new list endpoint. Item-level previews deferred.
+- Code affected: `packages/sdk/src/hooks/content.ts`, `apps/web/src/app/(teacher)/teacher/content/page.tsx`
+- Status: resolved
+- Resolution: **Operator confirmed Simplified Option a (2026-05-15): bank browser via existing `usePathways()` only. No new stats endpoint in S4. Item-level previews deferred.** ADR-0038 Decision 5.
+
+---
+
+### Q-1.1-4.4 — Schema: how does `composer_params` reach the assignment? Extend `CreateAssignmentRequest` vs session-only?
+
+- Date raised: 2026-05-15 (v1.1-S4 morning ritual)
+- Asked of: architect (T3 structural — schema + cross-service contract)
+- Source: `packages/sdk/src/hooks/assignments.ts` (uses `difficulty_range: {min, max}`); `packages/types/src/session.ts` lines 26–53 (`PracticeExamComposerParamsSchema` uses `difficulty_distribution: {easy, mid, hard}` — count-per-band model); phase plan §S4 "consumes S1 + S2"
+- Question: Should the teacher exam authoring form (a) extend `CreateAssignmentRequest` additively with `composer_params?` + `simulation_params?` so assignments-svc stores and forwards them into session-create when a student starts, or (b) surface the form fields only in the UI and reconstruct them at session-create time client-side?
+- Why ambiguous: `CreateAssignmentRequest` body uses `difficulty_range: {min, max}` (a float range model) while S2's `PracticeExamComposerParamsSchema` uses `difficulty_distribution: {easy, mid, hard}` (integer counts per band). Additive extension of both on `CreateAssignmentRequest` requires assignments-svc to accept and persist both, then forward `composer_params` into `CreateSessionRequest` when student starts. Option b keeps the backend unchanged but puts the reconstruction logic in the client.
+- Blocking? yes — determines backend scope (assignments-svc handler extension in S4 vs UI-only)
+- Assumed answer: Option a — extend `CreateAssignmentRequest` additively with `composer_params?` + `simulation_params?`; assignments-svc persists + forwards into session-create on student start.
+- Code affected: `packages/types/src/assignment.ts`, `supabase/functions/assignments-svc/handlers.ts`, `packages/sdk/src/hooks/assignments.ts`
+- Status: resolved
+- Resolution: **Operator confirmed Option a, scope-expanded (2026-05-15): extend `CreateAssignmentRequest` additively with `composer_params?` AND `simulation_params?`. S4 INCLUDES assignments-svc backend extension (additive field; handler accepts + persists + forwards into session-create when student starts). `difficulty_range` vs `difficulty_distribution` duplication acceptable — alternates; handler honours whichever is present; refactor deferred.** ADR-0038 Decision 4.
+
+---
+
+### Q-1.1-4.3 — Form pattern: single-page with section dividers vs multi-step wizard?
+
+- Date raised: 2026-05-15 (v1.1-S4 morning ritual)
+- Asked of: architect (T3 UX — layout pattern)
+- Source: `apps/web/src/app/(teacher)/teacher/assignments/new/page.tsx` (5-step wizard pattern); UI_CONTRACT.md; phase plan §S4 "compose, publish to class"
+- Question: Should the `/teacher/content/new` exam authoring form follow (a) the existing 5-step wizard pattern from `assignments/new/page.tsx` for consistency, or (b) a single-page form with section dividers (Bank Pick / Configure / Assign)?
+- Why ambiguous: The assignments new-assignment flow uses a multi-step wizard (`WizardState`, `Step = 1|2|3|4|5`). Pattern parity with that flow would suggest a wizard. However the S4 form is narrower (pathway picker + distribution + time + simulate toggle + class assign), which may be sufficiently concise for single-page treatment.
+- Blocking? no — UX decision; both are implementable
+- Assumed answer: Option b — single-page form with section dividers
+- Code affected: `apps/web/src/app/(teacher)/teacher/content/new/page.tsx`
+- Status: resolved
+- Resolution: **Operator confirmed Option b (2026-05-15): single-page form with section dividers (Bank Pick / Configure / Assign). No wizard.** ADR-0038 Decision 3.
+
+---
+
+### Q-1.1-4.2 — Route breakdown: 1-page vs 2-page for bank browser + composer form?
+
+- Date raised: 2026-05-15 (v1.1-S4 morning ritual)
+- Asked of: architect (T3 scope — route structure)
+- Source: `apps/web/src/app/(teacher)/teacher/assignments/` (2-route pattern: list `page.tsx` + `new/page.tsx`); phase plan §S4 "pick from bank, preview, compose, publish to class"
+- Question: Should S4 implement (a) two separate routes — `/teacher/content` (bank browser) + `/teacher/content/new` (composer form) — for pattern parity with `/teacher/assignments[/new]`, or (b) a single combined route where the bank browser and composer form are co-located on one page?
+- Why ambiguous: Phase plan gives both "pick from bank" and "compose" as S4 verbs without specifying how many routes. The assignments pattern uses two routes; some compose flows are single-route with in-page state.
+- Blocking? no — layout detail
+- Assumed answer: Option a — two routes
+- Code affected: `apps/web/src/app/(teacher)/teacher/content/` (new directory + two route files)
+- Status: resolved
+- Resolution: **Operator confirmed Option a (2026-05-15): two routes — `/teacher/content` (bank browser) + `/teacher/content/new` (composer form). Pattern parity with `/teacher/assignments[/new]`.** ADR-0038 Decision 2.
+
+---
+
+### Q-1.1-4.1 — §N trap: does "Teacher Exam Authoring UI" mean item authoring or exam authoring?
+
+- Date raised: 2026-05-15 (v1.1-S4 morning ritual) — §N trap pattern (parallel to S2/S3 structural ambiguity catches)
+- Asked of: architect (T3 SCOPE BLOCKING — §N trap)
+- Source: v1.1-phase-plan §S4 title "Teacher Exam Authoring UI"; `docs/dev/decisions/0035-content-authoring-write-model.md` §Decision 2 ("Platform-only Stage 1 — only `platform_admin` (via Admin UI / direct API) and `service-role` (batch ingest) can create/update items. When teacher authoring ships, add `author_id uuid REFERENCES user_profile(id)`... update RLS to Pattern F."); phase plan §S4 body "pick from bank, preview, compose, publish to class. Consumes S1 + S2."
+- Question: Does "Teacher Exam Authoring UI" mean (a) exam authoring — teachers compose existing bank items into exam-mode assignments (using S2 `composer_params`), or (b) item authoring — teachers write new questions into the content bank?
+- Why ambiguous: The stage title's "authoring" can read as writing new items. But ADR-0035 §Decision 2 explicitly deferred teacher item writes: "When teacher authoring ships, add `author_id uuid REFERENCES user_profile(id)`... update RLS to Pattern F." Phase plan body says "pick from bank, preview, compose" — verbs consistent with exam authoring of existing bank items, not item creation. Zero migrations and zero RLS changes implied by phase plan verb set.
+- Blocking? yes — defines entire scope of S4
+- Assumed answer: Option a — exam authoring only (compose existing bank items into exam-mode assignments). ADR-0035 §Decision 2 holds.
+- Code affected: `apps/web/src/app/(teacher)/teacher/content/`, `packages/types/src/assignment.ts`, `supabase/functions/assignments-svc/handlers.ts`
+- Status: resolved
+- Resolution: **Operator confirmed Option a (2026-05-15): exam authoring only. ADR-0035 §Decision 2 holds. No item-authoring in S4. Zero migration, zero RLS change.** ADR-0038 Decision 1.
+
+---
+
+### Q-1.1-3.5 — Auth model for simulation exam sessions: student self-serve vs teacher/proctor-assigned?
+
+- Date raised: 2026-05-15 (v1.1-S3 morning ritual)
+- Asked of: architect (T3 structural decision — auth model)
+- Source: spec §22.7 line 2807 (`mode.exam` feature key — all tiers); v1.1-S2 ADR-0036 Decision 8 (student self-serve precedent); `supabase/functions/assessment-svc/handlers.ts` lines 251-258 (existing feature-flag gate)
+- Question: Should simulation exam sessions be (a) student self-serve via the existing pathway feature-flag gate (S2 parity), (b) teacher/proctor-assigned only (routed through the `assignment` table), or (c) both via a `simulation_params.proctored: boolean` flag?
+- Why ambiguous: Phase plan §S3 emphasises "real-exam constraints" which can read as proctored. But §22.7's feature_key registry has `mode.exam` available to all tiers (Free through Institutional), implying student self-serve is the spec-intended default. S2 chose student self-serve for the composer; S3 either matches or diverges.
+- Blocking? yes — determines the auth surface and whether `assignment` table integration is required in S3
+- Assumed answer: Option a. Student self-serve via existing pathway feature-flag gate. S2 parity. No new auth layer.
+- Code affected: `supabase/functions/assessment-svc/handlers.ts` createSession (lines 231-413); no new feature_key required (`mode.exam` already exists at §22.7)
+- Status: resolved
+- Resolution: **Operator confirmed Option a (2026-05-15): student self-serve via existing pathway feature-flag gate.** S2 parity. Teacher-administered simulation sessions remain possible later via assignment-table routing (S4 teacher authoring UI), but the v1.1-S3 backend default is self-serve. ADR-0037 Decision 7.
+
+---
+
+### Q-1.1-3.4 — Scoring determinism beyond ADR-0022: what does "scoring against rubric" add?
+
+- Date raised: 2026-05-15 (v1.1-S3 morning ritual)
+- Asked of: architect (T3 schema/contract decision)
+- Source: phase plan §S3 ("deterministically-scored … scoring against rubric"); ADR-0022 (replay-determinism contract — pure-function engines, no Math.random, no Date.now in scoring bodies); `packages/engines/src/contracts.ts` lines 85-95 (EngineItemSchema has `version` field already pinned at session-create)
+- Question: What concrete scoring-determinism guarantee does S3 add beyond what mode='exam' + ADR-0022 already provide for every session today?
+  - Option α: NEW guarantee — verify item-version pinning. Currently `EngineItem.version` is captured at session-create; verify the score path consults that captured version rather than re-fetching live from `v_item_current`. If verified-used, this is already documented behaviour and ADR-0037 captures it. If NOT verified, S3 must pin version explicitly — a genuinely structural change.
+  - Option β: NEW guarantee — idempotent re-scoring endpoint (`POST /sessions/{id}/recompute`) returning the same score from persisted state every call.
+  - Option γ: Phase-plan flourish — no new determinism guarantee beyond ADR-0022; "scoring against rubric" describes the existing `FrameworkConfig.scoring_rules` identity/percentage + bands path.
+- Why ambiguous: ADR-0022 already covers replay determinism. The phase-plan phrasing could either name an existing guarantee or hint at a new one. Item-version drift is the only realistic source of score-drift not already addressed.
+- Blocking? yes — determines whether S3 needs new code (Option α verification + possibly explicit pin) vs no code beyond what's already there
+- Assumed answer: Option γ DEFAULT + Option α verification at impl pre-read. Confirm `EngineItem.version` captured at session-create is consulted by the score path (not re-fetched live). If verified: ADR-0037 documents the verified pin, Option γ holds. If NOT verified: STOP, file Q-1.1-3.6 (T3 schema), surface for architect round-trip — this is genuinely structural.
+- Code affected: TBD at impl T1 pre-read — `packages/engines/src/linear.ts` scoreWithConfig (lines 206-216); `supabase/functions/assessment-svc/handlers.ts` submitSession score path (lines 539-686); `EngineItem.version` capture site at session-create
+- Status: resolved
+- Resolution: **Operator confirmed Option γ DEFAULT + Option α verification gate (2026-05-15).** At impl T1 pre-read, verify the item-version captured at session-create is the version consulted by the score path (not re-fetched live). If verified, ADR-0037 §Decision 5 documents the verified pin and Option γ holds (no new determinism code in S3). If NOT verified, STOP, file Q-1.1-3.6 (T3 schema — explicit version-pin requirement), surface for architect round-trip. ADR-0037 Decision 5.
+
+---
+
+### Q-1.1-3.3 — Engine config consultation for strict-mode: state-flag vs framework_config vs new method parameter?
+
+- Date raised: 2026-05-15 (v1.1-S3 morning ritual)
+- Asked of: architect (T3 engine-config decision)
+- Source: `packages/engines/src/linear.ts` lines 169-172 (canNavigateBack: `return state.current_index > 0`); ADR-0023 (EngineState discriminated union); ADR-0022 (pure-function engine namespace)
+- Question: How does LinearEngine know to lock back-navigation in simulation mode?
+  - Option I: Read `state.simulation_params` inside `canNavigateBack` (and any future strict-mode-aware method). Engine method body grows one branch. No interface change.
+  - Option II: Pass `FrameworkConfig.simulation_strict: boolean` through and consult config instead of state. Pathway-level configuration; less per-session flexibility (every session of that pathway becomes strict).
+  - Option III: New method parameter on the existing `AssessmentEngine` interface (e.g., `canNavigateBack(state, runtimeFlags?)`). Interface change ripples to AdaptiveEngine/SkillEngine/DiagnosticEngine signatures.
+- Why ambiguous: All three are workable; trade-off is between per-session flexibility (Option I), pathway-pinned config (Option II), and clean separation of runtime flags from persistent state (Option III).
+- Blocking? yes — determines where the strictness flag lives and which engine surface changes
+- Assumed answer: Option I. Engine consults its own state. Simulation flag is per-session (some sessions of a pathway are strict, others not); pathway-pinned is wrong. Interface-change ripple to other engines is unwarranted scope.
+- Code affected: `packages/engines/src/linear.ts` canNavigateBack only (one method, one branch addition); zero changes to AdaptiveEngine/SkillEngine/DiagnosticEngine
+- Status: resolved
+- Resolution: **Operator confirmed Option I (2026-05-15): state-flag consultation inside `LinearEngine.canNavigateBack`.** Read `state.simulation_params?.no_back_nav === true` and return false; else preserve current `current_index > 0` behaviour. No `AssessmentEngine` interface change. ADR-0037 Decision 4.
+
+---
+
+### Q-1.1-3.2 — Per-section structure on LinearEngineState in v1.1-S3?
+
+- Date raised: 2026-05-15 (v1.1-S3 morning ritual)
+- Asked of: architect (T3 schema decision)
+- Source: phase plan §S3 ("section timing, no mid-exam help"); `packages/engines/src/contracts.ts` lines 216-233 (LinearEngineStateSchema — flat planned_items, no sections); lines 295-306 (AdaptiveStageStateSchema — prior art for per-stage `time_limit_ms`)
+- Question: Does v1.1-S3 introduce section structure to LinearEngineState?
+  - Option A: NO sections in v1.1-S3 — session-wide strict timer only. Sections deferred sanctioned until a UI consumer exists. AdaptiveStageState cited as future prior art. Smallest possible change.
+  - Option B: Sections introduced — `LinearEngineState.sections?: SectionStateSchema[]` with per-section `time_limit_ms` and `item_ids`. Significant code + tests; UI does not yet consume this.
+  - Option C: Sections-by-convention — `simulation_params.section_boundaries: number[]` (item-index split-points) without state-level sections. Timer stays session-wide; UI/frontend renders the split. Middle path.
+- Why ambiguous: Phase plan §S3 names "section timing" as one of three S3 capabilities. Without a UI consumer (S5), per-section state is built ahead of demand. ADR-0022 + LinearEngine pure-function discipline make later addition cheap.
+- Blocking? yes — determines whether `LinearEngineState` gains sections in v1.1-S3 or stays flat
+- Assumed answer: Option A. No sections in v1.1-S3. Defer sanctioned. ADR-0037 must explicitly state the deferral with rationale + future-extension path (AdaptiveStageState as prior art; would follow Q-1.1-2.5 round-trip-safety pattern).
+- Code affected: `packages/engines/src/contracts.ts` (no section schema added in S3); ADR-0037 §Decision documents the deferral
+- Status: resolved
+- Resolution: **Operator confirmed Option A (2026-05-15): no sections in v1.1-S3 — SANCTIONED DEFERRAL.** ADR-0037 §Decision must explicitly state per-section timing deferred until a UI consumer exists (≥ S5); AdaptiveStageState cited as future prior art; extension would follow Q-1.1-2.5 round-trip-safety pattern. Not forgotten. ADR-0037 Decision 3.
+
+---
+
+### Q-1.1-3.1 — §N TRAP: Session mode for simulation exam — 'exam' vs 'challenge' vs new enum?
+
+- Date raised: 2026-05-15 (v1.1-S3 morning ritual — T1 pre-read finding)
+- Asked of: architect (T3 structural decision — blocking §N trap, parallel to Q-1.1-2.1)
+- Source: phase plan §S3 ("Simulation Exam Mode … New session mode"); spec §18 Session Modes table lines 2619-2628 (verbatim 'Exam' row Use Case = "Full practice exam simulation"); migration 0001 lines 62-67 (engine_type + session_mode enums)
+- Question: The v1.1 phase plan §S3 names "Simulation Exam Mode" and claims "new session mode". Spec §18 'Exam' row Use Case verbatim reads "Full practice exam simulation" — the spec already uses "simulation" as the description of `mode='exam'`. Which mode should v1.1-S3 use?
+  - Option 1: `mode='exam'` per spec §18 verbatim. Existing enum value (already used by v1.1-S2 composer). Zero migration. Spec-correct.
+  - Option 2: `mode='challenge'` per phase plan §S3 informal claim. But §18 'Challenge' row Use Case = "Timed competition, gamification" (leaderboard) — different product feature. Existing enum value; zero migration; SPEC-INCORRECT.
+  - Option 3: New enum value `'simulation'`. Migration 0022 + new feature_key. Breaks Q-1.1-2.1/2.2 zero-migration commitment.
+- Why ambiguous: Phase plan informal language ("new session mode") collides with spec §18 verbatim ("Full practice exam simulation" already covered by 'exam'). Same §N trap structure as Q-1.1-2.1 (S2's "practice" vs "exam" trap caught at morning ritual).
+- Blocking? yes — determines mode enum value, whether a migration is required, and whether `mode.exam` feature_key suffices
+- Assumed answer: Option 1 (mode='exam'). Spec §18 'Exam' row is the canonical home; "simulation" is verbatim in the Use Case column. §N trap escape. Differentiator from S2 composer = optional `simulation_params` on request (administration layer) vs composer_params (assembly layer); they are orthogonal and co-applicable.
+- Code affected: `packages/types/src/session.ts` (CreateSessionRequestSchema additive `simulation_params?`); `supabase/functions/assessment-svc/handlers.ts` createSession (forward + analytics-marker fold); `packages/engines/src/contracts.ts` LinearEngineStateSchema (additive `simulation_params?` optional, Q-1.1-2.5 round-trip-safety pattern); `packages/engines/src/linear.ts` canNavigateBack (state-flag branch per Q-1.1-3.3)
+- Status: resolved
+- Resolution: **Operator confirmed Option 1 (2026-05-15): mode='exam' per spec §18 'Exam' row Use Case verbatim ("Full practice exam simulation").** §N trap escape. mode='challenge' is spec-incorrect (leaderboard/gamification, different product). New enum rejected (zero-migration commitment held; speculative schema). ADR-0037 Decision 1.
+
+---
+
+### Q-1.1-2.5 — Composer_params storage path on session_record: which clean engine_state_snapshot landing zone?
+
+- Date raised: 2026-05-15 (v1.1-S2 impl T1 pre-read, R4 finding)
+- Asked of: self (T3 Option 3 hybrid — implementation-detail self-resolve permitted; ADR-0036 §Decision 3 follow-up pre-anticipated this contingency)
+- Source: `supabase/migrations/0004_sessions_events.sql` lines 34–65 (session_record DDL); `packages/engines/src/contracts.ts` lines 215–226 (LinearEngineStateSchema); `supabase/functions/assessment-svc/handlers.ts` line 410 (EngineStateSchema.safeParse → RPC re-write round-trip)
+- Question: ADR-0036 §Decision 3 stores `composer_params` at the top level of `engine_state_snapshot.{linear-engine state object}`. R4 confirmed (a) session_record has no `source` or `metadata` jsonb column — only `engine_state_snapshot jsonb`; and (b) Zod default `.object()` STRIPS unknown top-level keys, so `respondToSession`'s parse → RPC re-write round-trip silently drops any composer_params injected by createSession. Which clean engine_state_snapshot path resolves the round-trip risk without a migration?
+  - Option A: Extend `LinearEngineStateSchema` with `composer_params: PracticeExamComposerParamsSchema.optional()`. Additive, zero-migration, replay-safe (preserved through Zod round-trip).
+  - Option B: Add `composer_params jsonb` column to `session_record` — requires migration 0022; violates ADR-0036 §Consequences "Zero migrations in Stage 2".
+  - Option C: Add a `session_record.metadata jsonb` general-purpose column — speculative schema for a feature not yet deployed (CLAUDE.md "no hypothetical future requirements").
+- Why ambiguous: ADR-0036 §Decision 3 specified the conceptual landing zone but flagged in its §Follow-up that the technical realisation depends on engine_state_snapshot column type + key support at impl T1 pre-read. Zod strip behaviour was the unknown.
+- Blocking? yes — determines where composer_params is read/written by createSession + carried in EngineState
+- Assumed answer: Option A. Matches ADR-0036 §Decision 3 intent (top-level on linear-engine state); zero migration; replay-safe; pre-anticipated by the ADR's own follow-up note.
+- Code affected: `packages/engines/src/contracts.ts` (LinearEngineStateSchema additive field); `supabase/functions/assessment-svc/handlers.ts` (createSession marker write); ADR-0036 §Decision 3 (resolution captured)
+- Status: resolved
+- Resolution: **Self-resolved Option A (2026-05-15)**: extend LinearEngineStateSchema with `composer_params: PracticeExamComposerParamsSchema.optional()`. ADR-0036 §Decision 3 updated to specify the schema extension path. Round-trip safe: composer_params survives respondToSession parse → RPC re-write. Zero new migrations. Analytics contract: `mode='exam'` ∧ `engine_state_snapshot->'composer_params' IS NOT NULL`. T3 Option 3 hybrid permits self-resolve where ADR pre-anticipated the contingency; operator may intercept by replying before push.
+
+---
+
+### Q-1.1-2.4 — Auth: student self-serve vs platform_admin-initiated for composed exam sessions
+
+- Date raised: 2026-05-14 (v1.1-S2 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required)
+- Source: assessment-svc createSession handler (lines 220–358); existing feature-flag gate pattern
+- Question: Should students be able to initiate a composed practice exam themselves, or must a platform_admin (or teacher) initiate it on their behalf?
+- Why ambiguous: Composed exams are a new session type; the existing pathway feature-flag gate controls pathway availability but it's unclear whether that gate is sufficient for composed exam sessions or whether a new auth layer is needed.
+- Blocking? yes — determines whether createSession receives a new auth gate or reuses the existing one
+- Assumed answer: Student self-serve via existing pathway feature-flag gate. No new auth layer.
+- Code affected: `supabase/functions/assessment-svc/handlers.ts` (createSession); `packages/types/src/session.ts`
+- Status: resolved
+- Resolution: **Operator confirmed Option A (2026-05-14): student self-serve via existing pathway feature-flag gate.** No new auth layer in Stage 2. Pathway gate already controls which exam families and year levels a student can access. Composer params pass through the same auth flow as any other session creation. ADR-0036 Decision 8.
+
+---
+
+### Q-1.1-2.3 — Item selection algorithm: deterministic-seeded vs pure-deterministic ordering
+
+- Date raised: 2026-05-14 (v1.1-S2 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required)
+- Source: ADR-0022 (replay-determinism contract); `packages/engines/src/contracts.ts` AssessmentEngine interface
+- Question: Should item selection within a difficulty band use (A) random uniform with deterministic seeded Fisher-Yates (no Math.random), or (B) pure deterministic ordering by difficulty + item_id (no randomness at all)?
+- Why ambiguous: ADR-0022 replay-determinism contract requires engines to be pure-function namespaces with no Math.random. Option A introduces randomness but seeds it for replay determinism. Option B avoids randomness entirely but produces the same selection every time for the same pathway/band inputs.
+- Blocking? yes — determines the composition algorithm and the seed derivation requirement
+- Assumed answer: Option A (seeded Fisher-Yates). Variety across exam sessions is desirable; seeding satisfies replay determinism.
+- Code affected: `supabase/functions/content-svc/handlers.ts` (selectItems); ADR-0036 (seed source)
+- Status: resolved
+- Resolution: **Operator confirmed Option A (2026-05-14): random uniform within difficulty band, deterministic seeded Fisher-Yates, NO Math.random, seed derived from session_id or idempotency key (exact source documented in ADR-0036).** Satisfies ADR-0022 replay-determinism: same seed → same selection, always. ADR-0036 Decision 5 (seed source stated explicitly in that ADR).
+
+---
+
+### Q-1.1-2.2 — Composer params persistence: ephemeral on CreateSessionRequest vs new config table
+
+- Date raised: 2026-05-14 (v1.1-S2 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required)
+- Source: `packages/types/src/session.ts` CreateSessionRequestSchema (lines 17–24); assessment-svc createSession (lines 267–280 session_record insert)
+- Question: Should the practice exam composition parameters (item_count, difficulty_distribution, time_limit_ms) be (1) ephemeral optional fields on CreateSessionRequest — validated, used to drive selection and engine init, not persisted as a separate config — or (2) persisted as a new `exam_config` table row referenced by the session?
+- Why ambiguous: Persisting creates a reusable config record; but it requires a new table (migration) and adds foreign-key complexity. Ephemeral is zero-migration but analytics must reconstruct intent from session state.
+- Blocking? yes — determines whether a migration is required in Stage 2
+- Assumed answer: Option 1 — ephemeral. Composer params are session-init inputs, not reusable templates. They flow through createSession → selectItems → engine.initialise and are preserved in engine_state_snapshot for analytics.
+- Code affected: `packages/types/src/session.ts` (CreateSessionRequestSchema); `supabase/functions/assessment-svc/handlers.ts` (createSession); `supabase/functions/content-svc/handlers.ts` (selectItems / ContentSelectRequest)
+- Status: resolved
+- Resolution: **Operator confirmed Option 1 (2026-05-14): ephemeral composer_params on CreateSessionRequest.** No new config table. No migration in Stage 2. Params validated by Zod at the CreateSessionRequest boundary; used to drive selectItems and engine init; preserved in session record (field confirmed at impl T1 pre-read per ADR-0036 analytics contract). ADR-0036 Decision 3.
+
+---
+
+### Q-1.1-2.1 — §N trap: session_mode='practice' vs mode='exam' for composed mock exam
+
+- Date raised: 2026-05-14 (v1.1-S2 morning ritual — T1 pre-read finding)
+- Asked of: architect (T3 structural decision — round-trip required; blocking §N trap)
+- Source: spec §18 lines 2619–2624 (Session Modes table); migration 0001 lines 62–67 (engine_type + session_mode enums)
+- Question: The v1.1-phase-plan.md names S2 a "Practice Exam Composer" producing a "practice exam". Spec §18 defines session_mode='practice' = SkillEngine (targeted skill improvement, mastery delta, no score, immediate feedback). A scored/timed/fixed-sequence composed mock exam is categorically different. Which mode and engine_type should a composed practice exam use?
+  - Option 1: mode='exam' + engine_type='linear'. No new enum value; no migration. Spec-correct.
+  - Option 2: new session_mode value e.g. 'composed_exam'. New enum value; requires migration 0022.
+  - Option 3: mode='practice' per plan wording despite spec §18. Contradicts spec — rejected.
+- Why ambiguous: Plan uses informal "practice exam" language; spec uses 'practice' for a fundamentally different concept (SkillEngine, unscored). §N trap caught at T1 pre-read.
+- Blocking? yes — determines mode enum value, engine_type, and whether a migration is required
+- Assumed answer: Option 1 (mode='exam' + engine_type='linear'). Both values exist in migration 0001. Zero migration.
+- Code affected: `packages/types/src/session.ts` (CreateSessionRequestSchema composer_params validation); `supabase/functions/assessment-svc/handlers.ts` (createSession mode handling); ADR-0036
+- Status: resolved
+- Resolution: **Operator confirmed Option 1 (2026-05-14): mode='exam' + engine_type='linear'.** session_mode='practice' must NOT be used for composed exams — it is reserved for SkillEngine targeted practice (spec §18 verbatim). No new enum value; no migration. v1.1-phase-plan.md "practice exam" language is informal; canonical implementation uses mode='exam'. ADR-0036 Decision 1.
+
+---
+
+### Q-1.1-1.9 — GET /content/items/{id}/versions access: platform_admin only or all authenticated?
+
+- Date raised: 2026-05-14 (v1.1-S1 impl)
+- Asked of: self (T3 Option 3 — tight implementation detail; self-resolve permitted with documented default)
+- Source: arch §4.3 (content-svc endpoints); impl prompt D3
+- Question: Should `GET /content/items/{id}/versions` be restricted to `platform_admin` or readable by any authenticated user?
+- Why ambiguous: Read endpoints are typically broader than write endpoints; but version history is internal authoring metadata not intended for students/parents.
+- Blocking? no
+- Assumed answer: Admin-only. Version history exposes authoring metadata (author_id, distractor_rationale, internal difficulty scores) that should not be visible to students/parents.
+- Code affected: `supabase/functions/content-svc/index.ts` (admin route gate); `supabase/functions/content-svc/__tests__/contract.test.ts`
+- Status: resolved
+- Resolution: **Self-resolved (2026-05-14): platform_admin only.** GET /content/items/{id}/versions placed inside the `isAdminWriteRoute` block alongside the other 6 admin endpoints. Rationale: version metadata (author_id in metadata jsonb, distractor_rationale, internal scores) is authoring-internal. Student-visible item content is served by existing `GET /content/items/{id}` (no auth gate beyond Bearer). No ADR needed — tight implementation choice clearly implied by Pattern G strict (ADR-0035).
+
+---
+
+### Q-1.1-1.8 — withIdempotency tenantId fallback for platform_admin (no tenant)
+
+- Date raised: 2026-05-14 (v1.1-S1 impl)
+- Asked of: self (T3 Option 3 — tight implementation detail)
+- Source: arch §4.8 (Idempotency-Key); migration 0004 line 166 (api_idempotency_key.tenant_id)
+- Question: `callerTenantId` returns null for platform_admin users (no row in user_profile with tenant_id set). `withIdempotency` requires a `tenantId: string`. What value should be used as the idempotency scope tenant when callerTenantId is null?
+- Why ambiguous: The tenantId is part of the composite PK in api_idempotency_key, used to scope keys per tenant. platform_admin is a global role with no tenant affiliation.
+- Blocking? no
+- Assumed answer: Fall back to `userId`. Since api_idempotency_key.tenant_id has NO FK constraint (migration 0004 line 30 notes "no FK deps; composite PK includes tenant_id"), any UUID is acceptable. Using userId provides per-user scoping without requiring a real tenant.
+- Code affected: `supabase/functions/content-svc/index.ts` (idempTenantId assignment)
+- Status: resolved
+- Resolution: **Self-resolved (2026-05-14): `const idempTenantId = tenantId ?? userId`.** Migration 0004 line 166 confirms `api_idempotency_key.tenant_id uuid NOT NULL` with no FK. Fallback is safe; composite PK `(tenant_id, idempotency_key, endpoint)` still uniquely scopes keys within the platform_admin user's personal namespace. No ADR needed.
+
+---
+
+### Q-1.1-1.7 — stimulus `updated_at` absent: does "append-only" note in migration 0002 prohibit UPDATE?
+
+- Date raised: 2026-05-14 (v1.1-S1 impl)
+- Asked of: self (T3 Option 3 — tight implementation detail)
+- Source: migration 0002 line 156 comment ("No updated_at: stimulus is append-only / replaced-not-updated in v1"); spec §5.2; impl prompt Q-1.1-1.7
+- Question: Migration 0002 comment says stimulus is "append-only / replaced-not-updated in v1". Does this prohibit an UPDATE policy on the stimulus table in Stage 1? And is `stimulus.updated_at` absent from the schema?
+- Why ambiguous: The v1 comment describes usage pattern, but the authoring spec (v1.1) explicitly includes content mutation. "Append-only" could be a hard rule or a v1-era note.
+- Blocking? no
+- Assumed answer: v1 comment describes v1 usage pattern only (not a hard DB constraint). Stage 1 authoring scope explicitly requires PATCH on stimulus. UPDATE is permitted by schema (no constraint prevents it); no `updated_at` column exists on stimulus table (per migration 0002 line 155 — not a NOT NULL column). `updateStimulus` handler proceeds without updating a non-existent `updated_at` column.
+- Code affected: `supabase/migrations/0021_content_authoring.sql` (stimulus_admin_update policy); `supabase/functions/content-svc/handlers.ts` (updateStimulus handler)
+- Status: resolved
+- Resolution: **Self-resolved (2026-05-14): UPDATE permitted.** Migration 0002 "append-only" is a v1 usage-pattern note, not a DB constraint. Stage 1 authoring spec explicitly includes mutation. `stimulus` schema has no `updated_at` column — `updateStimulus` handler does not attempt to set it. `StimulusAdminDTO` accordingly omits `updated_at`. ADR-0035 §Decision notes (implicit).
+
+---
+
+### Q-1.1-1.6 — Retire mechanism: lifecycle enum vs hard-delete
+
+- Date raised: 2026-05-14 (v1.1-S1 morning ritual)
+- Asked of: self (T3 Option 3 — resolved by spec)
+- Source: spec §5.2 line 834; migration 0002 `item_lifecycle` enum
+- Question: Does retiring an item mean setting `lifecycle = 'retired'` (soft) or hard-deleting the row?
+- Why ambiguous: "retire" could mean either; hard-delete destroys audit history.
+- Blocking? no
+- Assumed answer: lifecycle enum transition only. `is_active = false` additionally prevents engine selection.
+- Code affected: `supabase/functions/content-svc/` lifecycle transition handler
+- Status: resolved
+- Resolution: **Resolved by spec §5.2 line 834 (2026-05-14).** Lifecycle enum is the retire mechanism. No hard-delete in Stage 1 (or any stage — audit history must be preserved). `PATCH .../lifecycle` sets `lifecycle = 'retired'` and `is_active = false` on the `item` row. Row remains queryable by `platform_admin` and `service-role`. ADR-0035 Decision 6 (implicit).
+
+---
+
+### Q-1.1-1.5 — Tagging: new tag table vs existing columns
+
+- Date raised: 2026-05-14 (v1.1-S1 morning ritual)
+- Asked of: self (T3 Option 3 — resolved by spec)
+- Source: spec §5.3; migration 0002 `item` table schema
+- Question: Does Stage 1 need a new tag/label table to associate items with skills, exam families, and year levels, or are the existing array columns sufficient?
+- Why ambiguous: some authoring systems use tag tables for flexibility; unclear if array columns support all v1.1 filtering needs.
+- Blocking? no
+- Assumed answer: Existing `skill_ids uuid[]`, `exam_families exam_family[]`, `year_levels int[]` columns on `item` are sufficient. No new table.
+- Code affected: `supabase/functions/content-svc/` create/update handlers; `packages/types/src/content.ts`
+- Status: resolved
+- Resolution: **Resolved by spec §5.3 (2026-05-14).** Migration 0002 lines 166, 170–171 define typed array columns with GIN indexes (`idx_item_skills`, `idx_item_exam`, `idx_item_year`). Spec §5.3 references these exact columns as the tagging mechanism. No new table required in Stage 1. ADR-0035 (implicit — no new schema).
+
+---
+
+### Q-1.1-1.4 — Ownership scope: platform-only vs teacher authoring in Stage 1
+
+- Date raised: 2026-05-14 (v1.1-S1 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required)
+- Source: DEV_PLAN §5.1; spec §15.3; ADR-0035 Decision 2
+- Question: Should Stage 1 include teacher-role write access to items, or restrict to platform_admin + service-role only?
+- Why ambiguous: Teacher authoring is a plausible v1.1 feature; but per-tenant content isolation design has not been specced.
+- Blocking? yes — determines RLS policy shape
+- Assumed answer: Platform-only. Teacher authoring deferred.
+- Code affected: `supabase/migrations/` (new RLS policies); `supabase/functions/content-svc/`
+- Status: resolved
+- Resolution: **Operator confirmed Option 1 (2026-05-14): Platform-only Stage 1.** Teacher authoring deferred to a future stage. Write access restricted to `platform_admin` + `service-role`. Per-tenant content isolation design not required for Stage 1. ADR-0035 Decision 2.
+
+---
+
+### Q-1.1-1.3 — Write model: Pattern G strict vs relaxed
+
+- Date raised: 2026-05-14 (v1.1-S1 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required)
+- Source: migration 0002 RLS patterns; OWNERS.md content-svc entry; ADR-0035
+- Question: Should `item` / `item_version` / `stimulus` writes use Pattern G strict (platform_admin + service-role only) or a relaxed model permitting broader roles?
+- Why ambiguous: Content authoring is a write-heavy flow; restricting to platform_admin may be overly conservative if teachers need to create items.
+- Blocking? yes — determines RLS policy shape
+- Assumed answer: Pattern G strict (consistent with `skill_node`/`skill_edge` RLS in migration 0002).
+- Code affected: RLS policies on `item`, `item_version`, `stimulus`; content-svc JWT handling
+- Status: resolved
+- Resolution: **Operator confirmed Option 1 (2026-05-14): Pattern G strict.** Writes = `platform_admin` + `service-role` only. Consistent with v1 content-table patterns. ADR-0035 Decision 1.
+
+---
+
+### Q-1.1-1.2 — FSM edge set: spec §15.3 verbatim vs extended
+
+- Date raised: 2026-05-14 (v1.1-S1 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required; spec §15.3 T1 pre-read first)
+- Source: spec §15.3 lines 2195–2210; migration 0001 `item_lifecycle` enum
+- Question: Should the lifecycle transition handler implement exactly the 6 edges from spec §15.3, or include `draft→retired` for convenience?
+- Why ambiguous: `draft→retired` is a natural shortcut for discarding bad drafts; but it is absent from spec §15.3.
+- Blocking? yes — determines transition validation logic
+- Assumed answer: Spec §15.3 verbatim. 6 edges only. `draft→retired` excluded.
+- Code affected: lifecycle transition handler in `supabase/functions/content-svc/`
+- Status: resolved
+- Resolution: **Operator confirmed Path 1 (2026-05-14): spec §15.3 verbatim.** T1 pre-read confirmed 6 edges in spec diagram; `draft→retired` absent. Any request to transition `draft→retired` returns 422 Unprocessable Entity. ADR-0035 Decision 3. Spec citation: §15.3 lines 2202–2208.
+
+---
+
+### Q-1.1-1.1 — Author attribution: new column vs metadata field
+
+- Date raised: 2026-05-14 (v1.1-S1 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required)
+- Source: migration 0002 `item_version` schema (line 197: `metadata jsonb NOT NULL DEFAULT '{}'`)
+- Question: Should author attribution (the UUID of the user who created/updated an item version) be stored as a typed `author_id uuid REFERENCES user_profile(id)` column, or in the existing `metadata jsonb` field as `metadata.author_id`?
+- Why ambiguous: Typed column is queryable and FK-constrained; metadata is schema-free and zero-migration-cost.
+- Blocking? yes — determines whether a new migration is needed in Stage 1
+- Assumed answer: `metadata.author_id` — no migration needed; consistent with Stage 1 "no new schema" premise.
+- Code affected: `item_version` INSERT handler; `packages/types/src/content.ts` (metadata shape)
+- Status: resolved
+- Resolution: **Operator confirmed Option 1 (2026-05-14): `item_version.metadata.author_id`.** No new column or migration in Stage 1. Author UUID stored in `metadata jsonb` at key `author_id`. Typed column deferred until teacher authoring scope clarifies (Q-1.1-1.4). ADR-0035 Decision 4.
+
+---
+
+### Q-1.1-1.0 — Phase ordering: exam-content ahead of DEV_PLAN §5.1 P1.1–P1.7
+
+- Date raised: 2026-05-14 (v1.1-S1 morning ritual)
+- Asked of: architect (T3 structural decision — round-trip required)
+- Source: DEV_PLAN.md §5.1 P1 backlog; operator instruction 2026-05-14
+- Question: Does inserting an exam-content authoring phase (5 stages) ahead of the P1.1–P1.7 backlog constitute an out-of-order v1.1 delivery that needs explicit architectural approval?
+- Why ambiguous: DEV_PLAN §5.1 priority order is P1.1 first (Skill Graph Migration Worker). Inserting exam-content ahead of it deviates from the published priority sequence.
+- Blocking? yes — determines whether a deviation must be filed before any implementation
+- Assumed answer: Yes, file DEV-20260514-1; additive DEV_PLAN §5.1 entry only. P1.1–P1.7 definitions unchanged.
+- Code affected: `DEV_PLAN.md §5.1` (additive only); `docs/dev/DEVIATIONS.md`
+- Status: resolved
+- Resolution: **Operator confirmed Option 1 (2026-05-14): Accept exam-content as v1.1 re-prioritization.** DEV-20260514-1 filed. DEV_PLAN §5.1 updated with additive entry for exam-content phase (≤30 lines). P1.1–P1.7 definitions untouched per CLAUDE.md anti-pattern 1.
+
+---
 
 ### Q-49.4 — Tag commit ordering: close commit first, then tag on new HEAD?
 

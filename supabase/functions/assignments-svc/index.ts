@@ -19,6 +19,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getTraceId } from '../_shared/trace-id.ts';
 import { jsonOk, jsonError } from '../_shared/error-envelope.ts';
+import { CORS_HEADERS } from '../_shared/cors.ts';
 import { log } from '../_shared/logger.ts';
 import { verifyBearer } from '../_shared/auth.ts';
 import {
@@ -45,19 +46,14 @@ Deno.serve(async (req: Request) => {
   const traceId = getTraceId(req);
   const method = req.method;
   const url = new URL(req.url);
-  const path = url.pathname.replace(/\/$/, '');
+  const path = url.pathname.replace(/^\/(functions\/v1\/)?assignments-svc/, '').replace(/\/$/, '');
   let status = 200;
 
   try {
     if (method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: {
-          'X-Trace-Id': traceId,
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers':
-            'Content-Type, Authorization, x-mm-service-role, x-mm-trace-id, Idempotency-Key',
-        },
+        headers: { 'X-Trace-Id': traceId, ...CORS_HEADERS },
       });
     }
 

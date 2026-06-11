@@ -1,12 +1,14 @@
 'use client'
-import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AppShell,
   Button,
   Card,
   Dialog,
+  ErrorState,
   FocusHeader,
+  LoadingState,
   QuestionMap,
   useToast,
 } from '@mm/ui'
@@ -20,6 +22,7 @@ import {
 import type { ItemDTO, RecordResponseRequest, RecordResponseResponse } from '@mm/types'
 import { OfflineBanner } from '@/components/exam/OfflineBanner'
 import { SavedPill } from '@/components/exam/SavedPill'
+import { SimulationBanner } from '@/components/exam/SimulationBanner'
 import { Timer } from '@/components/exam/Timer'
 import { useResponseQueue } from '@/components/exam/useResponseQueue'
 
@@ -161,8 +164,8 @@ function QuestionDisplay({
   )
 }
 
-export default function ExamPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: sessionId } = use(params)
+export default function ExamPage({ params }: { params: { id: string } }) {
+  const { id: sessionId } = params
   const router = useRouter()
   const toast = useToast()
 
@@ -278,7 +281,7 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> }
   function handleSubmitResponse(opts: { skip: boolean }) {
     if (currentItem === null) return
     const now = Date.now()
-    const responseData = opts.skip ? {} : { choice: selected }
+    const responseData = opts.skip ? {} : { option_id: selected }
     // Persist locally so cumulative checkpoints + question map both see it.
     answersRef.current.set(currentItem.item_id, {
       itemId: currentItem.item_id,
@@ -438,17 +441,27 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> }
       <AppShell variant="focus">
         <FocusHeader onExit={() => router.push('/dashboard')} />
         <main className="max-w-5xl mx-auto px-6 py-8">
-          <div
-            role="status"
-            aria-label="Loading session"
-            className="h-64 rounded-card border border-[var(--border)] bg-[var(--surface)] animate-pulse"
-          />
+          <LoadingState />
         </main>
       </AppShell>
     )
   }
 
-  if (sessionState.isError || currentItem === null) {
+  if (sessionState.isError) {
+    return (
+      <AppShell variant="focus">
+        <FocusHeader onExit={() => router.push('/dashboard')} />
+        <main className="max-w-5xl mx-auto px-6 py-8">
+          <ErrorState
+            title="Could not load session"
+            description="Something went wrong. Try again."
+            onRetry={() => void sessionState.refetch()}
+          />
+        </main>
+      </AppShell>
+    )
+  }
+  if (currentItem === null) {
     return (
       <AppShell variant="focus">
         <FocusHeader onExit={() => router.push('/dashboard')} />
@@ -489,6 +502,8 @@ export default function ExamPage({ params }: { params: Promise<{ id: string }> }
         helper={<SavedPill saveTick={saveTick} suppressed={!queue.isOnline} />}
         onExit={() => setModal('exit-confirm')}
       />
+      {/* v1.1-S5 (ADR-0039 §Decision 5): outside QuestionMap focus trap (N2) */}
+      {sessionState.data?.is_simulation === true && <SimulationBanner />}
 
       <main
         id="exam-main"

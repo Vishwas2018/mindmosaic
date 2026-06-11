@@ -19,8 +19,8 @@ export const LearningPlanDTOSchema = z.object({
   plan_id: PlanIdSchema,
   plan_type: PlanTypeSchema,
   status: PlanStatusSchema,
-  created_at: z.string().datetime(),
-  valid_until: z.string().datetime(),
+  created_at: z.string().datetime({ offset: true }),
+  valid_until: z.string().datetime({ offset: true }),
   sessions: z.array(LearningPlanItemDTOSchema),
   milestones: z
     .array(
@@ -32,7 +32,7 @@ export const LearningPlanDTOSchema = z.object({
       }),
     )
     .nullable(),
-  stale_since: z.string().datetime().nullable(),
+  stale_since: z.string().datetime({ offset: true }).nullable(),
 });
 export type LearningPlanDTO = z.infer<typeof LearningPlanDTOSchema>;
 
@@ -53,10 +53,10 @@ export const PathwayReadinessDTOSchema = z.object({
     }),
   ),
   active_misconceptions_affecting: z.number().int(),
-  predicted_ready_date: z.string().datetime().nullable(),
-  exam_date: z.string().datetime().nullable(),
+  predicted_ready_date: z.string().datetime({ offset: true }).nullable(),
+  exam_date: z.string().datetime({ offset: true }).nullable(),
   days_remaining: z.number().int().nullable(),
-  stale_since: z.string().datetime().nullable(),
+  stale_since: z.string().datetime({ offset: true }).nullable(),
 });
 export type PathwayReadinessDTO = z.infer<typeof PathwayReadinessDTOSchema>;
 
@@ -76,7 +76,7 @@ export const PlanOverrideDTOSchema = z.object({
     id: z.string().uuid(),
     display_name: z.string(),
   }),
-  expires_at: z.string().datetime(),
-  created_at: z.string().datetime(),
+  expires_at: z.string().datetime({ offset: true }),
+  created_at: z.string().datetime({ offset: true }),
 });
 export type PlanOverrideDTO = z.infer<typeof PlanOverrideDTOSchema>;
