@@ -55,15 +55,6 @@ test('exam flow — keyboard-only signup → 5 responses → end → results', a
     page.getByRole('heading', { name: /how do you want to study today/i }),
   ).toBeVisible();
 
-  // R-DIAG-5 — remove before Round S
-  console.log('[R-DIAG-5 test 8] URL:', page.url())
-  console.log('[R-DIAG-5 test 8] page state:', await page.evaluate(() => {
-    const cookieNames = document.cookie.split(';').map((c: string) => (c.split('=')[0] ?? '').trim()).filter(Boolean)
-    const lsKeys = Object.keys(localStorage)
-    const bodySnippet = document.body.innerText.slice(0, 600)
-    return { cookieNames, lsKeys, bodySnippet }
-  }))
-
   // ── 3. Keyboard to first Exam button ──────────────────────────────
   const examBtn = page.getByRole('button', { name: /^exam$/i }).first();
   await expect(examBtn).toBeVisible();

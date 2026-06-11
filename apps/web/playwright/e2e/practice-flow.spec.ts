@@ -56,15 +56,6 @@ test('practice flow — signup → select pathway → 5 responses → end → re
     page.getByRole('heading', { name: /how do you want to study today/i }),
   ).toBeVisible();
 
-  // R-DIAG-5 — remove before Round S
-  console.log('[R-DIAG-5 test 10] URL:', page.url())
-  console.log('[R-DIAG-5 test 10] page state:', await page.evaluate(() => {
-    const cookieNames = document.cookie.split(';').map((c: string) => (c.split('=')[0] ?? '').trim()).filter(Boolean)
-    const lsKeys = Object.keys(localStorage)
-    const bodySnippet = document.body.innerText.slice(0, 600)
-    return { cookieNames, lsKeys, bodySnippet }
-  }))
-
   // ── 3. Click Practice on the first entitled pathway ────────────────────
   const practiceBtn = page.getByRole('button', { name: /^practice$/i }).first();
   await expect(practiceBtn).toBeVisible();

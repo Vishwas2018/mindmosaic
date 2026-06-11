@@ -76,10 +76,6 @@ export class MmClient {
       method,
       headers,
       body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
-    }).catch((networkErr: unknown): never => {
-      // eslint-disable-next-line no-console
-      console.error('[MmClient R-DIAG-5] fetch threw (path=' + path + '):', networkErr) // R-DIAG-5 — remove before Round S
-      throw networkErr
     });
 
     // X2: prefer response header; server may echo or override the trace ID
@@ -100,14 +96,7 @@ export class MmClient {
     }
 
     const json: unknown = await response.json();
-    // R-DIAG-5 — remove before Round S
-    try {
-      return { data: schema.parse(json), traceId: responseTraceId };
-    } catch (parseErr) {
-      // eslint-disable-next-line no-console
-      console.error('[MmClient R-DIAG-5] schema.parse failed (path=' + path + '):', parseErr, 'raw:', JSON.stringify(json).slice(0, 500)) // R-DIAG-5 — remove before Round S
-      throw parseErr
-    }
+    return { data: schema.parse(json), traceId: responseTraceId };
   }
 
   get<T>(path: string, schema: Schema<T>, traceId?: string): Promise<SDKResponse<T>> {
