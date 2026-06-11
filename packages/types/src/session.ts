@@ -171,8 +171,8 @@ export const SessionSummaryDTOSchema = z.object({
   session_id: SessionIdSchema,
   mode: z.string(),
   pathway_name: z.string().nullable(),
-  started_at: z.string().datetime(),
-  submitted_at: z.string().datetime().nullable(),
+  started_at: z.string().datetime({ offset: true }),
+  submitted_at: z.string().datetime({ offset: true }).nullable(),
   duration_ms: z.number().int().nullable(),
   active_duration_ms: z.number().int().nullable(),
   score_band: z.string().nullable(),
@@ -197,6 +197,6 @@ export const CheckpointRequestSchema = z.object({
       response_data: z.record(z.string(), z.unknown()),
     }),
   ),
-  client_timestamp: z.string().datetime(),
+  client_timestamp: z.string().datetime({ offset: true }),
 });
 export type CheckpointRequest = z.infer<typeof CheckpointRequestSchema>;

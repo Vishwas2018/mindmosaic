@@ -25,13 +25,13 @@ export const AssignmentDTOSchema = z.object({
   difficulty_range: DifficultyRangeSchema.nullable(),
   item_count: z.number().int(),
   time_limit_ms: z.number().int().nullable(),
-  due_at: z.string().datetime().nullable(),
+  due_at: z.string().datetime({ offset: true }).nullable(),
   status: AssignmentStatusSchema,
   auto_generated: z.boolean(),
   rationale: z.string().nullable(),
   created_by: CreatedBySchema,
-  created_at: z.string().datetime(),
-  published_at: z.string().datetime().nullable(),
+  created_at: z.string().datetime({ offset: true }),
+  published_at: z.string().datetime({ offset: true }).nullable(),
 });
 export type AssignmentDTO = z.infer<typeof AssignmentDTOSchema>;
 
@@ -44,7 +44,7 @@ export const CreateAssignmentRequestSchema = z.object({
   difficulty_range: DifficultyRangeSchema.optional(),
   item_count: z.number().int(),
   time_limit_ms: z.number().int().optional(),
-  due_at: z.string().datetime().optional(),
+  due_at: z.string().datetime({ offset: true }).optional(),
   targets: z.array(z.object({ type: z.enum(['student', 'class']), id: z.string() })),
   auto_generated: z.boolean().optional(),
   rationale: z.string().optional(),
@@ -56,7 +56,7 @@ export type CreateAssignmentRequest = z.infer<typeof CreateAssignmentRequestSche
 export const StudentAssignmentDTOSchema = AssignmentDTOSchema.extend({
   my_status: AssignmentSessionStatusSchema,
   my_session_id: z.string().uuid().nullable(),
-  completed_at: z.string().datetime().nullable(),
+  completed_at: z.string().datetime({ offset: true }).nullable(),
 });
 export type StudentAssignmentDTO = z.infer<typeof StudentAssignmentDTOSchema>;
 
@@ -69,7 +69,7 @@ export const AssignmentTrackingDTOSchema = z.object({
       status: AssignmentSessionStatusSchema,
       session_id: z.string().uuid().nullable(),
       score: z.number().nullable(),
-      completed_at: z.string().datetime().nullable(),
+      completed_at: z.string().datetime({ offset: true }).nullable(),
     }),
   ),
   completion_rate: z.number(),

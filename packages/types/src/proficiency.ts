@@ -15,7 +15,7 @@ export const ProficiencyMapDTOSchema = z.object({
       skill_name: z.string(),
       band: MasteryBandSchema,
       mastery_level: z.number().min(0).max(1),
-      last_practiced_at: z.string().datetime().nullable(),
+      last_practiced_at: z.string().datetime({ offset: true }).nullable(),
     }),
   ),
   summary: z.object({
@@ -24,6 +24,6 @@ export const ProficiencyMapDTOSchema = z.object({
     proficient: z.number().int(),
     mastered: z.number().int(),
   }),
-  computed_at: z.string().datetime(),
+  computed_at: z.string().datetime({ offset: true }),
 });
 export type ProficiencyMapDTO = z.infer<typeof ProficiencyMapDTOSchema>;

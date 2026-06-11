@@ -13,7 +13,7 @@ export const InterventionAlertDTOSchema = z.object({
   detail: z.record(z.string(), z.unknown()),
   suggested_action: z.string(),
   explanation: ExplanationDTOSchema,
-  created_at: z.string().datetime(),
+  created_at: z.string().datetime({ offset: true }),
 });
 export type InterventionAlertDTO = z.infer<typeof InterventionAlertDTOSchema>;
 
@@ -37,7 +37,7 @@ export const CohortOverviewDTOSchema = z.object({
     }),
   ),
   alerts_active: z.number().int(),
-  generated_at: z.string().datetime(),
+  generated_at: z.string().datetime({ offset: true }),
 });
 export type CohortOverviewDTO = z.infer<typeof CohortOverviewDTOSchema>;
 
