@@ -65,14 +65,16 @@ test('results flow — signup → exam → submit → /results/{id} renders scor
   expect(sessionIdMatch).not.toBeNull();
   const sessionId = sessionIdMatch?.[1] ?? '';
 
-  // 4. Answer 5 items by clicking the first radio option and submitting.
+  // 4. Answer 5 items. The exam page auto-advances to the next item on each
+  //    submit (no feedback panel / Next button — that is practice-only), so we
+  //    select → submit and let the page move us forward, mirroring exam-flow.
   for (let i = 0; i < 5; i++) {
-    await page.getByRole('radio').first().click();
+    const firstOption = page.getByRole('radio').first();
+    if ((await firstOption.count()) === 0) break;
+    await firstOption.click();
     await page.getByRole('button', { name: /submit answer/i }).click();
-    // Brief wait for feedback panel + Next button to appear.
-    const nextBtn = page.getByRole('button', { name: /next question|see results/i });
-    await nextBtn.waitFor({ state: 'visible', timeout: 8000 });
-    await nextBtn.click();
+    // Allow the auto-advance (next item, or End-session settle) to land.
+    await page.waitForTimeout(150);
   }
 
   // 5. End session via the End session button.

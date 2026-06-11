@@ -72,9 +72,9 @@ test('practice flow — signup → select pathway → 5 responses → end → re
 
   // ── 4. Redirect to /session/{id}/practice ──────────────────────────────
   await page.waitForURL(/\/session\/[^/]+\/practice$/);
-  await expect(
-    page.getByRole('heading').filter({ hasText: /question/i }).first(),
-  ).toBeVisible();
+  // Question heading lands by its stable anchor; the <h1> renders the item
+  // stem text, not the literal word "question".
+  await expect(page.locator('#practice-question-heading')).toBeVisible();
 
   // ── 5. Answer 5 items ──────────────────────────────────────────────────
   for (let i = 0; i < 5; i += 1) {
