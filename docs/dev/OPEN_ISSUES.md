@@ -5,6 +5,28 @@
 
 ## Open
 
+### ISSUE-0091 — useRecordResponse reuses one idempotency key across all answers → 2nd+ answer fails 422 IDEMPOTENCY_MISMATCH
+
+- Status: fixed (packages/sdk/src/hooks/session.ts — per-request key derivation; awaiting CI E2E confirm)
+- Severity: high (beta-blocker: every multi-answer session silently loses all answers after the first)
+- Reported: 2026-06-12 (practice-flow E2E — line-95 failure root-cause analysis)
+- Area: backend (SDK) + frontend (latent in both practice and exam pages via shared hook)
+- Tags: idempotency · sdk · scoring · practice · exam · multi-answer · ISSUE-0090 · ISSUE-0088
+
+**Summary.** `useRecordResponse` (`packages/sdk/src/hooks/session.ts:118-119`) generates ONE `crypto.randomUUID()` per component mount via `useRef` and uses it as the `Idempotency-Key` header for **every** `/respond` call in that mount's lifetime. The idempotency middleware (`supabase/functions/_shared/idempotency.ts:130-137`) caches `(key, request_hash)` on the first successful respond. When a second item is answered, the same key arrives with a different body → `SHA-256(body_2) ≠ SHA-256(body_1)` → **422 IDEMPOTENCY_MISMATCH**. The practice page's `onError` handler treats 422 as a generic toast ("Could not save your answer") — no feedback panel, no score, silent data loss. The exam page uses the same hook and is equally affected; the exam E2E escaped only because no exam test ever sends two `/respond` calls from the same mount.
+
+**Root cause chain.** First answer registers key K1 with hash H1 (`status='completed'`). Second answer sends K1 with different `item_id`/`expected_version` → H2 ≠ H1 → 422. The 422 is not caught by the 409 or 410 branches in the practice/exam `onError` handlers → toast fires and auto-dismisses. Test evidence: snapshot captured at 60s timeout shows an empty `alert` container (toast already auto-dismissed) and the "Submit answer" button still present — confirming the server rejected the second respond and no feedback was rendered. Trace analysis found the second `/respond` at HTTP 422 was captured by the hardened `waitForResponse` test pattern introduced for ISSUE-0090.
+
+**Fix (SDK layer).** Inside `mutationFn`, derive the idempotency key per request from `${sessionId}:${request.item_id}:${request.expected_version}`. This is deterministic (true retries of the same answer with the same version reuse the same key — idempotency preserved) and unique per distinct answer (different `item_id` OR different `expected_version` → different key — no collision). Removes the per-mount `autoKey = useRef(crypto.randomUUID())`. The caller-supplied `options?.idempotencyKey` override path is retained for test harnesses and explicit retry orchestration.
+
+**Scope.** Both practice and exam pages inherit the fix from the shared SDK hook — no page-level changes required. All other hooks (`useCreateSession`, `useSubmitSession`, etc.) are unaffected: they either create new mutations once per mount (create/submit) or derive keys from different primitives.
+
+**Why hidden until now.** The same multi-answer blind spot diagnosed in ISSUE-0090: the practice E2E never submitted a second MCQ answer from the same mount (object-shaped options didn't render, so radios were absent and the test broke out of the loop). Once the tolerant renderer (ISSUE-0090 fix) made options selectable and the lock-token seed fix (ISSUE-0090 third bug) let the first answer succeed, the second answer hit 422 — unmasking this latent bug. Exam is similarly protected by the E2E never exercising multi-answer from one mount.
+
+**Cross-ref.** ISSUE-0090 (same multi-answer blind spot, practice page layer); ISSUE-0088 (unrelated billing-svc 500 toast also visible in the same E2E snapshot — confirmed non-interfering via URL filter in the hardened `waitForResponse` assertion).
+
+---
+
 ### ISSUE-0090 — practice page sends `choice` instead of `option_id` — all practice MCQ answers scored incorrect
 
 - Status: in-progress (three sibling-miss bugs fixed: option_id key + tolerant renderer + respond lock-token seed; awaiting CI E2E confirm)

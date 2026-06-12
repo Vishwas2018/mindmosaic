@@ -4,7 +4,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement, type ReactNode } from 'react';
 import { MmClient, MmClientProvider } from '../index.js';
-import { useMe, useListRecentSessions } from '../hooks/index.js';
+import { useMe, useListRecentSessions, useRecordResponse } from '../hooks/index.js';
 import { mmKeys } from '../keys.js';
 
 function mockFetchOk(body: unknown, traceId?: string) {
@@ -149,5 +149,132 @@ describe('useListRecentSessions — Stage 22 / Q-22.1', () => {
 
   it('uses mmKeys.sessions.recent() as query key', () => {
     expect(mmKeys.sessions.recent()).toEqual(['sessions', 'recent']);
+  });
+});
+
+// ── useRecordResponse — idempotency key derivation (ISSUE-0091) ───────────────
+//
+// Regression net for the per-mount key bug: a single autoKey ref was shared
+// across all mutate() calls, causing item 2+ to send the same Idempotency-Key
+// with a different body → 422 IDEMPOTENCY_MISMATCH on the server.
+// The fix derives the key from the request payload so retries are safe and
+// distinct answers are unique.
+
+const SESSION_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const ITEM_A = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const ITEM_B = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+const BASE_TELEMETRY = {
+  time_to_answer_ms: 1,
+  time_to_first_action_ms: 1,
+  answer_changes: 0,
+  items_since_session_start: 0,
+  time_since_session_start_ms: 1,
+  skipped_then_returned: false,
+  scroll_to_bottom: null,
+};
+
+const RESPOND_OK = {
+  is_correct: true,
+  explanation: null,
+  next_item: null,
+  termination: null,
+  progress: { answered: 1, total: 1 },
+  version: 2,
+  lock_token: 'tok-2',
+};
+
+function makeRespondMock() {
+  return vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    headers: { get: (): string | null => null },
+    json: async () => RESPOND_OK,
+  });
+}
+
+function idemKey(calls: unknown[][], idx: number): string {
+  const init = (calls[idx] as [string, RequestInit])[1];
+  return (init.headers as Record<string, string>)['Idempotency-Key'] ?? '';
+}
+
+describe('useRecordResponse — idempotency key derivation (ISSUE-0091)', () => {
+  it('different items produce different Idempotency-Key headers', async () => {
+    const fetchMock = makeRespondMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new MmClient({ baseUrl: 'https://api.test', getToken: async () => 'tok' });
+    const { result } = renderHook(() => useRecordResponse(SESSION_ID), {
+      wrapper: makeWrapper(client),
+    });
+
+    result.current.mutate({
+      item_id: ITEM_A,
+      expected_version: 1,
+      response_data: { option_id: 'a' },
+      telemetry: BASE_TELEMETRY,
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    result.current.mutate({
+      item_id: ITEM_B,
+      expected_version: 2,
+      response_data: { option_id: 'a' },
+      telemetry: BASE_TELEMETRY,
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    expect(idemKey(fetchMock.mock.calls, 0)).toBe(`${SESSION_ID}:${ITEM_A}:1`);
+    expect(idemKey(fetchMock.mock.calls, 1)).toBe(`${SESSION_ID}:${ITEM_B}:2`);
+    expect(idemKey(fetchMock.mock.calls, 0)).not.toBe(idemKey(fetchMock.mock.calls, 1));
+  });
+
+  it('same item + version (retry) reuses the same Idempotency-Key', async () => {
+    const fetchMock = makeRespondMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new MmClient({ baseUrl: 'https://api.test', getToken: async () => 'tok' });
+    const { result } = renderHook(() => useRecordResponse(SESSION_ID), {
+      wrapper: makeWrapper(client),
+    });
+
+    const req = {
+      item_id: ITEM_A,
+      expected_version: 1,
+      response_data: { option_id: 'a' },
+      telemetry: BASE_TELEMETRY,
+    };
+
+    result.current.mutate(req);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    result.current.mutate(req);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    const k0 = idemKey(fetchMock.mock.calls, 0);
+    const k1 = idemKey(fetchMock.mock.calls, 1);
+    expect(k0).toBe(`${SESSION_ID}:${ITEM_A}:1`);
+    expect(k1).toBe(`${SESSION_ID}:${ITEM_A}:1`);
+    expect(k0).toBe(k1);
+  });
+
+  it('respects caller-supplied options.idempotencyKey override', async () => {
+    const fetchMock = makeRespondMock();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = new MmClient({ baseUrl: 'https://api.test', getToken: async () => 'tok' });
+    const { result } = renderHook(
+      () => useRecordResponse(SESSION_ID, { idempotencyKey: 'caller-stable-key' }),
+      { wrapper: makeWrapper(client) },
+    );
+
+    result.current.mutate({
+      item_id: ITEM_A,
+      expected_version: 1,
+      response_data: { option_id: 'a' },
+      telemetry: BASE_TELEMETRY,
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    expect(idemKey(fetchMock.mock.calls, 0)).toBe('caller-stable-key');
   });
 });

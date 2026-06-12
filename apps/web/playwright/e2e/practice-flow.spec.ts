@@ -85,19 +85,70 @@ test('practice flow — signup → select pathway → 5 responses → end → re
     .getByRole('button', { name: /next question|see results/i })
     .click();
 
-  // ── 5b. Answer the remaining items to reach the end ────────────────────
-  for (let i = 1; i < 5; i += 1) {
-    const nextOption = page.getByRole('radio').first();
-    if ((await nextOption.count()) === 0) break;
-    await nextOption.check();
-    await page.getByRole('button', { name: /submit answer/i }).click();
-    const next = page.getByRole('button', { name: /next question|see results/i });
-    await next.waitFor({ state: 'visible' });
-    await next.click();
+  // ── 5b. Drive remaining items to the terminal "See results" click ──────
+  // Loops to the actual item count — not hardcoded 5. The seed has exactly
+  // 2 items, so this iterates once (item 2 is the terminal).
+  //
+  // waitForResponse is registered BEFORE the Submit click (Playwright best
+  // practice) so the response is captured regardless of latency. A non-2xx
+  // status surfaces as a descriptive assertion failure instead of a 60-second
+  // timeout on the feedback panel — correctly distinguishes a product bug from
+  // a test-timing race. This applies the ISSUE-0090 lesson: surface the layer
+  // that actually broke, don't mask it by widening timeouts.
+  //
+  // The background `alert` in the snapshot is the ISSUE-0088 billing-svc 500
+  // toast container. It does not interfere: the waitForResponse filter keys on
+  // url().includes('/respond') which billing-svc URLs do not match, and the
+  // "Correct!" / "See results" locators are semantically unambiguous.
+  let reachedResults = false;
+  for (let i = 1; i < 20 && !reachedResults; i += 1) {
+    if (page.url().includes('/results/')) { reachedResults = true; break; }
+
+    const radio = page.getByRole('radio').first();
+    if (!(await radio.isVisible())) break;
+    await radio.check();
+
+    const submitBtn = page.getByRole('button', { name: /submit answer/i });
+    await expect(submitBtn).toBeEnabled();
+
+    const respondPromise = page.waitForResponse(
+      (resp) => resp.url().includes('/respond'),
+      { timeout: 10_000 },
+    );
+    await submitBtn.click();
+    const respondResp = await respondPromise;
+
+    // Non-2xx = product bug in the multi-item respond path, not a test race.
+    // Most likely on a fresh session: idempotency key reuse across items —
+    // useRecordResponse holds one per-mount UUID, so item 2+ sends the same
+    // Idempotency-Key with a different body → 422 IDEMPOTENCY_MISMATCH.
+    // This throw replaces the silent 60-second waitFor timeout.
+    if (respondResp.status() >= 300) {
+      throw new Error(
+        `/respond returned HTTP ${respondResp.status()} on loop iteration ${i} (item ${i + 1}). ` +
+          `Expected 2xx. Likely cause: idempotency key reuse across items in useRecordResponse. ` +
+          `Product bug — not a test-timing issue.`,
+      );
+    }
+
+    const nextBtn = page.getByRole('button', { name: /next question|see results/i });
+    await expect(nextBtn).toBeVisible({ timeout: 5_000 });
+
+    const btnText = (await nextBtn.textContent()) ?? '';
+    await nextBtn.click();
+    if (/see results/i.test(btnText)) {
+      // Terminal item: clicking "See results" calls handleEndSession() internally
+      // and navigates to /results/{id} — no manual "End session" click needed.
+      reachedResults = true;
+    }
   }
 
-  // ── 6. End session ─────────────────────────────────────────────────────
-  await page.getByRole('button', { name: /end session/i }).click();
+  // ── 6. End session — only if loop exited before reaching terminal ──────
+  // Normal path: "See results" already triggered navigation. This fallback
+  // exercises the early-exit button for pool-exhausted or truncated sessions.
+  if (!reachedResults) {
+    await page.getByRole('button', { name: /end session/i }).click();
+  }
 
   // ── 7. /results/{id} ───────────────────────────────────────────────────
   await page.waitForURL(/\/results\/[^/]+$/);

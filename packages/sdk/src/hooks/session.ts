@@ -109,18 +109,23 @@ export function useTeacherRecentSessions(studentId: string, limit = 5) {
   });
 }
 
-/** X3: idempotencyKey per-mount. Not retry-safe without stable key.
- *  ADR-0026: lock_token echoed via X-Session-Lock; rotates on each successful /respond.
- *  Call updateLockToken(token) after session create/resume to seed the initial token. */
+/** ADR-0026: lock_token echoed via X-Session-Lock; rotates on each successful /respond.
+ *  Call updateLockToken(token) after session create/resume to seed the initial token.
+ *
+ *  Idempotency key is derived per distinct write — `${sessionId}:${item_id}:${expected_version}`.
+ *  This makes true retries of the same answer reuse the same key (safe) while distinct answers
+ *  (different item_id or version) get unique keys (no 422 IDEMPOTENCY_MISMATCH on item 2+).
+ *  Caller-supplied options.idempotencyKey overrides for test harnesses and explicit retry flows. */
 export function useRecordResponse(sessionId: string, options?: { idempotencyKey?: string }) {
   const client = useMmClient();
   const qc = useQueryClient();
-  const autoKey = useRef<string>(crypto.randomUUID());
-  const idempotencyKey = options?.idempotencyKey ?? autoKey.current;
   const lockTokenRef = useRef<string | null>(null);
   const mutation = useMutation({
-    mutationFn: (request: RecordResponseRequest) =>
-      client
+    mutationFn: (request: RecordResponseRequest) => {
+      const idempotencyKey =
+        options?.idempotencyKey ??
+        `${sessionId}:${request.item_id}:${request.expected_version}`;
+      return client
         .post(
           `/assessment-svc/sessions/${sessionId}/respond`,
           RecordResponseResponseSchema,
@@ -132,7 +137,8 @@ export function useRecordResponse(sessionId: string, options?: { idempotencyKey?
         .then((r) => {
           lockTokenRef.current = r.data.lock_token;
           return r.data;
-        }),
+        });
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: mmKeys.sessions.state(sessionId) });
     },
