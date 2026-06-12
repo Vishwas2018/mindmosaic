@@ -823,6 +823,24 @@ describe('assessment-svc — resumeSession', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.status).toBe(409);
   });
+
+  it('active session returns existing lock_token without issuing UPDATE (ISSUE-0091)', async () => {
+    const db = client({
+      session_record: { data: buildSessionRow({ status: 'active', lock_token: 'lock-abc' }), error: null },
+    });
+    const result = await resumeSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      effects: fixedEffects(),
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.lock_token).toBe('lock-abc');
+    }
+    // Only the SELECT was issued — no UPDATE on an already-active session.
+    expect(db.from).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ───────────────────────────────────────────────────────────────────────────

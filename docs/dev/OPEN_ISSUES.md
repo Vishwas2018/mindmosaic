@@ -7,7 +7,7 @@
 
 ### ISSUE-0091 — useRecordResponse reuses one idempotency key across all answers → 2nd+ answer fails 422 IDEMPOTENCY_MISMATCH
 
-- Status: fixed (packages/sdk/src/hooks/session.ts — per-request key derivation; awaiting CI E2E confirm)
+- Status: fixed (two layers — per-request key derivation + remove qc.invalidateQueries(sessions.state); awaiting CI E2E confirm)
 - Severity: high (beta-blocker: every multi-answer session silently loses all answers after the first)
 - Reported: 2026-06-12 (practice-flow E2E — line-95 failure root-cause analysis)
 - Area: backend (SDK) + frontend (latent in both practice and exam pages via shared hook)
@@ -22,6 +22,8 @@
 **Scope.** Both practice and exam pages inherit the fix from the shared SDK hook — no page-level changes required. All other hooks (`useCreateSession`, `useSubmitSession`, etc.) are unaffected: they either create new mutations once per mount (create/submit) or derive keys from different primitives.
 
 **Why hidden until now.** The same multi-answer blind spot diagnosed in ISSUE-0090: the practice E2E never submitted a second MCQ answer from the same mount (object-shaped options didn't render, so radios were absent and the test broke out of the loop). Once the tolerant renderer (ISSUE-0090 fix) made options selectable and the lock-token seed fix (ISSUE-0090 third bug) let the first answer succeed, the second answer hit 422 — unmasking this latent bug. Exam is similarly protected by the E2E never exercising multi-answer from one mount.
+
+**Second layer — LOCK_CONFLICT (409) after idempotency fix (CI run 27402070820).** After the 422 was fixed, CI returned a new 409 on item 2. Root cause: `useRecordResponse.onSuccess` called `qc.invalidateQueries(sessions.state)`, which triggered `GET /sessions/{id}/state` → `resumeSession` → `resumeSession` generates a fresh UUID and writes it as the new `lock_token` for **every call, including already-active sessions** (`handlers.ts:855-858`). This overwrote the T1 token issued by item 1's respond SDK rotation (`mutationFn.then`) with T2 **before** item 2's respond sent `X-Session-Lock: T1` → server compared T1 vs T2 → `LOCK_CONFLICT`. The hardened `waitForResponse` assertion surfaced this in ~10s instead of the previous 60-second timeout. Fix: remove `qc.invalidateQueries(sessions.state)` from `useRecordResponse.onSuccess`. The respond response already carries the rotated lock_token (consumed by `mutationFn.then`) and the updated version; the state refetch was redundant and is now absent. The longer architectural fix (making `resumeSession` read-only for active sessions) is left as a follow-up; for now the SDK simply avoids triggering it mid-session. Version-conflict recovery still works because the modal calls `sessionState.refetch()` explicitly.
 
 **Cross-ref.** ISSUE-0090 (same multi-answer blind spot, practice page layer); ISSUE-0088 (unrelated billing-svc 500 toast also visible in the same E2E snapshot — confirmed non-interfering via URL filter in the hardened `waitForResponse` assertion).
 

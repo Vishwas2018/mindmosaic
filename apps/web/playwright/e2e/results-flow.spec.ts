@@ -72,9 +72,21 @@ test('results flow — signup → exam → submit → /results/{id} renders scor
     const firstOption = page.getByRole('radio').first();
     if ((await firstOption.count()) === 0) break;
     await firstOption.click();
-    await page.getByRole('button', { name: /submit answer/i }).click();
-    // Allow the auto-advance (next item, or End-session settle) to land.
-    await page.waitForTimeout(150);
+    const submitBtn = page.getByRole('button', { name: /submit answer/i });
+    // Register listener BEFORE triggering the action (Playwright best practice).
+    // Non-2xx surfaces as a descriptive error — not a 60-second timeout.
+    const respondPromise = page.waitForResponse(
+      (resp) => resp.url().includes('/respond'),
+      { timeout: 10_000 },
+    );
+    await submitBtn.click();
+    const respondResp = await respondPromise;
+    if (respondResp.status() >= 300) {
+      throw new Error(
+        `/respond returned HTTP ${respondResp.status()} on results-flow loop iteration ${i} (item ${i + 1}). ` +
+          `Expected 2xx. Product bug — not a test-timing issue.`,
+      );
+    }
   }
 
   // 5. End session via the End session button.

@@ -852,12 +852,21 @@ export async function resumeSession(
     return err(409, 'SESSION_CONFLICT', 'Session has no remaining items');
   }
 
-  const newLockToken = eff.uuid();
-  const upd = await client
-    .from('session_record')
-    .update({ status: 'active', lock_token: newLockToken })
-    .eq('id', sessionId);
-  if (upd.error !== null) return err(500, 'INTERNAL_ERROR', upd.error.message);
+  let lockToken: string;
+  if (row.status === 'interrupted') {
+    const newLockToken = eff.uuid();
+    const upd = await client
+      .from('session_record')
+      .update({ status: 'active', lock_token: newLockToken })
+      .eq('id', sessionId);
+    if (upd.error !== null) return err(500, 'INTERNAL_ERROR', upd.error.message);
+    lockToken = newLockToken;
+  } else {
+    // status === 'active': return existing token without mutating the row.
+    // Rotating on every GET /state would clobber the token issued by the last
+    // /respond call, causing LOCK_CONFLICT (409) on the next /respond. ISSUE-0091.
+    lockToken = row.lock_token as string;
+  }
 
   const totalItems = totalItemsFor(state);
   const itemsAnswered = answeredCountFor(state);
@@ -879,7 +888,7 @@ export async function resumeSession(
       can_flag: true,
     },
     answered_item_ids: answeredItemIds(state),
-    lock_token: newLockToken,
+    lock_token: lockToken,
     version: row.version,
     // v1.1-S5 (ADR-0039 Q-1.1-5.4): simulation_params lives on LinearEngineState only.
     // Narrow via engine_type discriminant; false for all other engine branches.

@@ -71,13 +71,23 @@ test('exam flow — keyboard-only signup → 5 responses → end → results', a
     const firstOption = page.getByRole('radio').first();
     if ((await firstOption.count()) === 0) break;
     await firstOption.focus();
-    await page.keyboard.press('Space'); // selects radio
+    await page.keyboard.press('Space');
     const submit = page.getByRole('button', { name: /submit answer/i });
     await submit.focus();
+    // Register listener BEFORE triggering the action (Playwright best practice).
+    // Non-2xx surfaces as a descriptive error — not a 60-second timeout.
+    const respondPromise = page.waitForResponse(
+      (resp) => resp.url().includes('/respond'),
+      { timeout: 10_000 },
+    );
     await page.keyboard.press('Enter');
-    // Wait for either the next question or the End-session affordance
-    // to settle before the next iteration.
-    await page.waitForTimeout(150);
+    const respondResp = await respondPromise;
+    if (respondResp.status() >= 300) {
+      throw new Error(
+        `/respond returned HTTP ${respondResp.status()} on exam-flow loop iteration ${i} (item ${i + 1}). ` +
+          `Expected 2xx. Product bug — not a test-timing issue.`,
+      );
+    }
   }
 
   // ── 6. End session keyboard-only ─────────────────────────────────
