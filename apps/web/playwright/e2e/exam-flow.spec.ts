@@ -105,15 +105,12 @@ test('exam flow — keyboard-only signup → 5 responses → end → results', a
     }
   }
 
-  // ── 6. End session keyboard-only ─────────────────────────────────
-  const endBtn = page.getByRole('button', { name: /end session/i });
-  await endBtn.focus();
-  await page.keyboard.press('Enter');
-  // Submit-confirm dialog appears; primary "Submit" button focuses.
-  const confirm = page.getByRole('button', { name: /^submit$/i });
-  await confirm.waitFor({ state: 'visible' });
-  await confirm.focus();
-  await page.keyboard.press('Enter');
+  // Step 6 — after the 5th response, the engine signals termination
+  // and exam/page.tsx:260-272 auto-submits. We just wait for the
+  // navigation. The manual End-session early-exit path is a
+  // separate UX (early exit before all items answered) and is
+  // tracked for E2E coverage in ISSUE-0095.
+  await page.waitForURL(/\/results\/[^/]+$/, { timeout: 15_000 });
 
   // ── 7. /results/{id} ─────────────────────────────────────────────
   await page.waitForURL(/\/results\/[^/]+$/);

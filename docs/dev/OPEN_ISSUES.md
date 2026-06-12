@@ -105,7 +105,7 @@ Related: `supabase/functions/assessment-svc/handlers.ts` (ISSUE-0089 catch block
 
 ### ISSUE-0093 — practice-flow exhaustion paradox: 5 successful `recordResponse` calls against a 2-item stage unexplained
 
-- Status: open
+- Status: resolved — 2026-06-12
 - Severity: medium (defensive — not blocking family beta)
 - Reported: 2026-06-12 (R-FIX-EXHAUSTION)
 - Area: backend (engines + practice session flow)
@@ -115,7 +115,23 @@ Related: `supabase/functions/assessment-svc/handlers.ts` (ISSUE-0089 catch block
 
 **Fix (before public launch).** Instrument the assessment-svc `/respond` handler to log `current_item_index` and `items.length` for each call in a staging run. Confirm whether all 5 calls advance the index sequentially (expected) or some replay item 1 (unexpected). If replay, trace to SDK cache or idempotency key reuse in the practice page.
 
+**Resolution (2026-06-12 — R-FIX-END-SESSION).** Resolved per R-DIAG-PRACTICE-PARADOX investigation. The "paradox" did not exist. practice-flow.spec.ts uses an adaptive loop (`for i = 1; i < 20 && !reachedResults; i += 1`, line 104) with a break on the "See results" terminal indicator (line 139). Against the pre-fix 2-item seed it made exactly 2 /respond calls (one in step 5, one in step 5b iteration i=1) and exited cleanly. The test title "5 responses" was aspirational; the comment at practice-flow.spec.ts:89-91 explicitly documents the adaptive behaviour. exam-flow's hardcoded `for i = 0; i < 5` is what exposed the engine exhaustion. No hidden code path, no bypass, no pre-public-launch concern.
+
 Related: ISSUE-0091 (idempotency key fix), ISSUE-0089 (seed fix that masks symptom), `packages/engines/src/adaptive.ts:265-270`
+
+---
+
+### ISSUE-0095 — Manual End-session early-exit path uncovered by E2E
+
+- Status: open
+- Severity: low (test coverage gap, not a product bug)
+- Reported: 2026-06-12 (R-FIX-END-SESSION)
+- Area: tests (apps/web/playwright/e2e/exam-flow.spec.ts)
+- Tags: e2e · exam · early-exit · test-coverage
+
+**Summary.** The exam page's End-session + confirm-dialog flow (`exam/page.tsx:584-615`) is the manual early-exit UX for users who stop before answering all items. The previous exam-flow.spec.ts step 6 attempted to exercise this path but ran it against the all-items-completed state, where `submitSession.isPending` disables the End session button — the test was timing out, not testing. No E2E currently exercises the actual early-exit flow (e.g. answer 2 of 5 items, then click End session, then confirm Submit). Should be added as a separate test case before public launch; not blocking family beta.
+
+Related: `apps/web/src/app/(student)/session/[id]/exam/page.tsx:584-615`, `apps/web/playwright/e2e/exam-flow.spec.ts`
 
 ---
 
