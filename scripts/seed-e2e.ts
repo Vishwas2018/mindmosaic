@@ -70,8 +70,11 @@ const ITEM_LIFECYCLES: Lifecycle[] = [
   'monitored', // 6
   'monitored', // 7
   'retired',   // 8
-  'active',    // 9 ← first deliverable
+  'active',    // 9  ← first deliverable
   'active',    // 10 ← second deliverable
+  'active',    // 11 ← ISSUE-0089 fix: extend stage to 5 active items
+  'active',    // 12
+  'active',    // 13
 ]
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -102,7 +105,7 @@ async function seedFrameworkConfig(): Promise<void> {
           t1: {
             stage_id: 's1',
             time_limit_ms: 600_000,
-            item_ids: [itemId(9), itemId(10)],
+            item_ids: [itemId(9), itemId(10), itemId(11), itemId(12), itemId(13)],
           },
         },
       },
@@ -156,7 +159,7 @@ async function seedFrameworkConfig(): Promise<void> {
             t1: {
               stage_id: 's1',
               time_limit_ms: 600_000,
-              item_ids: [itemId(9), itemId(10)],
+              item_ids: [itemId(9), itemId(10), itemId(11), itemId(12), itemId(13)],
             },
           },
         },
@@ -239,7 +242,7 @@ async function seedItems(): Promise<void> {
   if (error) throw new Error(`items: ${error.message}`)
 
   const activeCount = items.filter((x) => x.lifecycle === 'active').length
-  console.log(`  ✓ ${items.length} items (${activeCount} active — items #9 + #10)`)
+  console.log(`  ✓ ${items.length} items (${activeCount} active — items #9–#13)`)
 }
 
 async function seedFeatureFlag(): Promise<void> {

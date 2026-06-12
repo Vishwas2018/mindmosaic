@@ -482,7 +482,16 @@ export async function respondToSession(
   engineResp.is_correct = computeCorrectness(item, body.response_data);
 
   const engine = pickEngine(row.engine_type);
-  const newState = engine.recordResponse(state, engineResp);
+  let newState;
+  try {
+    newState = engine.recordResponse(state, engineResp);
+  } catch (engineErr) {
+    // String match is intentional and bounded — see ISSUE-0094 for the typed-error refactor.
+    if (engineErr instanceof Error && engineErr.message.includes('is already exhausted')) {
+      return err(422, 'SESSION_EXHAUSTED', 'All session items have been completed.');
+    }
+    throw engineErr;
+  }
 
   // 7. Atomic write via widened RPC (Q-19.1)
   const newLockToken = eff.uuid();

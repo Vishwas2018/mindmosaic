@@ -66,11 +66,13 @@ Because the seed used the object shape and the pages accepted only strings, the 
 
 ### ISSUE-0089 — feature-flag key divergence: base seed enables `naplan_y5`, pathway requires `pathway_naplan_y5`
 
-- Status: open
+- Status: resolved — 2026-06-12 (R-FIX-EXHAUSTION — [this commit SHA])
 - Severity: medium (beta-launch blocker — NOT a merge blocker; current state is correctly gated)
 - Reported: 2026-06-11 (post-merge main verification — PR #1 / merge commit b6e58f5)
 - Area: infra (supabase/seeds + content pathway feature gating)
 - Tags: launch · feature-flag · content
+
+**Resolution.** E2E framework_config extended from 1 stage / 2 items to 1 stage / 5 active items in `scripts/seed-e2e.ts`. `ITEM_LIFECYCLES` extended with items #11–#13 (all `active`); both `item_ids` arrays in `seedFrameworkConfig()` updated to include `itemId(9)` through `itemId(13)`. With 5 slots in the s1 stage the exam-flow E2E can now complete 5 `recordResponse` calls without triggering Path B exhaustion. The feature-flag key divergence documented in the original summary remains a launch-runbook item (insert `pathway_naplan_y5` row) — that pre-existing divergence is tracked separately and not changed by this fix.
 
 **Summary.** The `au_numeracy_y5` pathway's `required_feature_key` is `pathway_naplan_y5` (`scripts/seed-e2e.ts:184`), but the production base seed enables a different key — `naplan_y5`, tenant-scoped to one seed tenant (`supabase/seeds/05_feature_flags.sql:12`). The two keys do not match, so the base seed's flag is **dead for this pathway**. The only thing that unlocks the pathway today is the E2E-only platform-wide `admin_override` row (`scripts/seed-e2e.ts:270-280`), which inserts `feature_key: 'pathway_naplan_y5'` / `tenant_id: null` / `enabled: true` and never runs in production.
 
@@ -82,6 +84,52 @@ Because the seed used the object shape and the pages accepted only strings, the 
 3. Verify the gate flips by hitting `POST /sessions/create` and expecting a non-402 response.
 
 **Cross-ref.** `supabase/functions/_shared/feature-gate.ts:74-78` (deny-by-default resolution); `scripts/seed-e2e.ts:184` (pathway required key), `scripts/seed-e2e.ts:270-280` (E2E platform-wide override); `supabase/seeds/05_feature_flags.sql:12` (base seed `naplan_y5`); Option-A deferred "content activation" item (PR #1 body).
+
+---
+
+### ISSUE-0094 — typed engine errors: replace string-match exhaustion guard with `instanceof SessionExhaustedError`
+
+- Status: open
+- Severity: low (tech debt)
+- Reported: 2026-06-12 (R-FIX-EXHAUSTION)
+- Area: backend (packages/engines + supabase/functions/assessment-svc/handlers.ts)
+- Tags: engines · error-handling · tech-debt
+
+**Summary.** Engine exhaustion handling in `supabase/functions/assessment-svc/handlers.ts` uses string-match on the error message (`'is already exhausted'`) to identify exhaustion throws from `AdaptiveEngine.recordResponse`. Refactor to throw a typed `SessionExhaustedError` from the engines package, and check via `instanceof` in the handler. Bounded but brittle in current form.
+
+**Fix.** (1) Define and export `SessionExhaustedError extends Error` from `packages/engines/src/`. (2) Replace `throw new Error(...)` in `adaptive.ts:267` with `throw new SessionExhaustedError(...)`. (3) Replace the `message.includes('is already exhausted')` guard in `handlers.ts` with `engineErr instanceof SessionExhaustedError`.
+
+Related: `supabase/functions/assessment-svc/handlers.ts` (ISSUE-0089 catch block), `packages/engines/src/adaptive.ts:267`
+
+---
+
+### ISSUE-0093 — practice-flow exhaustion paradox: 5 successful `recordResponse` calls against a 2-item stage unexplained
+
+- Status: open
+- Severity: medium (defensive — not blocking family beta)
+- Reported: 2026-06-12 (R-FIX-EXHAUSTION)
+- Area: backend (engines + practice session flow)
+- Tags: engines · practice · e2e · diagnostic
+
+**Summary.** With ISSUE-0091 resolved (per-item idempotency keys) and both modes confirmed using `AdaptiveEngine` via `pathway.engine_type`, the practice-flow E2E makes 5 successful `recordResponse` calls against a framework_config where s1 has only 2 items. This should have triggered Path B exhaustion on the 3rd call. The ISSUE-0089 seed fix (s1 now has 5 items) masks the symptom — exhaustion no longer fires — but the root cause is unconfirmed: either practice-flow makes fewer than 5 distinct engine calls (item replay / SDK caching), or there is a code path that bypasses the engine for practice mode that the investigation did not surface.
+
+**Fix (before public launch).** Instrument the assessment-svc `/respond` handler to log `current_item_index` and `items.length` for each call in a staging run. Confirm whether all 5 calls advance the index sequentially (expected) or some replay item 1 (unexpected). If replay, trace to SDK cache or idempotency key reuse in the practice page.
+
+Related: ISSUE-0091 (idempotency key fix), ISSUE-0089 (seed fix that masks symptom), `packages/engines/src/adaptive.ts:265-270`
+
+---
+
+### ISSUE-0092 — E2E_TEST_PATHWAY_ID half-wired: declared as skip guard but value discarded in three specs
+
+- Status: open
+- Severity: low (no blocking impact on family beta)
+- Reported: 2026-06-12 (R-FIX-EXHAUSTION)
+- Area: tests (apps/web/playwright/e2e/)
+- Tags: e2e · env-var · pathway
+
+**Summary.** `E2E_TEST_PATHWAY_ID` is declared as a module-level skip guard in `exam-flow.spec.ts:29`, `practice-flow.spec.ts:30`, and `results-flow.spec.ts:31` but its value is discarded — the pathway is selected by clicking the first UI button. `session-flow.spec.ts` uses it correctly (lines 38, 71) by passing it to the session-creation API. Either wire the env var to constrain UI selection in the three affected specs (e.g. filter pathway tiles by `data-pathway-id`), or remove the guard and document the single-pathway assumption explicitly.
+
+Related: `apps/web/playwright/e2e/exam-flow.spec.ts:29`, `practice-flow.spec.ts:30`, `results-flow.spec.ts:31`, `session-flow.spec.ts:38,71`
 
 ---
 

@@ -45,7 +45,7 @@ import {
   type MockResponses,
 } from '../../_test-helpers/mock-supabase.ts';
 import { FrameworkConfigSchema } from '@mm/engines';
-import type { EngineItem, LinearEngineState, SkillEngineState } from '@mm/engines';
+import type { AdaptiveEngineState, EngineItem, LinearEngineState, SkillEngineState } from '@mm/engines';
 
 // ─── Test data builders ─────────────────────────────────────────────────────
 
@@ -505,6 +505,63 @@ describe('assessment-svc — respondToSession', () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.is_correct).toBe(true);
+  });
+
+  it('respondToSession returns 422 SESSION_EXHAUSTED when adaptive engine throws exhausted (ISSUE-0089)', async () => {
+    // Approach (a): real AdaptiveEngine state where current_item_index >= stage items length
+    // and it is the last (only) stage → engine.recordResponse throws the exhaustion error.
+    // collectPlannedItems for adaptive includes stages[].items, so ITEM_1_ID is found.
+    const exhaustedAdaptiveState: AdaptiveEngineState = {
+      engine_type: 'adaptive',
+      session_id: SESSION_ID as never,
+      mode: 'exam' as never,
+      started_at: FROZEN_NOW,
+      time_limit_ms: null,
+      item_pool: [buildItem(1)],
+      stages: [
+        {
+          stage_id: 's1',
+          testlet_id: 't1',
+          items: [buildItem(1)],
+          responses: [],
+          time_limit_ms: 600_000,
+          started_at: FROZEN_NOW,
+          ended_at: null,
+        },
+      ],
+      current_stage_index: 0,
+      current_item_index: 1, // past the single item — stage exhausted
+      routing_history: [],
+      adaptive_rules: {
+        stages: ['s1'],
+        start_testlet_id: 't1',
+        routing_table: [],
+        testlets: {
+          t1: { stage_id: 's1', time_limit_ms: 600_000, item_ids: [ITEM_1_ID as never] },
+        },
+      },
+    };
+    const db = client({
+      session_record: {
+        data: buildSessionRow({
+          engine_type: 'adaptive',
+          engine_state_snapshot: exhaustedAdaptiveState,
+        }),
+        error: null,
+      },
+    });
+    const result = await respondToSession({
+      client: db,
+      sessionId: SESSION_ID,
+      studentId: STUDENT_ID,
+      lockHeader: 'lock-abc',
+      body: respondBody,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(422);
+      expect(result.code).toBe('SESSION_EXHAUSTED');
+    }
   });
 
   it('MCQ scoring: wrong option_id does not match correct_option_id → is_correct false (ISSUE-0054)', async () => {
