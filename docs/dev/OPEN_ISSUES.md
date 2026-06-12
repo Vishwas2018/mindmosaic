@@ -7,7 +7,7 @@
 
 ### ISSUE-0090 — practice page sends `choice` instead of `option_id` — all practice MCQ answers scored incorrect
 
-- Status: in-progress (page fix + tolerant renderer applied; awaiting CI E2E run to confirm green)
+- Status: in-progress (three sibling-miss bugs fixed: option_id key + tolerant renderer + respond lock-token seed; awaiting CI E2E confirm)
 - Severity: high (correctness defect on a beta-scope surface — every correct practice answer marked wrong)
 - Reported: 2026-06-12 (question-type capability audit)
 - Area: frontend (apps/web practice page) + tests (E2E) + content fixtures
@@ -34,7 +34,9 @@ Because the seed used the object shape and the pages accepted only strings, the 
 
 **Resolution — Option (B): string contract stays canonical, renderer made tolerant.** The production option identity remains the option **string** (`manifest-format.md §3.2`); scoring compares the submitted value to `correct_option_id`, and for string options the value **is** the string. `readOptions` in both `exam/page.tsx` and `practice/page.tsx` now normalises each option to `{ value, label }`: string → `{value:opt,label:opt}`; object `{id,content}` → `{value:id,label:readPlainText(content)}`. The rendered `value` is submitted as `response_data.option_id`. This is **tolerance, not a competing id-based contract** — it lets the page render both the canonical production string shape and the E2E seed's object shape without changing the canonical identity. The principle is written into the code comments on both `readOptions` definitions. **Phase A's discriminated `response_data` union will lock the contract** and retire the tolerance. (Seed/`session-flow.spec.ts:101` left as-is — id-based `option_id:'a'` still resolves correctly through the tolerant renderer.)
 
-**Related.** ISSUE-0054 (exam-side fix this missed), ISSUE-0042 (free-form `response_data` schema — enabling gap, Phase A closes), ISSUE-0075 (why local E2E can't run), `manifest-format.md §3.2`, `session-flow.spec.ts:101`.
+**Third compounding bug — respond lock-token not seeded (unmasked by the render fix).** Once the tolerant renderer made the practice MCQ options selectable, the practice E2E submitted a response for the first time ever — and the new "Correct!" assertion failed because the submit returned **409**. CI run 27394112124 (after esm.sh recovered) confirmed: radios render and "Option A" is checked (render fix works), but the page shows the "Your session was updated" conflict modal instead of feedback. Root cause: `useRecordResponse` requires `updateLockToken(token)` to be seeded after session load (ADR-0026, `packages/sdk/src/hooks/session.ts:113-143`); the **exam page seeds it** (`exam/page.tsx`) but the **practice page never called it** → first `/respond` sent an unseeded `X-Session-Lock` → `409 LOCK_CONFLICT`. This is the **same "practice missed what exam does" pattern** as the original `choice`/`option_id` miss, and it stayed hidden because the practice respond path was never E2E-exercised (object options → no radios → never submitted). **Fix:** seed `seedRespondLockToken(sessionState.data.lock_token)` in a `useEffect` on the practice page, mirroring exam. So three sibling-misses compounded — render shape, response key, lock-token seed — all hidden behind the un-rendered options.
+
+**Related.** ISSUE-0054 (exam-side `option_id` fix this missed), ISSUE-0042 (free-form `response_data` schema — enabling gap, Phase A closes), ISSUE-0075 (why local E2E can't run + the esm.sh 522 deploy outage seen on this push), ADR-0026 (lock-token rotation), `manifest-format.md §3.2`, `session-flow.spec.ts:101`.
 
 ---
 
