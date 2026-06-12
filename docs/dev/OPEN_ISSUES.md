@@ -5,6 +5,39 @@
 
 ## Open
 
+### ISSUE-0090 — practice page sends `choice` instead of `option_id` — all practice MCQ answers scored incorrect
+
+- Status: in-progress (page fix + tolerant renderer applied; awaiting CI E2E run to confirm green)
+- Severity: high (correctness defect on a beta-scope surface — every correct practice answer marked wrong)
+- Reported: 2026-06-12 (question-type capability audit)
+- Area: frontend (apps/web practice page) + tests (E2E) + content fixtures
+- Tags: scoring · mcq · practice · e2e · ISSUE-0054 · ISSUE-0042
+
+**Summary.** `apps/web/src/app/(student)/session/[id]/practice/page.tsx:250` submitted `response_data: { choice: selected }`. The scoring function `computeCorrectness` (`supabase/functions/assessment-svc/handlers.ts:1088`) reads `responseData['option_id']`; with the `choice` key the lookup is `undefined` → `typeof !== 'string'` → returns `false`. **Every non-skipped practice MCQ answer is scored incorrect**, so `FeedbackPanel` always renders "Not quite." (`practice/page.tsx:142-143`). The exam sibling was fixed under ISSUE-0054 (`exam/page.tsx:284` uses `option_id`) but the **practice page was missed**.
+
+**Empirical proof (logic-level; full E2E not runnable locally — env vars absent + edge runtime Norton-blocked, ISSUE-0075).** Replicating both pure predicates: production string-option item, correct answer → `computeCorrectness` returns `false` with `{choice}`, `true` with `{option_id}`; wrong answer → `false`. Confirms the bug and the fix.
+
+**Fix applied.** `practice/page.tsx:250` → `{ option_id: selected }` (key rename only; skip branch unchanged). Grep confirms no other `response_data` sender used `choice` (exam already correct).
+
+**Enabling gap (ISSUE-0042).** `RecordResponseRequestSchema.response_data` is `z.record(z.string(), z.unknown())` (`packages/types/src/session.ts:100`) — free-form, so `{choice}` passed Zod silently; the MCQ contract is enforced only at scoring time. Phase A's typed/discriminated `response_data` contract closes this class.
+
+**Why the 16/4/0 gate missed it (two compounding gaps).**
+1. **No correctness-feedback assertion** — `practice-flow.spec.ts` answered via `getByRole('radio').first()` and never asserted "Correct!"; a correct-then-positive-feedback check was absent. Added now (`practice-flow.spec.ts` step 5).
+2. **Option-shape mismatch — the deeper blocker.** The E2E seed emits **object-shaped** options (`scripts/seed-e2e.ts:291-298`: `options:[{id,content}]`, `correct_option_id:'a'`), but the page's `readOptions` (`practice/page.tsx:43-49`, `exam/page.tsx:64-70`) accepts **string** options only → `readOptions` returns `[]` → **zero radios render** → all three UI specs (exam/practice/results) hit `count()===0` and break **without ever selecting an MCQ option**. So the UI MCQ path was exercised by no E2E; only `session-flow.spec.ts:101` tested scoring, via direct API with `{option_id:'a'}` (bypassing the UI). The new `practice-flow.spec.ts` step 5 adds a `toBeVisible()` radio guard (catches the render gap) + a "Correct!" assertion (catches the `choice` bug); with the tolerant renderer (resolution below) the seed's object options now render, so these should go **green in CI** — pending the CI/local E2E run (not runnable on this machine, ISSUE-0075).
+
+**Three-way option-identity contradiction (root of the hidden bug).** The MCQ option identity was specified three incompatible ways:
+- `manifest-format.md §3.2:83-86` — options are `string[]`; `correct_option_id` is the exact option **string** (**canonical**).
+- `scripts/seed-e2e.ts:291-298` + `session-flow.spec.ts:101` + scoring — **id-based** (object options `{id,content}`, `option_id:'a'` vs `correct_option_id:'a'`).
+- page `readOptions` (`exam`/`practice`) — **string-only**; could not render the object shape at all.
+
+Because the seed used the object shape and the pages accepted only strings, the MCQ options never rendered as radios, so the **MCQ UI path was never E2E-exercised** — which is the deeper root cause that let the `choice`/`option_id` bug ship through the 16/4/0 gate undetected.
+
+**Resolution — Option (B): string contract stays canonical, renderer made tolerant.** The production option identity remains the option **string** (`manifest-format.md §3.2`); scoring compares the submitted value to `correct_option_id`, and for string options the value **is** the string. `readOptions` in both `exam/page.tsx` and `practice/page.tsx` now normalises each option to `{ value, label }`: string → `{value:opt,label:opt}`; object `{id,content}` → `{value:id,label:readPlainText(content)}`. The rendered `value` is submitted as `response_data.option_id`. This is **tolerance, not a competing id-based contract** — it lets the page render both the canonical production string shape and the E2E seed's object shape without changing the canonical identity. The principle is written into the code comments on both `readOptions` definitions. **Phase A's discriminated `response_data` union will lock the contract** and retire the tolerance. (Seed/`session-flow.spec.ts:101` left as-is — id-based `option_id:'a'` still resolves correctly through the tolerant renderer.)
+
+**Related.** ISSUE-0054 (exam-side fix this missed), ISSUE-0042 (free-form `response_data` schema — enabling gap, Phase A closes), ISSUE-0075 (why local E2E can't run), `manifest-format.md §3.2`, `session-flow.spec.ts:101`.
+
+---
+
 ### ISSUE-0089 — feature-flag key divergence: base seed enables `naplan_y5`, pathway requires `pathway_naplan_y5`
 
 - Status: open
