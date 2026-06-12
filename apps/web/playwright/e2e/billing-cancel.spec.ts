@@ -14,4 +14,4 @@
  */
 import { test } from '@playwright/test';
 
-test.skip(); // opt-in only — run with: npx playwright test billing-cancel.spec.ts
+test.skip(); // opt-in only — requires live Stripe test env + deployed billing-svc (ISSUE-0088) — run with: npx playwright test billing-cancel.spec.ts

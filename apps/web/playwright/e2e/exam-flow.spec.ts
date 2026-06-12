@@ -72,6 +72,10 @@ test('exam flow — keyboard-only signup → 5 responses → end → results', a
     if ((await firstOption.count()) === 0) break;
     await firstOption.focus();
     await page.keyboard.press('Space');
+    // Read selected choice before submit for diagnostic capture.
+    // Radio name pattern is "q-{item_id}"; value is the option identifier.
+    const radioName = await firstOption.getAttribute('name');
+    const radioValue = await firstOption.getAttribute('value');
     const submit = page.getByRole('button', { name: /submit answer/i });
     await submit.focus();
     // Register listener BEFORE triggering the action (Playwright best practice).
@@ -82,10 +86,21 @@ test('exam flow — keyboard-only signup → 5 responses → end → results', a
     );
     await page.keyboard.press('Enter');
     const respondResp = await respondPromise;
-    if (respondResp.status() >= 300) {
+    const status = respondResp.status();
+    if (status >= 300) {
+      const body = await respondResp.text().catch(() => '(failed to read body)');
+      const headers = respondResp.headers();
+      const payload = respondResp.request().postData() ?? '(no post body)';
       throw new Error(
-        `/respond returned HTTP ${respondResp.status()} on exam-flow loop iteration ${i} (item ${i + 1}). ` +
-          `Expected 2xx. Product bug — not a test-timing issue.`,
+        [
+          `[DIAG] /respond HTTP ${status} — iteration ${i}`,
+          `  radio name (q-{item_id}) : ${radioName ?? '(null)'}`,
+          `  radio value (option)     : ${radioValue ?? '(null)'}`,
+          `  request body             : ${payload}`,
+          `  status                   : ${status}`,
+          `  response body            : ${body}`,
+          `  response headers         : ${JSON.stringify(headers)}`,
+        ].join('\n'),
       );
     }
   }
