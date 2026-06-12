@@ -67,11 +67,29 @@ test('practice flow — signup → select pathway → 5 responses → end → re
   // stem text, not the literal word "question".
   await expect(page.locator('#practice-question-heading')).toBeVisible();
 
-  // ── 5. Answer 5 items ──────────────────────────────────────────────────
-  for (let i = 0; i < 5; i += 1) {
-    const firstOption = page.getByRole('radio').first();
-    if ((await firstOption.count()) === 0) break;
-    await firstOption.check();
+  // ── 5. Answer the first item with the KNOWN-CORRECT option and assert
+  //    positive feedback. Regression net for ISSUE-0090: the practice page
+  //    must submit `option_id` (not `choice`) or `computeCorrectness` reads
+  //    undefined and scores a correct answer as wrong. The seed's first option
+  //    is the correct one (correct_option_id matches the first option). The
+  //    `toBeVisible()` guard on the radio also catches the option-render gap:
+  //    if items render as "not supported" (no radios), this fails loudly
+  //    instead of silently skipping — the absence of BOTH checks let the bug
+  //    pass the 16/4/0 gate.
+  const firstOption = page.getByRole('radio').first();
+  await expect(firstOption).toBeVisible();
+  await firstOption.check();
+  await page.getByRole('button', { name: /submit answer/i }).click();
+  await expect(page.getByText(/^correct!$/i)).toBeVisible();
+  await page
+    .getByRole('button', { name: /next question|see results/i })
+    .click();
+
+  // ── 5b. Answer the remaining items to reach the end ────────────────────
+  for (let i = 1; i < 5; i += 1) {
+    const nextOption = page.getByRole('radio').first();
+    if ((await nextOption.count()) === 0) break;
+    await nextOption.check();
     await page.getByRole('button', { name: /submit answer/i }).click();
     const next = page.getByRole('button', { name: /next question|see results/i });
     await next.waitFor({ state: 'visible' });

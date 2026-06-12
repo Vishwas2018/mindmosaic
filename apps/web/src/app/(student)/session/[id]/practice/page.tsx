@@ -40,12 +40,42 @@ function readPlainText(rec: Record<string, unknown> | null | undefined): string 
   return ''
 }
 
-function readOptions(config: Record<string, unknown>): string[] {
+interface OptionChoice {
+  value: string
+  label: string
+}
+
+// Canonical MCQ option identity is the option STRING: manifest-format.md §3.2
+// defines `correct_option_id` as the exact option string, and scoring
+// (`computeCorrectness`) compares the submitted `option_id` to it. This
+// renderer is TOLERANT of two on-the-wire shapes — it does NOT introduce a
+// competing id-based contract:
+//   - string option              → { value: opt, label: opt }
+//   - object option { id, content } → { value: id, label: readPlainText(content) }
+// `value` is what we submit as response_data.option_id; for the canonical
+// string shape the value IS the string. (ISSUE-0090 — the object shape is the
+// E2E seed's form; Phase A's discriminated response_data union locks this.)
+function readOptions(config: Record<string, unknown>): OptionChoice[] {
   const options = config['options']
-  if (Array.isArray(options) && options.every((o) => typeof o === 'string')) {
-    return options as string[]
+  if (!Array.isArray(options)) return []
+  const out: OptionChoice[] = []
+  for (const o of options) {
+    if (typeof o === 'string') {
+      out.push({ value: o, label: o })
+    } else if (o !== null && typeof o === 'object') {
+      const rec = o as Record<string, unknown>
+      const id = rec['id']
+      if (typeof id === 'string') {
+        const content = rec['content']
+        const label =
+          content !== null && typeof content === 'object'
+            ? readPlainText(content as Record<string, unknown>)
+            : ''
+        out.push({ value: id, label: label !== '' ? label : id })
+      }
+    }
   }
-  return []
+  return out
 }
 
 function StemBlock({ item }: { item: ItemDTO }) {
@@ -89,7 +119,7 @@ function OptionsBlock({ item, selected, disabled, onSelect }: OptionsBlockProps)
   return (
     <div role="radiogroup" aria-labelledby="practice-question-heading" className="space-y-2">
       {options.map((option, idx) => {
-        const checked = selected === option
+        const checked = selected === option.value
         return (
           <label
             key={`${item.item_id}-${idx}`}
@@ -103,13 +133,13 @@ function OptionsBlock({ item, selected, disabled, onSelect }: OptionsBlockProps)
             <input
               type="radio"
               name={`q-${item.item_id}`}
-              value={option}
+              value={option.value}
               checked={checked}
               disabled={disabled}
-              onChange={() => onSelect(option)}
+              onChange={() => onSelect(option.value)}
               className="h-4 w-4 accent-[var(--primary)] focus-visible:outline-none focus-visible:shadow-focus"
             />
-            <span className="text-[var(--text)]">{option}</span>
+            <span className="text-[var(--text)]">{option.label}</span>
           </label>
         )
       })}
@@ -247,7 +277,7 @@ export default function PracticePage({
     recordResponse.mutate(
       {
         item_id: currentItem.item_id,
-        response_data: opts.skip ? {} : { choice: selected },
+        response_data: opts.skip ? {} : { option_id: selected },
         telemetry: {
           time_to_answer_ms: Math.max(0, now - itemStartRef.current),
           time_to_first_action_ms: Math.max(0, now - itemStartRef.current),
