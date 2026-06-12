@@ -240,7 +240,8 @@ export default function PracticePage({
   const toast = useToast()
 
   const sessionState = useSessionState(sessionId)
-  const recordResponse = useRecordResponse(sessionId)
+  const { updateLockToken: seedRespondLockToken, ...recordResponse } =
+    useRecordResponse(sessionId)
   const submitSession = useSubmitSession(sessionId)
 
   // Local working item — initialised from the session-state fetch, then
@@ -264,6 +265,18 @@ export default function PracticePage({
       itemStartRef.current = Date.now()
     }
   }, [sessionState.data, currentItem])
+
+  // ADR-0026: seed / re-seed the respond lock_token whenever session state
+  // arrives or refreshes. The exam page already does this (ISSUE-0090 sibling
+  // miss): without it the first /respond sends an unseeded X-Session-Lock and
+  // the server returns 409 LOCK_CONFLICT — surfacing as the version-conflict
+  // modal and no score. Practice respond was never E2E-exercised before the
+  // option-render fix, which is why this stayed hidden.
+  useEffect(() => {
+    if (sessionState.data) {
+      seedRespondLockToken(sessionState.data.lock_token)
+    }
+  }, [sessionState.data, seedRespondLockToken])
 
   useEffect(() => {
     if (whyOpen && whyHeadingRef.current !== null) {
