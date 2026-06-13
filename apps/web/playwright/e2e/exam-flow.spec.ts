@@ -71,24 +71,46 @@ test('exam flow — keyboard-only signup → 5 responses → end → results', a
     const firstOption = page.getByRole('radio').first();
     if ((await firstOption.count()) === 0) break;
     await firstOption.focus();
-    await page.keyboard.press('Space'); // selects radio
+    await page.keyboard.press('Space');
+    // Read selected choice before submit for diagnostic capture.
+    // Radio name pattern is "q-{item_id}"; value is the option identifier.
+    const radioName = await firstOption.getAttribute('name');
+    const radioValue = await firstOption.getAttribute('value');
     const submit = page.getByRole('button', { name: /submit answer/i });
     await submit.focus();
+    // Register listener BEFORE triggering the action (Playwright best practice).
+    // Non-2xx surfaces as a descriptive error — not a 60-second timeout.
+    const respondPromise = page.waitForResponse(
+      (resp) => resp.url().includes('/respond'),
+      { timeout: 10_000 },
+    );
     await page.keyboard.press('Enter');
-    // Wait for either the next question or the End-session affordance
-    // to settle before the next iteration.
-    await page.waitForTimeout(150);
+    const respondResp = await respondPromise;
+    const status = respondResp.status();
+    if (status >= 300) {
+      const body = await respondResp.text().catch(() => '(failed to read body)');
+      const headers = respondResp.headers();
+      const payload = respondResp.request().postData() ?? '(no post body)';
+      throw new Error(
+        [
+          `[DIAG] /respond HTTP ${status} — iteration ${i}`,
+          `  radio name (q-{item_id}) : ${radioName ?? '(null)'}`,
+          `  radio value (option)     : ${radioValue ?? '(null)'}`,
+          `  request body             : ${payload}`,
+          `  status                   : ${status}`,
+          `  response body            : ${body}`,
+          `  response headers         : ${JSON.stringify(headers)}`,
+        ].join('\n'),
+      );
+    }
   }
 
-  // ── 6. End session keyboard-only ─────────────────────────────────
-  const endBtn = page.getByRole('button', { name: /end session/i });
-  await endBtn.focus();
-  await page.keyboard.press('Enter');
-  // Submit-confirm dialog appears; primary "Submit" button focuses.
-  const confirm = page.getByRole('button', { name: /^submit$/i });
-  await confirm.waitFor({ state: 'visible' });
-  await confirm.focus();
-  await page.keyboard.press('Enter');
+  // Step 6 — after the 5th response, the engine signals termination
+  // and exam/page.tsx:260-272 auto-submits. We just wait for the
+  // navigation. The manual End-session early-exit path is a
+  // separate UX (early exit before all items answered) and is
+  // tracked for E2E coverage in ISSUE-0095.
+  await page.waitForURL(/\/results\/[^/]+$/, { timeout: 15_000 });
 
   // ── 7. /results/{id} ─────────────────────────────────────────────
   await page.waitForURL(/\/results\/[^/]+$/);

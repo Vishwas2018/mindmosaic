@@ -5,6 +5,166 @@
 
 ## Open
 
+### ISSUE-0091 — useRecordResponse reuses one idempotency key across all answers → 2nd+ answer fails 422 IDEMPOTENCY_MISMATCH
+
+- Status: resolved — 2026-06-12
+- Severity: high (beta-blocker: every multi-answer session silently loses all answers after the first)
+- Reported: 2026-06-12 (practice-flow E2E — line-95 failure root-cause analysis)
+- Area: backend (SDK) + frontend (latent in both practice and exam pages via shared hook)
+- Tags: idempotency · sdk · scoring · practice · exam · multi-answer · ISSUE-0090 · ISSUE-0088
+
+**Summary.** `useRecordResponse` (`packages/sdk/src/hooks/session.ts:118-119`) generates ONE `crypto.randomUUID()` per component mount via `useRef` and uses it as the `Idempotency-Key` header for **every** `/respond` call in that mount's lifetime. The idempotency middleware (`supabase/functions/_shared/idempotency.ts:130-137`) caches `(key, request_hash)` on the first successful respond. When a second item is answered, the same key arrives with a different body → `SHA-256(body_2) ≠ SHA-256(body_1)` → **422 IDEMPOTENCY_MISMATCH**. The practice page's `onError` handler treats 422 as a generic toast ("Could not save your answer") — no feedback panel, no score, silent data loss. The exam page uses the same hook and is equally affected; the exam E2E escaped only because no exam test ever sends two `/respond` calls from the same mount.
+
+**Root cause chain.** First answer registers key K1 with hash H1 (`status='completed'`). Second answer sends K1 with different `item_id`/`expected_version` → H2 ≠ H1 → 422. The 422 is not caught by the 409 or 410 branches in the practice/exam `onError` handlers → toast fires and auto-dismisses. Test evidence: snapshot captured at 60s timeout shows an empty `alert` container (toast already auto-dismissed) and the "Submit answer" button still present — confirming the server rejected the second respond and no feedback was rendered. Trace analysis found the second `/respond` at HTTP 422 was captured by the hardened `waitForResponse` test pattern introduced for ISSUE-0090.
+
+**Fix (SDK layer).** Inside `mutationFn`, derive the idempotency key per request from `${sessionId}:${request.item_id}:${request.expected_version}`. This is deterministic (true retries of the same answer with the same version reuse the same key — idempotency preserved) and unique per distinct answer (different `item_id` OR different `expected_version` → different key — no collision). Removes the per-mount `autoKey = useRef(crypto.randomUUID())`. The caller-supplied `options?.idempotencyKey` override path is retained for test harnesses and explicit retry orchestration.
+
+**Scope.** Both practice and exam pages inherit the fix from the shared SDK hook — no page-level changes required. All other hooks (`useCreateSession`, `useSubmitSession`, etc.) are unaffected: they either create new mutations once per mount (create/submit) or derive keys from different primitives.
+
+**Why hidden until now.** The same multi-answer blind spot diagnosed in ISSUE-0090: the practice E2E never submitted a second MCQ answer from the same mount (object-shaped options didn't render, so radios were absent and the test broke out of the loop). Once the tolerant renderer (ISSUE-0090 fix) made options selectable and the lock-token seed fix (ISSUE-0090 third bug) let the first answer succeed, the second answer hit 422 — unmasking this latent bug. Exam is similarly protected by the E2E never exercising multi-answer from one mount.
+
+**Second layer — LOCK_CONFLICT (409) after idempotency fix (CI run 27402070820).** After the 422 was fixed, CI returned a new 409 on item 2. Root cause: `useRecordResponse.onSuccess` called `qc.invalidateQueries(sessions.state)`, which triggered `GET /sessions/{id}/state` → `resumeSession` → `resumeSession` generates a fresh UUID and writes it as the new `lock_token` for **every call, including already-active sessions** (`handlers.ts:855-858`). This overwrote the T1 token issued by item 1's respond SDK rotation (`mutationFn.then`) with T2 **before** item 2's respond sent `X-Session-Lock: T1` → server compared T1 vs T2 → `LOCK_CONFLICT`. The hardened `waitForResponse` assertion surfaced this in ~10s instead of the previous 60-second timeout. Fix: remove `qc.invalidateQueries(sessions.state)` from `useRecordResponse.onSuccess`. The respond response already carries the rotated lock_token (consumed by `mutationFn.then`) and the updated version; the state refetch was redundant and is now absent. The longer architectural fix (making `resumeSession` read-only for active sessions) is left as a follow-up; for now the SDK simply avoids triggering it mid-session. Version-conflict recovery still works because the modal calls `sessionState.refetch()` explicitly.
+
+**Cross-ref.** ISSUE-0090 (same multi-answer blind spot, practice page layer); ISSUE-0088 (unrelated billing-svc 500 toast also visible in the same E2E snapshot — confirmed non-interfering via URL filter in the hardened `waitForResponse` assertion).
+
+**Resolution (2026-06-12 — R-BETA-MERGE-PREP).** Two-layer fix fully landed and CI-confirmed. Server-side architectural layer: commit `542d368` — `resumeSession` now skips `UPDATE` when session status is already `'active'`, making it idempotent for mid-session state fetches and eliminating the lock-token rotation race that `qc.invalidateQueries(sessions.state)` was triggering on every successful respond. SDK mitigation also bundled in `542d368`: `qc.invalidateQueries(sessions.state)` removed from `useRecordResponse.onSuccess`. SDK per-item idempotency layer: commit `43cfc52` — key derived from `${sessionId}:${item_id}:${expected_version}` per request in `mutationFn`. Audit confirmation that the LOCK_CONFLICT + IDEMPOTENCY_MISMATCH fix pattern is a singleton across all 12 Edge Function handlers: commit `a1d06c9`. E2E proof: CI run 27415500129 (SHA 7a2a7c0) — exam-flow test 8 (5 `/respond` calls, 27.2s) and practice-flow test 10 (adaptive loop, 26.7s) both green; all multi-item flows pass.
+
+---
+
+### ISSUE-0090 — practice page sends `choice` instead of `option_id` — all practice MCQ answers scored incorrect
+
+- Status: in-progress (three sibling-miss bugs fixed: option_id key + tolerant renderer + respond lock-token seed; awaiting CI E2E confirm)
+- Severity: high (correctness defect on a beta-scope surface — every correct practice answer marked wrong)
+- Reported: 2026-06-12 (question-type capability audit)
+- Area: frontend (apps/web practice page) + tests (E2E) + content fixtures
+- Tags: scoring · mcq · practice · e2e · ISSUE-0054 · ISSUE-0042
+
+**Summary.** `apps/web/src/app/(student)/session/[id]/practice/page.tsx:250` submitted `response_data: { choice: selected }`. The scoring function `computeCorrectness` (`supabase/functions/assessment-svc/handlers.ts:1088`) reads `responseData['option_id']`; with the `choice` key the lookup is `undefined` → `typeof !== 'string'` → returns `false`. **Every non-skipped practice MCQ answer is scored incorrect**, so `FeedbackPanel` always renders "Not quite." (`practice/page.tsx:142-143`). The exam sibling was fixed under ISSUE-0054 (`exam/page.tsx:284` uses `option_id`) but the **practice page was missed**.
+
+**Empirical proof (logic-level; full E2E not runnable locally — env vars absent + edge runtime Norton-blocked, ISSUE-0075).** Replicating both pure predicates: production string-option item, correct answer → `computeCorrectness` returns `false` with `{choice}`, `true` with `{option_id}`; wrong answer → `false`. Confirms the bug and the fix.
+
+**Fix applied.** `practice/page.tsx:250` → `{ option_id: selected }` (key rename only; skip branch unchanged). Grep confirms no other `response_data` sender used `choice` (exam already correct).
+
+**Enabling gap (ISSUE-0042).** `RecordResponseRequestSchema.response_data` is `z.record(z.string(), z.unknown())` (`packages/types/src/session.ts:100`) — free-form, so `{choice}` passed Zod silently; the MCQ contract is enforced only at scoring time. Phase A's typed/discriminated `response_data` contract closes this class.
+
+**Why the 16/4/0 gate missed it (two compounding gaps).**
+1. **No correctness-feedback assertion** — `practice-flow.spec.ts` answered via `getByRole('radio').first()` and never asserted "Correct!"; a correct-then-positive-feedback check was absent. Added now (`practice-flow.spec.ts` step 5).
+2. **Option-shape mismatch — the deeper blocker.** The E2E seed emits **object-shaped** options (`scripts/seed-e2e.ts:291-298`: `options:[{id,content}]`, `correct_option_id:'a'`), but the page's `readOptions` (`practice/page.tsx:43-49`, `exam/page.tsx:64-70`) accepts **string** options only → `readOptions` returns `[]` → **zero radios render** → all three UI specs (exam/practice/results) hit `count()===0` and break **without ever selecting an MCQ option**. So the UI MCQ path was exercised by no E2E; only `session-flow.spec.ts:101` tested scoring, via direct API with `{option_id:'a'}` (bypassing the UI). The new `practice-flow.spec.ts` step 5 adds a `toBeVisible()` radio guard (catches the render gap) + a "Correct!" assertion (catches the `choice` bug); with the tolerant renderer (resolution below) the seed's object options now render, so these should go **green in CI** — pending the CI/local E2E run (not runnable on this machine, ISSUE-0075).
+
+**Three-way option-identity contradiction (root of the hidden bug).** The MCQ option identity was specified three incompatible ways:
+- `manifest-format.md §3.2:83-86` — options are `string[]`; `correct_option_id` is the exact option **string** (**canonical**).
+- `scripts/seed-e2e.ts:291-298` + `session-flow.spec.ts:101` + scoring — **id-based** (object options `{id,content}`, `option_id:'a'` vs `correct_option_id:'a'`).
+- page `readOptions` (`exam`/`practice`) — **string-only**; could not render the object shape at all.
+
+Because the seed used the object shape and the pages accepted only strings, the MCQ options never rendered as radios, so the **MCQ UI path was never E2E-exercised** — which is the deeper root cause that let the `choice`/`option_id` bug ship through the 16/4/0 gate undetected.
+
+**Resolution — Option (B): string contract stays canonical, renderer made tolerant.** The production option identity remains the option **string** (`manifest-format.md §3.2`); scoring compares the submitted value to `correct_option_id`, and for string options the value **is** the string. `readOptions` in both `exam/page.tsx` and `practice/page.tsx` now normalises each option to `{ value, label }`: string → `{value:opt,label:opt}`; object `{id,content}` → `{value:id,label:readPlainText(content)}`. The rendered `value` is submitted as `response_data.option_id`. This is **tolerance, not a competing id-based contract** — it lets the page render both the canonical production string shape and the E2E seed's object shape without changing the canonical identity. The principle is written into the code comments on both `readOptions` definitions. **Phase A's discriminated `response_data` union will lock the contract** and retire the tolerance. (Seed/`session-flow.spec.ts:101` left as-is — id-based `option_id:'a'` still resolves correctly through the tolerant renderer.)
+
+**Third compounding bug — respond lock-token not seeded (unmasked by the render fix).** Once the tolerant renderer made the practice MCQ options selectable, the practice E2E submitted a response for the first time ever — and the new "Correct!" assertion failed because the submit returned **409**. CI run 27394112124 (after esm.sh recovered) confirmed: radios render and "Option A" is checked (render fix works), but the page shows the "Your session was updated" conflict modal instead of feedback. Root cause: `useRecordResponse` requires `updateLockToken(token)` to be seeded after session load (ADR-0026, `packages/sdk/src/hooks/session.ts:113-143`); the **exam page seeds it** (`exam/page.tsx`) but the **practice page never called it** → first `/respond` sent an unseeded `X-Session-Lock` → `409 LOCK_CONFLICT`. This is the **same "practice missed what exam does" pattern** as the original `choice`/`option_id` miss, and it stayed hidden because the practice respond path was never E2E-exercised (object options → no radios → never submitted). **Fix:** seed `seedRespondLockToken(sessionState.data.lock_token)` in a `useEffect` on the practice page, mirroring exam. So three sibling-misses compounded — render shape, response key, lock-token seed — all hidden behind the un-rendered options.
+
+**Related.** ISSUE-0054 (exam-side `option_id` fix this missed), ISSUE-0042 (free-form `response_data` schema — enabling gap, Phase A closes), ISSUE-0075 (why local E2E can't run + the esm.sh 522 deploy outage seen on this push), ADR-0026 (lock-token rotation), `manifest-format.md §3.2`, `session-flow.spec.ts:101`.
+
+---
+
+### ISSUE-0089 — feature-flag key divergence: base seed enables `naplan_y5`, pathway requires `pathway_naplan_y5`
+
+- Status: resolved — 2026-06-12 (R-FIX-EXHAUSTION — [this commit SHA])
+- Severity: medium (beta-launch blocker — NOT a merge blocker; current state is correctly gated)
+- Reported: 2026-06-11 (post-merge main verification — PR #1 / merge commit b6e58f5)
+- Area: infra (supabase/seeds + content pathway feature gating)
+- Tags: launch · feature-flag · content
+
+**Resolution.** E2E framework_config extended from 1 stage / 2 items to 1 stage / 5 active items in `scripts/seed-e2e.ts`. `ITEM_LIFECYCLES` extended with items #11–#13 (all `active`); both `item_ids` arrays in `seedFrameworkConfig()` updated to include `itemId(9)` through `itemId(13)`. With 5 slots in the s1 stage the exam-flow E2E can now complete 5 `recordResponse` calls without triggering Path B exhaustion. The feature-flag key divergence documented in the original summary remains a launch-runbook item (insert `pathway_naplan_y5` row) — that pre-existing divergence is tracked separately and not changed by this fix.
+
+**Summary.** The `au_numeracy_y5` pathway's `required_feature_key` is `pathway_naplan_y5` (`scripts/seed-e2e.ts:184`), but the production base seed enables a different key — `naplan_y5`, tenant-scoped to one seed tenant (`supabase/seeds/05_feature_flags.sql:12`). The two keys do not match, so the base seed's flag is **dead for this pathway**. The only thing that unlocks the pathway today is the E2E-only platform-wide `admin_override` row (`scripts/seed-e2e.ts:270-280`), which inserts `feature_key: 'pathway_naplan_y5'` / `tenant_id: null` / `enabled: true` and never runs in production.
+
+**Net effect.** The pathway is **correctly gated right now** — `checkFeatureFlag` denies by default when no matching flag row exists (`supabase/functions/_shared/feature-gate.ts:74-78`: tenant row → platform-NULL row → else `enabled = false`). But at beta launch, enabling "the seed flag" (`naplan_y5`) will NOT unlock the pathway. This is a latent launch trap: the obvious action fails silently with a 402 `FEATURE_GATED`.
+
+**Required at launch (both, in the launch runbook).**
+1. Insert a correctly-keyed `pathway_naplan_y5` feature_flag — either platform-NULL (all tenants) or per-beta-tenant — with `enabled: true`.
+2. Activate content (the Option-A deferred "content activation" item — the 16/4/0 E2E gate ran on the 2-item E2E seed, not prod content).
+3. Verify the gate flips by hitting `POST /sessions/create` and expecting a non-402 response.
+
+**Cross-ref.** `supabase/functions/_shared/feature-gate.ts:74-78` (deny-by-default resolution); `scripts/seed-e2e.ts:184` (pathway required key), `scripts/seed-e2e.ts:270-280` (E2E platform-wide override); `supabase/seeds/05_feature_flags.sql:12` (base seed `naplan_y5`); Option-A deferred "content activation" item (PR #1 body).
+
+---
+
+### ISSUE-0094 — typed engine errors: replace string-match exhaustion guard with `instanceof SessionExhaustedError`
+
+- Status: open
+- Severity: low (tech debt)
+- Reported: 2026-06-12 (R-FIX-EXHAUSTION)
+- Area: backend (packages/engines + supabase/functions/assessment-svc/handlers.ts)
+- Tags: engines · error-handling · tech-debt
+
+**Summary.** Engine exhaustion handling in `supabase/functions/assessment-svc/handlers.ts` uses string-match on the error message (`'is already exhausted'`) to identify exhaustion throws from `AdaptiveEngine.recordResponse`. Refactor to throw a typed `SessionExhaustedError` from the engines package, and check via `instanceof` in the handler. Bounded but brittle in current form.
+
+**Fix.** (1) Define and export `SessionExhaustedError extends Error` from `packages/engines/src/`. (2) Replace `throw new Error(...)` in `adaptive.ts:267` with `throw new SessionExhaustedError(...)`. (3) Replace the `message.includes('is already exhausted')` guard in `handlers.ts` with `engineErr instanceof SessionExhaustedError`.
+
+Related: `supabase/functions/assessment-svc/handlers.ts` (ISSUE-0089 catch block), `packages/engines/src/adaptive.ts:267`
+
+---
+
+### ISSUE-0093 — practice-flow exhaustion paradox: 5 successful `recordResponse` calls against a 2-item stage unexplained
+
+- Status: resolved — 2026-06-12
+- Severity: medium (defensive — not blocking family beta)
+- Reported: 2026-06-12 (R-FIX-EXHAUSTION)
+- Area: backend (engines + practice session flow)
+- Tags: engines · practice · e2e · diagnostic
+
+**Summary.** With ISSUE-0091 resolved (per-item idempotency keys) and both modes confirmed using `AdaptiveEngine` via `pathway.engine_type`, the practice-flow E2E makes 5 successful `recordResponse` calls against a framework_config where s1 has only 2 items. This should have triggered Path B exhaustion on the 3rd call. The ISSUE-0089 seed fix (s1 now has 5 items) masks the symptom — exhaustion no longer fires — but the root cause is unconfirmed: either practice-flow makes fewer than 5 distinct engine calls (item replay / SDK caching), or there is a code path that bypasses the engine for practice mode that the investigation did not surface.
+
+**Fix (before public launch).** Instrument the assessment-svc `/respond` handler to log `current_item_index` and `items.length` for each call in a staging run. Confirm whether all 5 calls advance the index sequentially (expected) or some replay item 1 (unexpected). If replay, trace to SDK cache or idempotency key reuse in the practice page.
+
+**Resolution (2026-06-12 — R-FIX-END-SESSION).** Resolved per R-DIAG-PRACTICE-PARADOX investigation. The "paradox" did not exist. practice-flow.spec.ts uses an adaptive loop (`for i = 1; i < 20 && !reachedResults; i += 1`, line 104) with a break on the "See results" terminal indicator (line 139). Against the pre-fix 2-item seed it made exactly 2 /respond calls (one in step 5, one in step 5b iteration i=1) and exited cleanly. The test title "5 responses" was aspirational; the comment at practice-flow.spec.ts:89-91 explicitly documents the adaptive behaviour. exam-flow's hardcoded `for i = 0; i < 5` is what exposed the engine exhaustion. No hidden code path, no bypass, no pre-public-launch concern.
+
+Related: ISSUE-0091 (idempotency key fix), ISSUE-0089 (seed fix that masks symptom), `packages/engines/src/adaptive.ts:265-270`
+
+---
+
+### ISSUE-0095 — Manual End-session early-exit path uncovered by E2E
+
+- Status: open
+- Severity: low (test coverage gap, not a product bug)
+- Reported: 2026-06-12 (R-FIX-END-SESSION)
+- Area: tests (apps/web/playwright/e2e/exam-flow.spec.ts)
+- Tags: e2e · exam · early-exit · test-coverage
+
+**Summary.** The exam page's End-session + confirm-dialog flow (`exam/page.tsx:584-615`) is the manual early-exit UX for users who stop before answering all items. The previous exam-flow.spec.ts step 6 attempted to exercise this path but ran it against the all-items-completed state, where `submitSession.isPending` disables the End session button — the test was timing out, not testing. No E2E currently exercises the actual early-exit flow (e.g. answer 2 of 5 items, then click End session, then confirm Submit). Should be added as a separate test case before public launch; not blocking family beta.
+
+Related: `apps/web/src/app/(student)/session/[id]/exam/page.tsx:584-615`, `apps/web/playwright/e2e/exam-flow.spec.ts`
+
+---
+
+### ISSUE-0096 — supabase/setup-cli@v1 Node.js 20 deprecation warning in CI
+
+- Status: open
+- Severity: low (CI maintenance)
+- Reported: 2026-06-12 (R-BETA-MERGE-PREP)
+- Area: infra (CI — .github/workflows/ci.yml)
+- Tags: ci · github-actions · node · supabase-cli
+
+**Summary.** GitHub Actions surfaces a deprecation annotation on every CI run for `supabase/setup-cli@v1` (Node.js 20 deprecation). Not a failure today, but will become a hard CI break when the runner drops Node.js 20 support — forced Node.js 24 default starts 2026-06-16; Node.js 20 removed from runners 2026-09-16 per GitHub changelog. The action is used at `.github/workflows/ci.yml:71` (Migration Dry-Run job) and `.github/workflows/ci.yml:93` (Deploy Edge Functions job). Bump to a newer action version when available; the action's upstream repo (`supabase/setup-cli`) is the authoritative source for the upgrade path.
+
+Related: `.github/workflows/ci.yml:71,93`
+
+---
+
+### ISSUE-0092 — E2E_TEST_PATHWAY_ID half-wired: declared as skip guard but value discarded in three specs
+
+- Status: open
+- Severity: low (no blocking impact on family beta)
+- Reported: 2026-06-12 (R-FIX-EXHAUSTION)
+- Area: tests (apps/web/playwright/e2e/)
+- Tags: e2e · env-var · pathway
+
+**Summary.** `E2E_TEST_PATHWAY_ID` is declared as a module-level skip guard in `exam-flow.spec.ts:29`, `practice-flow.spec.ts:30`, and `results-flow.spec.ts:31` but its value is discarded — the pathway is selected by clicking the first UI button. `session-flow.spec.ts` uses it correctly (lines 38, 71) by passing it to the session-creation API. Either wire the env var to constrain UI selection in the three affected specs (e.g. filter pathway tiles by `data-pathway-id`), or remove the guard and document the single-pathway assumption explicitly.
+
+Related: `apps/web/playwright/e2e/exam-flow.spec.ts:29`, `practice-flow.spec.ts:30`, `results-flow.spec.ts:31`, `session-flow.spec.ts:38,71`
+
+---
+
 ### ISSUE-0088 — billing-svc GET /billing/subscription returns 500 (×4 background failures in results-flow E2E run)
 
 - Status: open

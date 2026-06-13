@@ -2,6 +2,54 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## v1.1 ISSUE-0090/0091 debugging arc + family beta merge gate met — 2026-06-12
+
+**Planned (from 2026-06-11 note):** Post-merge backlog — Cluster B / mocked-supabase sweep. Actual: CI gate exposed multi-answer bugs blocking exam+practice flows; full debug arc executed before merge was viable.
+
+**Actually delivered:**
+
+- R-FIX-CORS (`21dd804`, landed 2026-05-28 — unlogged until now): CORS consolidated into `_shared/cors.ts`; `X-Client-Version` allowed; headers aligned across all 12 services. First link in the unblocking chain.
+- ISSUE-0090 — three sibling misses, each fix exposing the next: (a) MCQ `option_id` key fix + tolerant object/string renderer (`464ca2b`); (b) practice lock_token seed on mount (`82a24de`); (c) docs (`aeebb50`, `84548e0`).
+- ISSUE-0091 SDK layer: per-item idempotency key derived from `${sessionId}:${item_id}:${expected_version}` in `mutationFn`; per-mount `autoKey useRef` dropped (`43cfc52`).
+- R-FIX-LOCK-V2: `resumeSession` skips `UPDATE` when session already `'active'`; `qc.invalidateQueries(sessions.state)` dropped from `onSuccess` — eliminates lock-token rotation race (`542d368`).
+- R-AUDIT-VALIDATE: handler audit re-validated with explicit grep evidence — LOCK_CONFLICT + IDEMPOTENCY_MISMATCH fix is a singleton across all 12 handlers (`a1d06c9`).
+- R-DIAG-500: exam-flow instrumented with `waitForResponse` + structured throw — non-2xx surfaces in ~10s instead of 60s timeout (`4fce1ca`).
+- R-FIX-EXHAUSTION: AdaptiveEngine exhaustion → structured 422 `SESSION_EXHAUSTED`; E2E seed extended from 2 to 5 active items in s1; ISSUE-0089 closed (`cc63c36`).
+- R-FIX-END-SESSION: exam-flow step 6 → `waitForURL(/\/results\/[^/]+$/, { timeout: 15_000 })` mirroring practice-flow:154; ISSUE-0093 closed; ISSUE-0095 filed (`7a2a7c0`).
+- CI run 27415500129 (SHA 7a2a7c0): all 6 jobs green; 16/18 in-scope E2E specs passed (2 skipped with ISSUE refs). **Family beta merge gate met.**
+
+**Time spent:** ~8h
+
+**Surprises / departures:**
+
+- Classic onion-peel: CORS → MCQ render → option_id → lock_token seed → idempotency 422 → lock-conflict 409 (resumeSession race) → engine exhaustion → auto-redirect. Each layer empirically validated by CI before the next was diagnosed. The R-FIX-LOCK-V2 "architectural fix" was simple enough to ship alongside the SDK mitigation rather than defer.
+
+**Decisions made (not in stage):**
+
+- none
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0090: closed (464ca2b + 82a24de — option_id + renderer + lock_token seed; CI 27415500129 confirmed).
+- ISSUE-0091: closed (43cfc52 SDK + 542d368 architectural; CI 27415500129 confirmed).
+- ISSUE-0089: closed (cc63c36 — 5-item seed + SESSION_EXHAUSTED 422).
+- ISSUE-0093: closed (resolved per R-DIAG-PRACTICE-PARADOX — adaptive loop, not hardcoded 5).
+- ISSUE-0095: filed (manual End-session early-exit E2E coverage gap; low, v1.1.1).
+- ISSUE-0096: filed (supabase/setup-cli@v1 Node.js 20 deprecation; low, CI maintenance).
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ · Tests ✅ (CI 16/18 E2E; web vitest 148/149) · Build ❌ (ISSUE-0067 local TLS, unchanged) · RLS ✅
+
+**Tomorrow — first thing:**
+Merge v1.1/exam-content → main (family beta); open GitHub PR; tag merge commit `v1.1-beta-rc1`.
+
+---
+
 ## v1.1 in-scope E2E gate — CLOSED (Option-A thin merge) — 2026-06-11
 
 **Planned:** Close the v1.1 in-scope family-beta E2E gate; resolve the ISSUE-0043 concurrent-submit residual; strip diagnostic instrumentation; docs ritual.
