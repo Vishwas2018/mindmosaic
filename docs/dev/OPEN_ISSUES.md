@@ -151,6 +151,33 @@ Related: `.github/workflows/ci.yml:71,93`
 
 ---
 
+### ISSUE-0097 — Strand-level skill tagging for Y5 Numeracy items
+
+- Status: open
+- Severity: low (technical debt; not blocking family beta)
+- Reported: 2026-06-13 (R-CONTENT-TRANSLATOR-V2-RERUN)
+- Area: content, skill graph
+- Tags: content · skill-graph · adaptive-routing
+
+**Summary.** 50 of the 132 Y5 Numeracy items imported via the Fable translator are tagged at strand-level skill nodes rather than leaf-level, because the current skill graph has no leaves for Patterns & Algebra (codes ALG.PAT, ALG.PAT5I — 20 items) or Measurement (codes MEAS.LEN, MEAS.TIME, MEAS.MEAS5I — 30 items). Strand tagging is functionally correct but coarser than ideal for adaptive routing and skill mastery tracking.
+
+Affected items identifiable via:
+```sql
+SELECT id FROM item WHERE skill_ids && ARRAY[
+  'a0000001-0000-0000-0000-000000000002'::uuid,
+  'a0000001-0000-0000-0000-000000000003'::uuid
+]::uuid[]
+AND source_item_id LIKE 'fable-%';
+```
+
+**Resolution path:**
+1. Add leaf skill nodes for Patterns & Algebra (under strand 002), Length, Time, and Measurement (under strand 003). Approach TBD — direct INSERT into existing published graph_version vs new graph_version with `publish_skill_graph()`.
+2. UPDATE `item.skill_ids` for affected items.
+
+Blocked by: none. Blocking: none (family beta not blocked; affects adaptive routing granularity only).
+
+---
+
 ### ISSUE-0092 — E2E_TEST_PATHWAY_ID half-wired: declared as skip guard but value discarded in three specs
 
 - Status: open

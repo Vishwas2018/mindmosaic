@@ -1,0 +1,1189 @@
+{
+  "manifest_version": "1.0",
+  "items": [
+    {
+      "external_key": "fable:7bc1fe5b-0000-4163-8855-1b84ed7c99e8",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A concert starts at 7:15 pm and lasts 1 hour 50 minutes. When does it end?"
+        },
+        "response_config": {
+          "options": [
+            "8:05 pm",
+            "9:25 pm",
+            "8:55 pm",
+            "9:05 pm"
+          ],
+          "correct_option_id": "9:05 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7bc8d69f-0000-4b26-8a5b-ee80412cd61a",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 30, 25, 20, 15, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "10",
+            "8",
+            "12",
+            "15"
+          ],
+          "correct_option_id": "10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7bd20749-0000-4480-8e03-224b0669cb0e",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 3501 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "4000",
+            "3000",
+            "5000",
+            "3900"
+          ],
+          "correct_option_id": "4000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7bd31c5f-0000-4f55-8ced-8b185f748bc0",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bus journey began at 11:50 am and ended at 2:15 pm. How long was the journey?"
+        },
+        "response_config": {
+          "options": [
+            "2 hours 25 minutes",
+            "2 hours 35 minutes",
+            "3 hours 25 minutes",
+            "2 hours 15 minutes"
+          ],
+          "correct_option_id": "2 hours 25 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7be67ff8-0000-46f7-8997-b3d47ba73db9",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 2/12 + 6/12?"
+        },
+        "response_config": {
+          "options": [
+            "8/12 (or 2/3)",
+            "8/24",
+            "12/12",
+            "4/12"
+          ],
+          "correct_option_id": "8/12 (or 2/3)",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7bf6516d-0000-409b-8416-b7627b30ed6a",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 9472 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "9000",
+            "8000",
+            "10000",
+            "8900"
+          ],
+          "correct_option_id": "9000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7c2f6265-0000-4036-8d7b-d3e101774ea8",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 2/7 + 3/7?"
+        },
+        "response_config": {
+          "options": [
+            "5/7",
+            "5/14",
+            "6/7",
+            "6/14"
+          ],
+          "correct_option_id": "5/7",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7c37e72d-0000-4cb5-884a-70312d731b05",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 100, 90, 80, 70, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "58",
+            "62",
+            "60",
+            "65"
+          ],
+          "correct_option_id": "60",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7c451f7c-0000-486b-8d37-c94126fc8301",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 50, 45, 40, 35, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "30",
+            "28",
+            "32",
+            "35"
+          ],
+          "correct_option_id": "30",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7c6f967e-0000-48a2-8cd2-0c8618ed11be",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 70, 63, 56, 49, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "42",
+            "40",
+            "44",
+            "47"
+          ],
+          "correct_option_id": "42",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7ca3fafa-0000-4935-84bf-8cb0af69916c",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A film starts at 6:40 pm and lasts 2 hours 15 minutes. When does it finish?"
+        },
+        "response_config": {
+          "options": [
+            "8:55 pm",
+            "8:45 pm",
+            "9:05 pm",
+            "8:25 pm"
+          ],
+          "correct_option_id": "8:55 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7ca91a94-0000-47b3-85f7-28fc7ebd9641",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 4567 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "5000",
+            "4000",
+            "6000",
+            "4900"
+          ],
+          "correct_option_id": "5000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7ce95143-0000-4f36-896e-f02a2a2b12b5",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring the length of a pencil?"
+        },
+        "response_config": {
+          "options": [
+            "Centimetres",
+            "Kilometres",
+            "Metres",
+            "Litres"
+          ],
+          "correct_option_id": "Centimetres",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7d02d113-0000-4161-8a34-1f5dd42b2ebe",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A concert started at 11:35 am and ended at 2:50 pm. How long was the concert?"
+        },
+        "response_config": {
+          "options": [
+            "3 hours 25 minutes",
+            "3 hours 15 minutes",
+            "2 hours 15 minutes",
+            "3 hours 5 minutes"
+          ],
+          "correct_option_id": "3 hours 15 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7d57143d-0000-4aa6-8159-c48f3a2f2e70",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 15800 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "16000",
+            "15000",
+            "17000",
+            "15900"
+          ],
+          "correct_option_id": "16000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7d9108bd-0000-4220-8ff2-857c296c6e85",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 3, 6, 12, 24, …"
+        },
+        "response_config": {
+          "options": [
+            "Double the previous number",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Double the previous number",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7e061918-0000-4c0f-820a-3afb4e015f05",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 1/5?"
+        },
+        "response_config": {
+          "options": [
+            "2/10",
+            "1/10",
+            "5/1",
+            "3/5"
+          ],
+          "correct_option_id": "2/10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7e4f70af-0000-4548-876a-8aa4888ad134",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 80, 72, 64, 56, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "48",
+            "46",
+            "50",
+            "53"
+          ],
+          "correct_option_id": "48",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7e77303e-0000-47d1-82f8-cb645f446cde",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "An exam began at 9:05 am and finished at 11:50 am. How long was the exam?"
+        },
+        "response_config": {
+          "options": [
+            "2 hours 45 minutes",
+            "2 hours 55 minutes",
+            "2 hours 35 minutes",
+            "3 hours 45 minutes"
+          ],
+          "correct_option_id": "2 hours 45 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7e79427b-0000-4584-8cd7-52e464cc45b8",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "5689",
+            "5698",
+            "5896",
+            "5869"
+          ],
+          "correct_option_id": "5896",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7eb70a95-0000-4921-83ba-3b7c151aba27",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 27, 24, 21, 18, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "15",
+            "13",
+            "17",
+            "20"
+          ],
+          "correct_option_id": "15",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7ec0dd73-0000-43c1-805b-29df89cff3f0",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring how much water is in a cup?"
+        },
+        "response_config": {
+          "options": [
+            "Litres",
+            "Millilitres",
+            "Grams",
+            "Centimetres"
+          ],
+          "correct_option_id": "Millilitres",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7ecbc7ac-0000-461a-867f-38f0bdd1318e",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A meeting started at 10:45 am and ended at 1:20 pm. How long was the meeting?"
+        },
+        "response_config": {
+          "options": [
+            "2 hours 25 minutes",
+            "2 hours 35 minutes",
+            "3 hours 35 minutes",
+            "2 hours 45 minutes"
+          ],
+          "correct_option_id": "2 hours 35 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7ed91097-0000-4bca-8cb2-f6453ae320c4",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 2/9 + 5/9?"
+        },
+        "response_config": {
+          "options": [
+            "7/9",
+            "7/18",
+            "10/9",
+            "3/9"
+          ],
+          "correct_option_id": "7/9",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7f2762a1-0000-4cb5-8d5a-ab5d7093af07",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 1/4 or 1/2?"
+        },
+        "response_config": {
+          "options": [
+            "1/2",
+            "1/4",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "1/2",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7f357361-0000-41dc-8f31-6917bf5ac8f1",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A class begins at 8:25 am and runs for 55 minutes. When does it end?"
+        },
+        "response_config": {
+          "options": [
+            "9:20 am",
+            "9:10 am",
+            "9:25 am",
+            "9:00 am"
+          ],
+          "correct_option_id": "9:20 am",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7fb65363-0000-443b-86c0-c7437dddc93d",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A flight departed at 8:55 am and landed at 1:10 pm. How long was the flight?"
+        },
+        "response_config": {
+          "options": [
+            "4 hours 15 minutes",
+            "4 hours 5 minutes",
+            "3 hours 15 minutes",
+            "4 hours 25 minutes"
+          ],
+          "correct_option_id": "4 hours 15 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7fb6647f-0000-4aa4-89b7-4bd5c2c25790",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "8273",
+            "8237",
+            "8732",
+            "8723"
+          ],
+          "correct_option_id": "8732",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7fc02891-0000-49f2-8921-a19f4d66bde7",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 8234 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "8000",
+            "7000",
+            "9000",
+            "7900"
+          ],
+          "correct_option_id": "8000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7fc409f8-0000-4bd2-87aa-0db856f7417f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 3/4?"
+        },
+        "response_config": {
+          "options": [
+            "6/8",
+            "4/6",
+            "9/16",
+            "3/8"
+          ],
+          "correct_option_id": "6/8",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7fc65d5c-0000-4f53-8f19-bfda7f251a3a",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 7 in 47 250?"
+        },
+        "response_config": {
+          "options": [
+            "7000",
+            "700",
+            "70000",
+            "7"
+          ],
+          "correct_option_id": "7000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7ff3194a-0000-4b55-83c1-384ed61d5025",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 3/4 or 1/2?"
+        },
+        "response_config": {
+          "options": [
+            "1/2",
+            "They are equal",
+            "Cannot say",
+            "3/4"
+          ],
+          "correct_option_id": "3/4",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    }
+  ]
+}

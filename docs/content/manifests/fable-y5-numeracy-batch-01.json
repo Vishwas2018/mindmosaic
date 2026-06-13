@@ -1,0 +1,3705 @@
+{
+  "manifest_version": "1.0",
+  "items": [
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000101",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 7 in 47 250?"
+        },
+        "response_config": {
+          "options": [
+            "700",
+            "7 000",
+            "70 000",
+            "7"
+          ],
+          "correct_option_id": "7 000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000102",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 3/4?"
+        },
+        "response_config": {
+          "options": [
+            "4/6",
+            "6/8",
+            "9/16",
+            "3/8"
+          ],
+          "correct_option_id": "6/8",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000104",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A movie starts at 2:45 pm and runs for 1 hour 30 minutes. When does it finish?"
+        },
+        "response_config": {
+          "options": [
+            "3:15 pm",
+            "4:05 pm",
+            "4:15 pm",
+            "4:45 pm"
+          ],
+          "correct_option_id": "4:15 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000105",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bag holds 3 red, 2 blue and 5 green marbles. One marble is picked without looking. Which colour is most likely?"
+        },
+        "response_config": {
+          "options": [
+            "Red",
+            "Blue",
+            "Green",
+            "All equally likely"
+          ],
+          "correct_option_id": "Green",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000201",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "4 089",
+            "4 098",
+            "4 809",
+            "4 808"
+          ],
+          "correct_option_id": "4 809",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000203",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring the length of a pencil?"
+        },
+        "response_config": {
+          "options": [
+            "Kilometres",
+            "Metres",
+            "Centimetres",
+            "Litres"
+          ],
+          "correct_option_id": "Centimetres",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000205",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 30, 25, 20, 15, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "5",
+            "10",
+            "12",
+            "14"
+          ],
+          "correct_option_id": "10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000301",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 38 462 to the nearest thousand."
+        },
+        "response_config": {
+          "options": [
+            "38 000",
+            "38 500",
+            "39 000",
+            "40 000"
+          ],
+          "correct_option_id": "38 000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000302",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which decimal is equal to 3/5?"
+        },
+        "response_config": {
+          "options": [
+            "0.35",
+            "0.6",
+            "0.53",
+            "0.65"
+          ],
+          "correct_option_id": "0.6",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000304",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A spinner has 8 equal sections: 4 yellow, 2 purple and 2 white. What is the chance the spinner lands on purple?"
+        },
+        "response_config": {
+          "options": [
+            "1/8",
+            "1/4",
+            "1/2",
+            "2/6"
+          ],
+          "correct_option_id": "1/4",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000401",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is the smallest?"
+        },
+        "response_config": {
+          "options": [
+            "1/2",
+            "1/3",
+            "1/4",
+            "1/5"
+          ],
+          "correct_option_id": "1/5",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000403",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A train leaves at 9:50 am and arrives at 10:35 am. How long is the trip?"
+        },
+        "response_config": {
+          "options": [
+            "35 minutes",
+            "45 minutes",
+            "55 minutes",
+            "85 minutes"
+          ],
+          "correct_option_id": "45 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000404",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A fair coin is flipped once. What is the chance it lands on heads?"
+        },
+        "response_config": {
+          "options": [
+            "1 in 4",
+            "1 in 3",
+            "1 in 2",
+            "Certain"
+          ],
+          "correct_option_id": "1 in 2",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000503",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 2, 4, 8, 16, … What is the 7th number in the pattern?"
+        },
+        "response_config": {
+          "options": [
+            "64",
+            "96",
+            "128",
+            "256"
+          ],
+          "correct_option_id": "128",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:5b111111-0000-4000-8000-000000000504",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Ten cards are numbered 1 to 10. One card is drawn without looking. What is the chance it shows a number greater than 7?"
+        },
+        "response_config": {
+          "options": [
+            "3/10",
+            "7/10",
+            "1/3",
+            "1/10"
+          ],
+          "correct_option_id": "3/10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7001790f-0000-471f-8452-10b540b208f4",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bag holds 3 red, 2 blue and 5 green marbles. One marble is picked without looking. Which colour is most likely?"
+        },
+        "response_config": {
+          "options": [
+            "Green",
+            "Red",
+            "Blue",
+            "All equally likely"
+          ],
+          "correct_option_id": "Green",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:702bca62-0000-4294-8b24-7791901032b8",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 4/5?"
+        },
+        "response_config": {
+          "options": [
+            "8/10",
+            "4/10",
+            "5/4",
+            "8/5"
+          ],
+          "correct_option_id": "8/10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:705cbb1f-0000-4473-8102-e688782da83f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "2751",
+            "2517",
+            "2571",
+            "2715"
+          ],
+          "correct_option_id": "2751",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:70735f5e-0000-4b6b-8a5c-ff1eefc9e0be",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 1/10 or 1/5?"
+        },
+        "response_config": {
+          "options": [
+            "1/5",
+            "1/10",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "1/5",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:707db81b-0000-463f-8a37-0bbd97205cde",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bag has 3 green and 3 red marbles. Picking green is..."
+        },
+        "response_config": {
+          "options": [
+            "Equally likely as red",
+            "More likely than red",
+            "Less likely than red",
+            "Impossible"
+          ],
+          "correct_option_id": "Equally likely as red",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7088d385-0000-44dc-87d9-e200e3f45b93",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 3, 9, 27, 81, …"
+        },
+        "response_config": {
+          "options": [
+            "Multiply by 3",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Multiply by 3",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:70c0bf77-0000-41f2-8135-2f1c85e9c750",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "3180",
+            "3081",
+            "3108",
+            "3018"
+          ],
+          "correct_option_id": "3180",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:70c3da91-0000-49b6-8177-1bf0971ca8fa",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 3/11 + 5/11?"
+        },
+        "response_config": {
+          "options": [
+            "8/11",
+            "8/22",
+            "15/11",
+            "2/11"
+          ],
+          "correct_option_id": "8/11",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7101a8f8-0000-4987-8e3f-881bf5da1b41",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A flight departs at 10:35 am and lasts 3 hours 25 minutes. When does it arrive?"
+        },
+        "response_config": {
+          "options": [
+            "2:00 pm",
+            "1:45 pm",
+            "2:10 pm",
+            "1:00 pm"
+          ],
+          "correct_option_id": "2:00 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:711c64e5-0000-48ff-85d6-19dcef8324e7",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring the height of a person?"
+        },
+        "response_config": {
+          "options": [
+            "Centimetres",
+            "Millimetres",
+            "Kilometres",
+            "Litres"
+          ],
+          "correct_option_id": "Centimetres",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:714ac136-0000-438b-8546-54e351ea8476",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 2/5?"
+        },
+        "response_config": {
+          "options": [
+            "4/10",
+            "2/10",
+            "5/2",
+            "4/5"
+          ],
+          "correct_option_id": "4/10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7159e5f5-0000-4516-8db9-4fcdcf141bbb",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bag has 2 red and 8 blue marbles. Picking red is..."
+        },
+        "response_config": {
+          "options": [
+            "More likely than blue",
+            "Equally likely",
+            "Less likely than blue",
+            "Certain"
+          ],
+          "correct_option_id": "Less likely than blue",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:715e8196-0000-4430-8efb-a3038b68eb53",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A box has 5 cards numbered 1 to 5. Picking the number 3 is..."
+        },
+        "response_config": {
+          "options": [
+            "1 in 5 chance",
+            "1 in 3 chance",
+            "Certain",
+            "Impossible"
+          ],
+          "correct_option_id": "1 in 5 chance",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:71616d74-0000-4a0a-8b47-ddc41b85731a",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "4809",
+            "4089",
+            "4098",
+            "4808"
+          ],
+          "correct_option_id": "4809",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:716f609a-0000-4bca-836f-18c6e013203d",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 5, 10, 20, 40, …"
+        },
+        "response_config": {
+          "options": [
+            "Double the previous number",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Double the previous number",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7177aacc-0000-429d-8bc4-6f0dfe1e6b66",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 2 in 62 905?"
+        },
+        "response_config": {
+          "options": [
+            "2000",
+            "200",
+            "20000",
+            "2"
+          ],
+          "correct_option_id": "2000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:719e7942-0000-4e5f-8010-10e406915756",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 9 in 19 437?"
+        },
+        "response_config": {
+          "options": [
+            "9000",
+            "900",
+            "90000",
+            "9"
+          ],
+          "correct_option_id": "9000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:71c06753-0000-4295-81d5-56173eafde0f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A film started at 11:10 am and ended at 1:55 pm. How long was the film?"
+        },
+        "response_config": {
+          "options": [
+            "2 hours 35 minutes",
+            "2 hours 45 minutes",
+            "3 hours 45 minutes",
+            "2 hours 55 minutes"
+          ],
+          "correct_option_id": "2 hours 45 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:71dc9f8b-0000-4e60-8962-366e95200de8",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bag has 1 white and 9 black socks. Picking a white sock is:"
+        },
+        "response_config": {
+          "options": [
+            "Unlikely",
+            "Certain",
+            "Likely",
+            "Impossible"
+          ],
+          "correct_option_id": "Unlikely",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:71e0c445-0000-4fa8-81f3-7921eb3da267",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 12450 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "12000",
+            "11000",
+            "13000",
+            "11900"
+          ],
+          "correct_option_id": "12000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:71e6b4ac-0000-468c-8b44-0a4b16d63f72",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A workshop runs from 11:15 am for 1 hour 35 minutes. When does it finish?"
+        },
+        "response_config": {
+          "options": [
+            "12:40 pm",
+            "1:00 pm",
+            "12:30 pm",
+            "12:50 pm"
+          ],
+          "correct_option_id": "12:50 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:71f3d034-0000-4050-8f90-0299293b4375",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A coin is flipped twice. What is the chance of two heads?"
+        },
+        "response_config": {
+          "options": [
+            "1 in 4",
+            "1 in 2",
+            "1 in 3",
+            "Certain"
+          ],
+          "correct_option_id": "1 in 4",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:72005ea7-0000-443c-8c66-94f03931c7d4",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 7689 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "8000",
+            "7000",
+            "9000",
+            "7900"
+          ],
+          "correct_option_id": "8000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:725d5a56-0000-4427-805a-41d152b1294c",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 5/9 + 2/9?"
+        },
+        "response_config": {
+          "options": [
+            "7/9",
+            "7/18",
+            "10/9",
+            "3/9"
+          ],
+          "correct_option_id": "7/9",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:728cd2e5-0000-4c95-819b-a8227e322996",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A class started at 9:20 am and ended at 12:05 pm. How long was the class?"
+        },
+        "response_config": {
+          "options": [
+            "2 hours 45 minutes",
+            "2 hours 55 minutes",
+            "3 hours 45 minutes",
+            "2 hours 35 minutes"
+          ],
+          "correct_option_id": "2 hours 45 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:72afeb96-0000-458a-8d06-7af22a07bdaf",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 45, 40, 35, 30, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "25",
+            "23",
+            "27",
+            "30"
+          ],
+          "correct_option_id": "25",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:72b26966-0000-4e3e-81d9-b2bfc7e1819f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A spinner is half red and half green. Spinning red is..."
+        },
+        "response_config": {
+          "options": [
+            "More likely than green",
+            "Less likely than green",
+            "Impossible",
+            "Equally likely as green"
+          ],
+          "correct_option_id": "Equally likely as green",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:72b95490-0000-4b31-854c-886e5101c445",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A workshop began at 9:50 am and ended at 12:35 pm. How long was the workshop?"
+        },
+        "response_config": {
+          "options": [
+            "2 hours 45 minutes",
+            "2 hours 35 minutes",
+            "2 hours 55 minutes",
+            "3 hours 45 minutes"
+          ],
+          "correct_option_id": "2 hours 45 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:733c62b8-0000-4b9e-8ad7-5ff4fb0863c0",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "1962",
+            "1926",
+            "1296",
+            "1269"
+          ],
+          "correct_option_id": "1962",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7349a552-0000-4179-8adc-449dbcb153ab",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 9 in 90 538?"
+        },
+        "response_config": {
+          "options": [
+            "9000",
+            "900",
+            "90000",
+            "9"
+          ],
+          "correct_option_id": "9000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7352161e-0000-4215-85ef-04aa6864cda1",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 1 in 71 094?"
+        },
+        "response_config": {
+          "options": [
+            "1000",
+            "100",
+            "10000",
+            "1"
+          ],
+          "correct_option_id": "1000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:740e46aa-0000-48e9-87a5-1ba21db21a8e",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 3/8 or 1/8?"
+        },
+        "response_config": {
+          "options": [
+            "3/8",
+            "1/8",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "3/8",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:744237eb-0000-477e-8bcc-e8286966d1fd",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 3/5?"
+        },
+        "response_config": {
+          "options": [
+            "6/10",
+            "3/10",
+            "5/3",
+            "9/10"
+          ],
+          "correct_option_id": "6/10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:745bcbe3-0000-424e-850d-6b8e4277adf6",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "6320",
+            "6203",
+            "6230",
+            "6302"
+          ],
+          "correct_option_id": "6320",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:74686611-0000-4038-8547-d5cf5ce71550",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring the weight of an apple?"
+        },
+        "response_config": {
+          "options": [
+            "Grams",
+            "Kilograms",
+            "Tonnes",
+            "Millilitres"
+          ],
+          "correct_option_id": "Grams",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:746eec0e-0000-4717-88d4-862c9d18a96c",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 1/6 or 1/4?"
+        },
+        "response_config": {
+          "options": [
+            "1/4",
+            "1/6",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "1/4",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:74b40d6a-0000-4d49-8de4-6302c86e60a3",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring the weight of a bag of rice?"
+        },
+        "response_config": {
+          "options": [
+            "Kilograms",
+            "Grams",
+            "Millilitres",
+            "Centimetres"
+          ],
+          "correct_option_id": "Kilograms",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:74d89d93-0000-4822-856c-aa7098bec35a",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A movie starts at 2:45 pm and runs for 1 hour 30 minutes. When does it finish?"
+        },
+        "response_config": {
+          "options": [
+            "4:15 pm",
+            "3:15 pm",
+            "4:05 pm",
+            "4:45 pm"
+          ],
+          "correct_option_id": "4:15 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:74d89fa0-0000-4568-81bb-6aac186e040e",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 1, 4, 16, 64, …"
+        },
+        "response_config": {
+          "options": [
+            "Multiply by 4",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Multiply by 4",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:74edeae3-0000-4715-8a0c-57403b7fff80",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 1, 5, 25, 125, …"
+        },
+        "response_config": {
+          "options": [
+            "Multiply by 5",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Multiply by 5",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7578b70e-0000-4624-8e2a-4afe1290bf3d",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring how long a swim race takes?"
+        },
+        "response_config": {
+          "options": [
+            "Seconds",
+            "Days",
+            "Hours",
+            "Years"
+          ],
+          "correct_option_id": "Seconds",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:757accac-0000-43f6-8e09-9ae1d15f5247",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A jar has 10 same-colour balls. Picking that colour is..."
+        },
+        "response_config": {
+          "options": [
+            "Certain",
+            "Likely",
+            "Equally likely",
+            "Impossible"
+          ],
+          "correct_option_id": "Certain",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:758b2e19-0000-41fb-8242-4d9ffd18d2ea",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A coin is flipped once. Getting heads or tails is..."
+        },
+        "response_config": {
+          "options": [
+            "Equally likely",
+            "Always heads",
+            "Always tails",
+            "Impossible"
+          ],
+          "correct_option_id": "Equally likely",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:759e0d29-0000-4e8e-8d76-fb13ea0abe8a",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 1/2 or 1/3?"
+        },
+        "response_config": {
+          "options": [
+            "1/2",
+            "1/3",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "1/2",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:75c8ecf8-0000-47a7-84ba-bd9f7203f02f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring the length of a swimming pool?"
+        },
+        "response_config": {
+          "options": [
+            "Millimetres",
+            "Metres",
+            "Kilometres",
+            "Litres"
+          ],
+          "correct_option_id": "Metres",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:76063050-0000-4b4a-8104-37a89a3ab90c",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 2, 6, 18, 54, …"
+        },
+        "response_config": {
+          "options": [
+            "Multiply by 3",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Multiply by 3",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:764f5355-0000-452d-8416-397211425d23",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bag has 5 yellow and 5 purple balls. Picking yellow is:"
+        },
+        "response_config": {
+          "options": [
+            "Equally likely as purple",
+            "More likely than purple",
+            "Less likely than purple",
+            "Impossible"
+          ],
+          "correct_option_id": "Equally likely as purple",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7658e1e8-0000-40b8-8644-cc90abe6edff",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bus leaves at 4:50 pm and travels for 1 hour 20 minutes. When does it arrive?"
+        },
+        "response_config": {
+          "options": [
+            "6:10 pm",
+            "6:00 pm",
+            "6:20 pm",
+            "5:50 pm"
+          ],
+          "correct_option_id": "6:10 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7659dc62-0000-4c4a-8872-024fd1f14a67",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A jar has 4 lemon sweets and 6 strawberry sweets. Picking one at random is most likely to be:"
+        },
+        "response_config": {
+          "options": [
+            "Strawberry",
+            "Lemon",
+            "Equally likely",
+            "Cannot say"
+          ],
+          "correct_option_id": "Strawberry",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:767c58f2-0000-4029-8482-23cd96fdcc6f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 3/10 + 4/10?"
+        },
+        "response_config": {
+          "options": [
+            "7/10",
+            "7/20",
+            "12/10",
+            "1/10"
+          ],
+          "correct_option_id": "7/10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7687d6a8-0000-435c-8f37-7c300b8f8e0c",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 2/4 or 1/4?"
+        },
+        "response_config": {
+          "options": [
+            "2/4",
+            "1/4",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "2/4",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:768967f8-0000-4461-8805-9484f8cc3a99",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "7540",
+            "7405",
+            "7450",
+            "7504"
+          ],
+          "correct_option_id": "7540",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7693a70c-0000-498e-8f65-ac7dbe2ed989",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 6 in 26 853?"
+        },
+        "response_config": {
+          "options": [
+            "6000",
+            "600",
+            "60000",
+            "6"
+          ],
+          "correct_option_id": "6000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:76af05f0-0000-49b3-8144-e922c8c6a6df",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring the distance between two cities?"
+        },
+        "response_config": {
+          "options": [
+            "Kilometres",
+            "Millimetres",
+            "Centimetres",
+            "Metres"
+          ],
+          "correct_option_id": "Kilometres",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:76bd9348-0000-4fea-834c-fc116e749c01",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 2/5 or 1/5?"
+        },
+        "response_config": {
+          "options": [
+            "2/5",
+            "1/5",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "2/5",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:76c1ef6f-0000-43ff-86c8-9cf9fad78909",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 4 in 84 162?"
+        },
+        "response_config": {
+          "options": [
+            "4000",
+            "400",
+            "40000",
+            "4"
+          ],
+          "correct_option_id": "4000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:76d3c104-0000-4e77-8f16-22a5f1246de3",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A swim class starts at 3:50 pm and runs for 45 minutes. When does it end?"
+        },
+        "response_config": {
+          "options": [
+            "4:35 pm",
+            "4:25 pm",
+            "4:30 pm",
+            "4:45 pm"
+          ],
+          "correct_option_id": "4:35 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:77024e85-0000-426c-8d5a-700f3537a70c",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is larger: 1/5 or 1/3?"
+        },
+        "response_config": {
+          "options": [
+            "1/3",
+            "1/5",
+            "They are equal",
+            "Cannot say"
+          ],
+          "correct_option_id": "1/3",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:77e7857b-0000-4ed8-80ab-75f3bbb1c187",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 1/6 + 4/6?"
+        },
+        "response_config": {
+          "options": [
+            "5/6",
+            "5/12",
+            "4/6",
+            "6/12"
+          ],
+          "correct_option_id": "5/6",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:78122875-0000-43e7-84a5-dcd0b8e8a7d4",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A train leaves at 9:20 am and the journey takes 2 hours 40 minutes. When does it arrive?"
+        },
+        "response_config": {
+          "options": [
+            "12:00 pm",
+            "11:40 am",
+            "12:40 pm",
+            "11:00 am"
+          ],
+          "correct_option_id": "12:00 pm",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7821fbd6-0000-4189-867e-28410d94c0c7",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 4, 12, 36, 108, …"
+        },
+        "response_config": {
+          "options": [
+            "Multiply by 3",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Multiply by 3",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7828bbb9-0000-4422-8511-16e525aeedff",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A deck has 10 cards: 4 hearts, 3 clubs, 2 diamonds, 1 spade. Which is least likely?"
+        },
+        "response_config": {
+          "options": [
+            "Spade",
+            "Hearts",
+            "Clubs",
+            "Diamonds"
+          ],
+          "correct_option_id": "Spade",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7846f6a6-0000-4419-8dd9-65c4e1081e4f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 1/4?"
+        },
+        "response_config": {
+          "options": [
+            "1/12",
+            "4/1",
+            "3/12",
+            "2/4"
+          ],
+          "correct_option_id": "3/12",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:789f33c6-0000-43b1-8880-3438337d71f2",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A box has 8 chocolates: 5 dark, 2 milk, 1 white. Which is most likely to be picked?"
+        },
+        "response_config": {
+          "options": [
+            "Dark",
+            "Milk",
+            "White",
+            "All equally"
+          ],
+          "correct_option_id": "Dark",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:78c6c249-0000-4c44-86f0-a93d9029c8d7",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 6125 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "6000",
+            "5000",
+            "7000",
+            "5900"
+          ],
+          "correct_option_id": "6000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:78d7b75b-0000-41e8-8daf-cce68e4dc4d7",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 2/3?"
+        },
+        "response_config": {
+          "options": [
+            "6/9",
+            "2/9",
+            "3/2",
+            "4/9"
+          ],
+          "correct_option_id": "6/9",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:78fb3834-0000-4818-8b3a-158e4b9f83f7",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A spinner has 8 equal sections, all blue. Spinning blue is:"
+        },
+        "response_config": {
+          "options": [
+            "Likely",
+            "Impossible",
+            "Certain",
+            "Unlikely"
+          ],
+          "correct_option_id": "Certain",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7926e583-0000-479d-85ec-dbeeed471412",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A jar has 6 white sweets and 2 brown sweets. Picking white is..."
+        },
+        "response_config": {
+          "options": [
+            "More likely than brown",
+            "Less likely than brown",
+            "Equally likely",
+            "Impossible"
+          ],
+          "correct_option_id": "More likely than brown",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:79510530-0000-4791-8855-a4389ed925bd",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 1/5 + 2/5?"
+        },
+        "response_config": {
+          "options": [
+            "3/5",
+            "3/10",
+            "2/10",
+            "1/10"
+          ],
+          "correct_option_id": "3/5",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:79522670-0000-4fec-8ee7-125873385e8e",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which unit is best for measuring how much milk is in a bottle?"
+        },
+        "response_config": {
+          "options": [
+            "Litres",
+            "Kilograms",
+            "Centimetres",
+            "Hours"
+          ],
+          "correct_option_id": "Litres",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7996c67a-0000-4811-8d42-bc910ccefd69",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000003"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A train left at 10:25 am and arrived at 1:40 pm. How long was the journey?"
+        },
+        "response_config": {
+          "options": [
+            "3 hours 15 minutes",
+            "3 hours 25 minutes",
+            "2 hours 15 minutes",
+            "3 hours 5 minutes"
+          ],
+          "correct_option_id": "3 hours 15 minutes",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7996db75-0000-42e7-80bf-770214d67e1f",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 40, 36, 32, 28, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "24",
+            "22",
+            "26",
+            "29"
+          ],
+          "correct_option_id": "24",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:799e4bcc-0000-4dbe-8aad-4636e7ac35ce",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A spinner has 4 sections: 2 yellow, 1 red, 1 blue. Which is most likely?"
+        },
+        "response_config": {
+          "options": [
+            "Yellow",
+            "Red",
+            "Blue",
+            "All equally likely"
+          ],
+          "correct_option_id": "Yellow",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:79e09a98-0000-4568-8d10-e967a0d18559",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which number is the largest?"
+        },
+        "response_config": {
+          "options": [
+            "9120",
+            "9012",
+            "9021",
+            "9102"
+          ],
+          "correct_option_id": "9120",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:79e6da72-0000-4813-8bd6-84c56c638f3e",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Round 23789 to the nearest 1000."
+        },
+        "response_config": {
+          "options": [
+            "24000",
+            "23000",
+            "25000",
+            "23900"
+          ],
+          "correct_option_id": "24000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:79f56707-0000-4ff8-8ded-4f911558c585",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A standard die is rolled. Rolling a number greater than 6 is..."
+        },
+        "response_config": {
+          "options": [
+            "Impossible",
+            "Certain",
+            "Likely",
+            "Unlikely"
+          ],
+          "correct_option_id": "Impossible",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7a03a884-0000-44ba-8350-54b1b489d3be",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 3 in 53 720?"
+        },
+        "response_config": {
+          "options": [
+            "3000",
+            "300",
+            "30000",
+            "3"
+          ],
+          "correct_option_id": "3000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7a404b13-0000-4498-831c-9bf5a9af400b",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A pattern goes 60, 54, 48, 42, … What is the next number?"
+        },
+        "response_config": {
+          "options": [
+            "34",
+            "38",
+            "36",
+            "41"
+          ],
+          "correct_option_id": "36",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7a406489-0000-484c-86b7-c6d7b098847d",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 2, 8, 32, 128, …"
+        },
+        "response_config": {
+          "options": [
+            "Multiply by 4",
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Multiply by 4",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7a5f696a-0000-4ea0-8f17-f647bba9b6a8",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000004"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the value of the digit 8 in 38 416?"
+        },
+        "response_config": {
+          "options": [
+            "8000",
+            "800",
+            "80000",
+            "8"
+          ],
+          "correct_option_id": "8000",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7a855d8b-0000-41ab-81de-1006347c433d",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000002"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is the rule for this pattern? 7, 14, 28, 56, …"
+        },
+        "response_config": {
+          "options": [
+            "Add the previous two numbers",
+            "Subtract 2",
+            "Double the previous number",
+            "Add the same amount each time"
+          ],
+          "correct_option_id": "Double the previous number",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    },
+    {
+      "external_key": "fable:7adcf597-0000-466d-8e39-48a8468ad9e9",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000009"
+        ],
+        "difficulty": 0.25,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "A bag has 9 black socks and 1 white sock. Picking the white sock is..."
+        },
+        "response_config": {
+          "options": [
+            "Unlikely",
+            "Certain",
+            "Likely",
+            "Impossible"
+          ],
+          "correct_option_id": "Unlikely",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.25
+      }
+    },
+    {
+      "external_key": "fable:7b92f217-0000-456e-8aee-b49a05b0ad7d",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 1/3?"
+        },
+        "response_config": {
+          "options": [
+            "3/9",
+            "1/9",
+            "2/3",
+            "3/6"
+          ],
+          "correct_option_id": "3/9",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7b9d8dca-0000-4035-8d67-5ad79b39d7b1",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.5,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "Which fraction is equivalent to 1/2?"
+        },
+        "response_config": {
+          "options": [
+            "5/10",
+            "1/10",
+            "2/5",
+            "4/6"
+          ],
+          "correct_option_id": "5/10",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.5
+      }
+    },
+    {
+      "external_key": "fable:7baf462c-0000-43bf-8fc8-4512128bd1b9",
+      "copyright_declaration": "original",
+      "authoring_method": "ai_assisted_human_reviewed",
+      "item": {
+        "response_type": "mcq",
+        "skill_ids": [
+          "a0000001-0000-0000-0000-000000000005"
+        ],
+        "difficulty": 0.75,
+        "year_levels": [
+          5
+        ],
+        "exam_families": [
+          "au_numeracy_y5_format"
+        ]
+      },
+      "version": {
+        "stem": {
+          "text": "What is 1/8 + 3/8?"
+        },
+        "response_config": {
+          "options": [
+            "4/16",
+            "4/8 (or 1/2)",
+            "3/8",
+            "5/8"
+          ],
+          "correct_option_id": "4/8 (or 1/2)",
+          "scoring": {
+            "correct": 1,
+            "incorrect": 0
+          }
+        },
+        "difficulty": 0.75
+      }
+    }
+  ]
+}

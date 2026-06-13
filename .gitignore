@@ -53,3 +53,6 @@ supabase/snippets/
 
 # Playwright run output
 apps/web/test-results/
+
+# Script-generated content import batches
+output/

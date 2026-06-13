@@ -2,6 +2,66 @@
 
 > Newest entry at TOP. Use the template from CLAUDE.md §Templates.
 
+## 2026-06-13 — Content activation kickoff (Phase 1)
+
+**Planned (from 2026-06-12 note):** Begin post-merge backlog — content activation workstream.
+
+**Actually delivered:**
+
+- R-CONTENT-MAP (investigation): produced
+  `docs/content/specs/2026-06-13-fable-to-mindmosaic-mapping.md`.
+  Confirmed manifest format, identified skill graph gaps (no
+  leaf nodes for Patterns & Algebra, Measurement), resolved
+  question-type mapping and difficulty conversion (Fable 1–5 →
+  MindMosaic (d-1)/4 normalised 0–1).
+- R-CONTENT-TRANSLATOR / V2 / V2-RERUN: authored
+  `scripts/import-fable-content.ts` (TypeScript, pure file-in
+  file-out, no DB calls, no new deps). Iterated through fixture-
+  content bugs (V01 multi-line INSERTs were grep-truncated in
+  fixture v1; rebuilt via paren-depth-aware extraction).
+- Output: 132 items emitted (NAPLAN Y5 Numeracy MCQ across V01
+  stable-UUID items + V02-V10 adaptive variants). Two batch
+  files at `docs/content/manifests/fable-y5-numeracy-batch-{01,02}.json`.
+- Skill distribution: 30 items each at Place Value (004) and
+  Fractions & Decimals (005), 22 at Data Interpretation (009),
+  50 at strand level (002, 003) pending leaf node additions —
+  tracked as ISSUE-0097.
+- Difficulty distribution: 51 at 0.25, 40 at 0.50, 41 at 0.75.
+  No items at 0.0 or 1.0 (Fable does not emit difficulty 1 or 5).
+
+**Time spent:** ~3h
+
+**Surprises / departures:**
+
+- V01 fixture required rebuilding: original grep-based assembly
+  dropped continuation lines from multi-line INSERTs. Rebuilt
+  with paren-depth-aware extraction; verified 240/240 rows present.
+
+**Decisions made (not in stage):**
+
+- MCQ-only first batch per Option A; numeric items deferred to
+  v1.2+ when numeric_entry widget lands.
+- Strand-level tagging stopgap for ALG.PAT/MEAS codes (ISSUE-0097).
+- `output/` gitignored as transient workspace; batch manifests
+  curated to `docs/content/manifests/` with descriptive names.
+
+**Deviations logged:**
+
+- none
+
+**Issues opened / closed / questions raised:**
+
+- ISSUE-0097: filed (strand-level skill tagging; low, v1.1.1).
+
+**Quality gates at close:**
+
+- Lint ✅ · Typecheck ✅ (scripts/import-fable-content.ts 0 errors) · Tests n/a · Build n/a · RLS n/a
+
+**Tomorrow — first thing:**
+Dry-run import via `POST /content/import?dry_run=true` against local Supabase; then live import; then R-TESTLET-WIRING.
+
+---
+
 ## v1.1 ISSUE-0090/0091 debugging arc + family beta merge gate met — 2026-06-12
 
 **Planned (from 2026-06-11 note):** Post-merge backlog — Cluster B / mocked-supabase sweep. Actual: CI gate exposed multi-answer bugs blocking exam+practice flows; full debug arc executed before merge was viable.
