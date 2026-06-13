@@ -7,7 +7,7 @@
 
 ### ISSUE-0091 — useRecordResponse reuses one idempotency key across all answers → 2nd+ answer fails 422 IDEMPOTENCY_MISMATCH
 
-- Status: fixed (two layers — per-request key derivation + remove qc.invalidateQueries(sessions.state); awaiting CI E2E confirm)
+- Status: resolved — 2026-06-12
 - Severity: high (beta-blocker: every multi-answer session silently loses all answers after the first)
 - Reported: 2026-06-12 (practice-flow E2E — line-95 failure root-cause analysis)
 - Area: backend (SDK) + frontend (latent in both practice and exam pages via shared hook)
@@ -26,6 +26,8 @@
 **Second layer — LOCK_CONFLICT (409) after idempotency fix (CI run 27402070820).** After the 422 was fixed, CI returned a new 409 on item 2. Root cause: `useRecordResponse.onSuccess` called `qc.invalidateQueries(sessions.state)`, which triggered `GET /sessions/{id}/state` → `resumeSession` → `resumeSession` generates a fresh UUID and writes it as the new `lock_token` for **every call, including already-active sessions** (`handlers.ts:855-858`). This overwrote the T1 token issued by item 1's respond SDK rotation (`mutationFn.then`) with T2 **before** item 2's respond sent `X-Session-Lock: T1` → server compared T1 vs T2 → `LOCK_CONFLICT`. The hardened `waitForResponse` assertion surfaced this in ~10s instead of the previous 60-second timeout. Fix: remove `qc.invalidateQueries(sessions.state)` from `useRecordResponse.onSuccess`. The respond response already carries the rotated lock_token (consumed by `mutationFn.then`) and the updated version; the state refetch was redundant and is now absent. The longer architectural fix (making `resumeSession` read-only for active sessions) is left as a follow-up; for now the SDK simply avoids triggering it mid-session. Version-conflict recovery still works because the modal calls `sessionState.refetch()` explicitly.
 
 **Cross-ref.** ISSUE-0090 (same multi-answer blind spot, practice page layer); ISSUE-0088 (unrelated billing-svc 500 toast also visible in the same E2E snapshot — confirmed non-interfering via URL filter in the hardened `waitForResponse` assertion).
+
+**Resolution (2026-06-12 — R-BETA-MERGE-PREP).** Two-layer fix fully landed and CI-confirmed. Server-side architectural layer: commit `542d368` — `resumeSession` now skips `UPDATE` when session status is already `'active'`, making it idempotent for mid-session state fetches and eliminating the lock-token rotation race that `qc.invalidateQueries(sessions.state)` was triggering on every successful respond. SDK mitigation also bundled in `542d368`: `qc.invalidateQueries(sessions.state)` removed from `useRecordResponse.onSuccess`. SDK per-item idempotency layer: commit `43cfc52` — key derived from `${sessionId}:${item_id}:${expected_version}` per request in `mutationFn`. Audit confirmation that the LOCK_CONFLICT + IDEMPOTENCY_MISMATCH fix pattern is a singleton across all 12 Edge Function handlers: commit `a1d06c9`. E2E proof: CI run 27415500129 (SHA 7a2a7c0) — exam-flow test 8 (5 `/respond` calls, 27.2s) and practice-flow test 10 (adaptive loop, 26.7s) both green; all multi-item flows pass.
 
 ---
 
@@ -132,6 +134,20 @@ Related: ISSUE-0091 (idempotency key fix), ISSUE-0089 (seed fix that masks sympt
 **Summary.** The exam page's End-session + confirm-dialog flow (`exam/page.tsx:584-615`) is the manual early-exit UX for users who stop before answering all items. The previous exam-flow.spec.ts step 6 attempted to exercise this path but ran it against the all-items-completed state, where `submitSession.isPending` disables the End session button — the test was timing out, not testing. No E2E currently exercises the actual early-exit flow (e.g. answer 2 of 5 items, then click End session, then confirm Submit). Should be added as a separate test case before public launch; not blocking family beta.
 
 Related: `apps/web/src/app/(student)/session/[id]/exam/page.tsx:584-615`, `apps/web/playwright/e2e/exam-flow.spec.ts`
+
+---
+
+### ISSUE-0096 — supabase/setup-cli@v1 Node.js 20 deprecation warning in CI
+
+- Status: open
+- Severity: low (CI maintenance)
+- Reported: 2026-06-12 (R-BETA-MERGE-PREP)
+- Area: infra (CI — .github/workflows/ci.yml)
+- Tags: ci · github-actions · node · supabase-cli
+
+**Summary.** GitHub Actions surfaces a deprecation annotation on every CI run for `supabase/setup-cli@v1` (Node.js 20 deprecation). Not a failure today, but will become a hard CI break when the runner drops Node.js 20 support — forced Node.js 24 default starts 2026-06-16; Node.js 20 removed from runners 2026-09-16 per GitHub changelog. The action is used at `.github/workflows/ci.yml:71` (Migration Dry-Run job) and `.github/workflows/ci.yml:93` (Deploy Edge Functions job). Bump to a newer action version when available; the action's upstream repo (`supabase/setup-cli`) is the authoritative source for the upgrade path.
+
+Related: `.github/workflows/ci.yml:71,93`
 
 ---
 
