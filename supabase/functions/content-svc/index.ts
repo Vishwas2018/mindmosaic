@@ -132,7 +132,8 @@ Deno.serve(async (req: Request) => {
     // ── Dual-auth gate for /content/import (platform_admin Bearer OR service-role) ─
     if (method === 'POST' && path === '/content/import') {
       let importCallerId = 'service-role';
-      let importIdempScope = '_service_';
+      // Nil UUID: service-role has no tenant; api_idempotency_key.tenant_id is uuid NOT NULL with no FK.
+      let importIdempScope = '00000000-0000-0000-0000-000000000000';
       const serviceToken = req.headers.get(SERVICE_HEADER);
       const isServiceRole = serviceToken !== null && serviceToken === SERVICE_ROLE_KEY;
       if (!isServiceRole) {
